@@ -1,0 +1,8 @@
+[package]
+name = "project-mapper"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+gst = { package = "gstreamer", version="0.23"  }
+glib = "0.20"
