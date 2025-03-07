@@ -324,9 +324,9 @@ pub(crate) enum Message {
     BusMessage(gst::Message),
 }
 
-pub(crate) struct App {
-    pipeline: gst::Pipeline,
-    appsink: gst_app::AppSink,
+pub(crate) struct OpenGLApp<'a> {
+    pipeline: &'a gst::Pipeline,
+    appsink:  &'a gst_app::AppSink,
     event_loop: Option<winit::event_loop::EventLoop<Message>>,
     window: Option<winit::window::Window>,
     not_current_gl_context: Option<glutin::context::NotCurrentContext>,
@@ -339,16 +339,12 @@ pub(crate) struct App {
     )>,
 }
 
-impl App {
-    pub(crate) fn new(gl_element: Option<&gst::Element>, ) -> Result<App> {
+impl<'a> OpenGLApp<'a> {
+    pub(crate) fn new(gl_element: Option<&gst::Element>,  pipeline: &gst::Pipeline, appsink: &gst_app::AppSink) -> Result<OpenGLApp<'a>> {
         gst::init()?;
 
         let event_loop = winit::event_loop::EventLoop::with_user_event().build()?;
 
-
-        let media_pipeline = pipeline::MediaPipeline::new(None)?;
-        let pipeline = media_pipeline.pipeline;
-        let appsink = media_pipeline.appsink;
         let bus = pipeline
             .bus()
             .context("Pipeline without bus. Shouldn't happen!")?;
@@ -445,7 +441,7 @@ impl App {
         #[cfg(not(any(target_os = "linux", windows)))]
         compile_error!("This example only has Linux and Windows support");
 
-        let api = App::map_gl_api(gl_config.api());
+        let api = OpenGLApp::map_gl_api(gl_config.api());
 
         let (raw_gl_context, gst_gl_display, platform) = match (raw_gl_display, raw_gl_context) {
             #[cfg(feature = "gst-gl-egl")]
@@ -548,7 +544,7 @@ impl App {
 
             gst::BusSyncReply::Drop
         });
-        let app = App {
+        let app: OpenGLApp<'a> = OpenGLApp {
             pipeline,
             appsink,
             event_loop: Some(event_loop),
@@ -741,7 +737,7 @@ impl winit::application::ApplicationHandler<Message> for App {
             glutin_winit::finalize_window(event_loop, window_attributes, &gl_config).unwrap()
         });
 
-        window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(event_loop.primary_monitor())));
+        //window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(event_loop.primary_monitor())));
 
         let attrs = window.build_surface_attributes(<_>::default()).unwrap();
         let gl_surface = unsafe {
@@ -773,8 +769,7 @@ impl winit::application::ApplicationHandler<Message> for App {
         ) {
             eprintln!("Error setting vsync: {res:?}");
         }
-
-        self.pipeline.set_state(gst::State::Playing).unwrap();
+        
 
         assert!(self
             .running_state

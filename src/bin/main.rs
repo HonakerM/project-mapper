@@ -9,8 +9,17 @@
 // Much of the playbin's behavior can be controlled by so-called flags, as well
 // as the playbin's properties and signals.
 
-
-use anyhow::Result;
+use std::{thread, time::Duration};
+use anyhow::{Context, Result};
+use glutin::{
+    config::GetGlConfig as _,
+    context::AsRawContext as _,
+    display::{AsRawDisplay as _, GetGlDisplay as _},
+    prelude::*,
+};
+use glutin_winit::GlWindow as _;
+use gst::{element_error, PadProbeReturn, PadProbeType, QueryViewMut};
+use gst_gl::prelude::*;
 
 #[path = "../gl/opengl.rs"]
 mod opengl;
@@ -25,7 +34,10 @@ pub mod main_wrapper;
 
 fn example_main() -> Result<()> {
     let app = opengl::App::new(None)?;
-    app.run()
+    thread::sleep(Duration::from_secs(5));
+    app.pipeline.set_state(gst::State::Playing).unwrap();
+    app.run();
+    Ok(())
 }
 
 
