@@ -25,17 +25,15 @@ use gst_gl::prelude::*;
 mod opengl;
 
 
-#[path = "../pipeline/pipeline.rs"]
-mod pipeline;
+#[path = "../runtime/runtime.rs"]
+mod runtime;
 
 #[path = "../utils/main_wrapper.rs"]
 pub mod main_wrapper;
 
 
 fn example_main() -> Result<()> {
-    let app = opengl::App::new(None)?;
-    thread::sleep(Duration::from_secs(5));
-    app.pipeline.set_state(gst::State::Playing).unwrap();
+    let app = runtime::Runtime::new()?;
     app.run();
     Ok(())
 }

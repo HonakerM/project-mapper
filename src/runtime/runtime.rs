@@ -38,11 +38,11 @@ pub(crate) enum Message {
 }
 
 pub(crate) struct Runtime {
-    pub pipeline: gst::Pipeline,
+    pub pipeline: pipeline::MediaPipeline,
 }
 
 impl Runtime {
-    pub(crate) fn new(gl_element: Option<&gst::Element> ) -> Result<Runtime> {
+    pub(crate) fn new() -> Result<Runtime> {
         gst::init()?;
 
         let media_pipeline = pipeline::MediaPipeline::new(None)?;
@@ -56,7 +56,7 @@ impl Runtime {
     }
 
 
-    pub fn run(mut self) -> Result<()> {
-
+    pub fn run(&self) -> Result<()> {
+        self.pipeline.run();
     }
 }

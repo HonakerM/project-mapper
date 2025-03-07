@@ -326,7 +326,7 @@ pub(crate) enum Message {
 
 pub(crate) struct OpenGLApp<'a> {
     pipeline: &'a gst::Pipeline,
-    appsink:  &'a gst_app::AppSink,
+    appsink: &'a gst_app::AppSink,
     event_loop: Option<winit::event_loop::EventLoop<Message>>,
     window: Option<winit::window::Window>,
     not_current_gl_context: Option<glutin::context::NotCurrentContext>,
@@ -340,7 +340,7 @@ pub(crate) struct OpenGLApp<'a> {
 }
 
 impl<'a> OpenGLApp<'a> {
-    pub(crate) fn new(gl_element: Option<&gst::Element>,  pipeline: &gst::Pipeline, appsink: &gst_app::AppSink) -> Result<OpenGLApp<'a>> {
+    pub(crate) fn new(gl_element: Option<&gst::Element>,  pipeline: &'a gst::Pipeline, appsink: &'a gst_app::AppSink) -> Result<OpenGLApp<'a>> {
         gst::init()?;
 
         let event_loop = winit::event_loop::EventLoop::with_user_event().build()?;
@@ -545,8 +545,8 @@ impl<'a> OpenGLApp<'a> {
             gst::BusSyncReply::Drop
         });
         let app: OpenGLApp<'a> = OpenGLApp {
-            pipeline,
-            appsink,
+            pipeline: pipeline,
+            appsink: appsink,
             event_loop: Some(event_loop),
             window,
             not_current_gl_context: Some(not_current_gl_context),
@@ -690,7 +690,7 @@ impl<'a> OpenGLApp<'a> {
     }
 }
 
-impl winit::application::ApplicationHandler<Message> for App {
+impl<'a> winit::application::ApplicationHandler<Message> for OpenGLApp<'a> {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         let not_current_gl_context = self
             .not_current_gl_context
@@ -833,7 +833,7 @@ impl winit::application::ApplicationHandler<Message> for App {
                 }
             }
             // Handle all pending messages when we are awaken by set_sync_handler
-            Message::BusMessage(msg) => App::handle_message(msg),
+            Message::BusMessage(msg) => OpenGLApp::handle_message(msg),
         }
     }
 }

@@ -29,10 +29,14 @@ use gst_gl::prelude::*;
 use raw_window_handle::HasWindowHandle as _;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 
+#[path = "../gl/opengl.rs"]
+mod opengl;
+
+
 
 pub(crate) struct MediaPipeline {
     pub pipeline: gst::Pipeline,
-    pub appsink: gst_app::AppSink,
+    pub app: opengl::OpenGLApp,
 }
 
 impl MediaPipeline {
@@ -41,12 +45,21 @@ impl MediaPipeline {
 
         let (pipeline, appsink) = MediaPipeline::create_pipeline(gl_element)?;
 
+
+        let app = opengl::OpenGLApp::new(None, pipeline, appsink);
+
         let pipeline = MediaPipeline {
             pipeline,
-            appsink,
+            app,
         };
 
         Ok(pipeline)
+    }
+
+
+    pub(crate) fn run(&self) {
+        self.pipeline.set_state(gst::State::Playing).unwrap();
+        self.app.run();
     }
 
     fn create_pipeline(
