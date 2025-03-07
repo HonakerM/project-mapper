@@ -13,6 +13,10 @@ use std::{
     ptr,
 };
 
+#[path = "../pipeline/pipeline.rs"]
+mod pipeline;
+
+
 use anyhow::{Context, Result};
 use glutin::{
     config::GetGlConfig as _,
@@ -336,12 +340,15 @@ pub(crate) struct App {
 }
 
 impl App {
-    pub(crate) fn new(gl_element: Option<&gst::Element>) -> Result<App> {
+    pub(crate) fn new(gl_element: Option<&gst::Element>, ) -> Result<App> {
         gst::init()?;
 
         let event_loop = winit::event_loop::EventLoop::with_user_event().build()?;
 
-        let (pipeline, appsink) = App::create_pipeline(gl_element)?;
+
+        let media_pipeline = pipeline::MediaPipeline::new(None)?;
+        let pipeline = media_pipeline.pipeline;
+        let appsink = media_pipeline.appsink;
         let bus = pipeline
             .bus()
             .context("Pipeline without bus. Shouldn't happen!")?;

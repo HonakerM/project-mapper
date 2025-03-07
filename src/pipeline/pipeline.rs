@@ -1,0 +1,94 @@
+
+
+
+//! This example demonstrates how to output GL textures, within an EGL/X11 context provided by the
+//! application, and render those textures in the GL application.
+//!
+//! This example follow common patterns from `glutin`:
+//! <https://github.com/rust-windowing/glutin/blob/master/glutin_examples/src/lib.rs>
+
+// {videotestsrc} - { glsinkbin }
+
+use std::{
+    ffi::{CStr, CString},
+    mem,
+    num::NonZeroU32,
+    ptr,
+};
+
+use anyhow::{Context, Result};
+use glutin::{
+    config::GetGlConfig as _,
+    context::AsRawContext as _,
+    display::{AsRawDisplay as _, GetGlDisplay as _},
+    prelude::*,
+};
+use glutin_winit::GlWindow as _;
+use gst::{element_error, PadProbeReturn, PadProbeType, QueryViewMut};
+use gst_gl::prelude::*;
+use raw_window_handle::HasWindowHandle as _;
+use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
+
+
+pub(crate) struct MediaPipeline {
+    pub pipeline: gst::Pipeline,
+    pub appsink: gst_app::AppSink,
+}
+
+impl MediaPipeline {
+    pub(crate) fn new(gl_element: Option<&gst::Element>) -> Result<MediaPipeline> {
+        gst::init()?;
+
+        let (pipeline, appsink) = MediaPipeline::create_pipeline(gl_element)?;
+
+        let pipeline = MediaPipeline {
+            pipeline,
+            appsink,
+        };
+
+        Ok(pipeline)
+    }
+
+    fn create_pipeline(
+        gl_element: Option<&gst::Element>,
+    ) -> Result<(gst::Pipeline, gst_app::AppSink)> {
+        let pipeline = gst::Pipeline::default();
+        let src = gst::ElementFactory::make("videotestsrc").build()?;
+
+        let caps = gst_video::VideoCapsBuilder::new()
+            .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
+            .format(gst_video::VideoFormat::Rgba)
+            .field("texture-target", "2D")
+            .build();
+
+        let appsink = gst_app::AppSink::builder()
+            .enable_last_sample(true)
+            .max_buffers(1)
+            .caps(&caps)
+            .build();
+
+        if let Some(gl_element) = gl_element {
+            let glupload = gst::ElementFactory::make("glupload").build()?;
+
+            pipeline.add_many([&src, &glupload])?;
+            pipeline.add(gl_element)?;
+            pipeline.add(&appsink)?;
+
+            src.link(&glupload)?;
+            glupload.link(gl_element)?;
+            gl_element.link(&appsink)?;
+
+            Ok((pipeline, appsink))
+        } else {
+            let sink = gst::ElementFactory::make("glsinkbin")
+                .property("sink", &appsink)
+                .build()?;
+
+            pipeline.add_many([&src, &sink])?;
+            src.link(&sink)?;
+
+            Ok((pipeline, appsink))
+        }
+    }
+
+}
