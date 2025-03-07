@@ -80,7 +80,7 @@ void main() {
 #[allow(clippy::missing_transmute_annotations)]
 pub(crate) mod gl {
     pub use self::Gles2 as Gl;
-    include!(concat!(env!("OUT_DIR"), "/test_gl_bindings.rs"));
+    include!(concat!(env!("OUT_DIR"), "/gl_bindings.rs"));
 }
 
 struct Gl {
@@ -651,48 +651,6 @@ impl App {
         gst_gl_api.set(GLAPI::GLES2, api.intersects(Api::GLES2 | Api::GLES3));
 
         gst_gl_api
-    }
-
-    fn create_pipeline(
-        gl_element: Option<&gst::Element>,
-    ) -> Result<(gst::Pipeline, gst_app::AppSink)> {
-        let pipeline = gst::Pipeline::default();
-        let src = gst::ElementFactory::make("videotestsrc").build()?;
-
-        let caps = gst_video::VideoCapsBuilder::new()
-            .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
-            .format(gst_video::VideoFormat::Rgba)
-            .field("texture-target", "2D")
-            .build();
-
-        let appsink = gst_app::AppSink::builder()
-            .enable_last_sample(true)
-            .max_buffers(1)
-            .caps(&caps)
-            .build();
-
-        if let Some(gl_element) = gl_element {
-            let glupload = gst::ElementFactory::make("glupload").build()?;
-
-            pipeline.add_many([&src, &glupload])?;
-            pipeline.add(gl_element)?;
-            pipeline.add(&appsink)?;
-
-            src.link(&glupload)?;
-            glupload.link(gl_element)?;
-            gl_element.link(&appsink)?;
-
-            Ok((pipeline, appsink))
-        } else {
-            let sink = gst::ElementFactory::make("glsinkbin")
-                .property("sink", &appsink)
-                .build()?;
-
-            pipeline.add_many([&src, &sink])?;
-            src.link(&sink)?;
-
-            Ok((pipeline, appsink))
-        }
     }
 
     /// Should be called from within the event loop
