@@ -9,138 +9,245 @@
 // Much of the playbin's behavior can be controlled by so-called flags, as well
 // as the playbin's properties and signals.
 
-use std::env;
+use std::{
+    env,
+    sync::{Arc, Mutex},
+};
 
-use gst::prelude::*;
+use anyhow::Error;
+use derive_more::derive::{Display, Error};
+use gst::{element_error, element_warning, prelude::*};
+
 
 #[path = "./examples_common.rs"]
 mod examples_common;
 
-fn example_main() {
-    gst::init().unwrap();
+#[derive(Debug, Display, Error)]
+#[display("Received error from {src}: {error} (debug: {debug:?})")]
+struct ErrorMessage {
+    src: glib::GString,
+    error: glib::Error,
+    debug: Option<glib::GString>,
+}
+
+#[derive(Clone, Debug, glib::Boxed)]
+#[boxed_type(name = "ErrorValue")]
+struct ErrorValue(Arc<Mutex<Option<Error>>>);
+
+
+
+
+fn example_main() -> Result<(), Error> {
+    gst::init()?;
 
     let args: Vec<_> = env::args().collect();
     let uri: &str = if args.len() == 2 {
         args[1].as_ref()
     } else {
-        println!("Usage: playbin uri");
+        println!("Usage: decodebin file_path");
         std::process::exit(-1)
     };
 
-    // Create a new playbin element, and tell it what uri to play back.
-    let playbin = gst::ElementFactory::make("playbin")
-        .property("uri", uri)
-        .build()
-        .unwrap();
+    let pipeline = gst::Pipeline::default();
+    let src = gst::ElementFactory::make("filesrc")
+        .property("location", uri)
+        .build()?;
+    let decodebin = gst::ElementFactory::make("decodebin").build()?;
 
-    // For flags handling
-    // With flags, one can configure playbin's behavior such as whether it
-    // should play back contained video streams, or if it should render subtitles.
-    // let flags = playbin.property_value("flags");
-    // let flags_class = FlagsClass::with_type(flags.type_()).unwrap();
-    // let flags = flags_class.builder_with_value(flags).unwrap()
-    //     .unset_by_nick("text")
-    //     .unset_by_nick("video")
-    //     .build()
-    //     .unwrap();
-    // playbin.set_property_from_value("flags", &flags);
+    pipeline.add_many([&src, &decodebin])?;
+    gst::Element::link_many([&src, &decodebin])?;
 
-    // The playbin also provides any kind of metadata that it found in the played stream.
-    // For this, the playbin provides signals notifying about changes in the metadata.
-    // Doing this with a signal makes sense for multiple reasons.
-    // - The metadata is only found after the pipeline has been started
-    // - Live streams (such as internet radios) update this metadata during the stream
-    // Note that this signal will be emitted from the streaming threads usually,
-    // not the application's threads!
-    playbin.connect("audio-tags-changed", false, |values| {
-        // The metadata of any of the contained audio streams changed
-        // In the case of a live-stream from an internet radio, this could for example
-        // mark the beginning of a new track, or a new DJ.
-        let playbin = values[0]
-            .get::<glib::Object>()
-            .expect("playbin \"audio-tags-changed\" signal values[1]");
-        // This gets the index of the stream that changed. This is necessary, since
-        // there could e.g. be multiple audio streams (english, spanish, ...).
-        let idx = values[1]
-            .get::<i32>()
-            .expect("playbin \"audio-tags-changed\" signal values[1]");
+    // Need to move a new reference into the closure.
+    // !!ATTENTION!!:
+    // It might seem appealing to use pipeline.clone() here, because that greatly
+    // simplifies the code within the callback. What this actually does, however, is creating
+    // a memory leak. The clone of a pipeline is a new strong reference on the pipeline.
+    // Storing this strong reference of the pipeline within the callback (we are moving it in!),
+    // which is in turn stored in another strong reference on the pipeline is creating a
+    // reference cycle.
+    // DO NOT USE pipeline.clone() TO USE THE PIPELINE WITHIN A CALLBACK
+    let pipeline_weak = pipeline.downgrade();
+    // Connect to decodebin's pad-added signal, that is emitted whenever
+    // it found another stream from the input file and found a way to decode it to its raw format.
+    // decodebin automatically adds a src-pad for this raw stream, which
+    // we can use to build the follow-up pipeline.
+    decodebin.connect_pad_added(move |dbin, src_pad| {
+        // Here we temporarily retrieve a strong reference on the pipeline from the weak one
+        // we moved into this callback.
+        let Some(pipeline) = pipeline_weak.upgrade() else {
+            return;
+        };
 
-        println!("audio tags of audio stream {idx} changed:");
+        // Try to detect whether the raw stream decodebin provided us with
+        // just now is either audio or video (or none of both, e.g. subtitles).
+        let (is_audio, is_video) = {
+            let media_type = src_pad.current_caps().and_then(|caps| {
+                caps.structure(0).map(|s| {
+                    let name = s.name();
+                    (name.starts_with("audio/"), name.starts_with("video/"))
+                })
+            });
 
-        // HELP: is this correct?
-        // We were only notified about the change of metadata. If we want to do
-        // something with it, we first need to actually query the metadata from the playbin.
-        // We do this by facilliating the get-audio-tags action-signal on playbin.
-        // Sending an action-signal to an element essentially is a function call on the element.
-        // It is done that way, because elements do not have their own function API, they are
-        // relying on GStreamer and GLib's API. The only way an element can communicate with an
-        // application is via properties, signals or action signals (or custom messages, events, queries).
-        // So what the following code does, is essentially asking playbin to tell us its already
-        // internally stored tag list for this stream index.
-        let tags = playbin.emit_by_name::<Option<gst::TagList>>("get-audio-tags", &[&idx]);
+            match media_type {
+                None => {
+                    element_warning!(
+                        dbin,
+                        gst::CoreError::Negotiation,
+                        ("Failed to get media type from pad {}", src_pad.name())
+                    );
 
-        if let Some(tags) = tags {
-            if let Some(artist) = tags.get::<gst::tags::Artist>() {
-                println!("  Artist: {}", artist.get());
+                    return;
+                }
+                Some(media_type) => media_type,
+            }
+        };
+
+        // We create a closure here, calling it directly below it, because this greatly
+        // improves readability for error-handling. Like this, we can simply use the
+        // ?-operator within the closure, and handle the actual error down below where
+        // we call the insert_sink(..) closure.
+        let insert_sink = |is_audio, is_video| -> Result<(), Error> {
+            if is_audio {
+                // decodebin found a raw audiostream, so we build the follow-up pipeline to
+                // play it on the default audio playback device (using autoaudiosink).
+                let queue = gst::ElementFactory::make("queue").build()?;
+                let convert = gst::ElementFactory::make("audioconvert").build()?;
+                let resample = gst::ElementFactory::make("audioresample").build()?;
+                let sink = gst::ElementFactory::make("autoaudiosink").build()?;
+
+                let elements = &[&queue, &convert, &resample, &sink];
+                pipeline.add_many(elements)?;
+                gst::Element::link_many(elements)?;
+
+                // !!ATTENTION!!:
+                // This is quite important and people forget it often. Without making sure that
+                // the new elements have the same state as the pipeline, things will fail later.
+                // They would still be in Null state and can't process data.
+                for e in elements {
+                    e.sync_state_with_parent()?;
+                }
+
+                // Get the queue element's sink pad and link the decodebin's newly created
+                // src pad for the audio stream to it.
+                let sink_pad = queue.static_pad("sink").expect("queue has no sinkpad");
+                src_pad.link(&sink_pad)?;
+            } else if is_video {
+                // decodebin found a raw videostream, so we build the follow-up pipeline to
+                // display it using the autovideosink.
+                let queue = gst::ElementFactory::make("queue").build()?;
+                let convert = gst::ElementFactory::make("videoconvert").build()?;
+                let scale = gst::ElementFactory::make("videoscale").build()?;
+                let sink = gst::ElementFactory::make("autovideosink").build()?;
+
+                let elements = &[&queue, &convert, &scale, &sink];
+                pipeline.add_many(elements)?;
+                gst::Element::link_many(elements)?;
+
+                for e in elements {
+                    e.sync_state_with_parent()?
+                }
+
+                // Get the queue element's sink pad and link the decodebin's newly created
+                // src pad for the video stream to it.
+                let sink_pad = queue.static_pad("sink").expect("queue has no sinkpad");
+                src_pad.link(&sink_pad)?;
             }
 
-            if let Some(title) = tags.get::<gst::tags::Title>() {
-                println!("  Title: {}", title.get());
-            }
+            Ok(())
+        };
 
-            if let Some(album) = tags.get::<gst::tags::Album>() {
-                println!("  Album: {}", album.get());
-            }
+        // When adding and linking new elements in a callback fails, error information is often sparse.
+        // GStreamer's built-in debugging can be hard to link back to the exact position within the code
+        // that failed. Since callbacks are called from random threads within the pipeline, it can get hard
+        // to get good error information. The macros used in the following can solve that. With the use
+        // of those, one can send arbitrary rust types (using the pipeline's bus) into the mainloop.
+        // What we send here is unpacked down below, in the iteration-code over sent bus-messages.
+        // Because we are using the failure crate for error details here, we even get a backtrace for
+        // where the error was constructed. (If RUST_BACKTRACE=1 is set)
+        if let Err(err) = insert_sink(is_audio, is_video) {
+            // The following sends a message of type Error on the bus, containing our detailed
+            // error information.
+            element_error!(
+                dbin,
+                gst::LibraryError::Failed,
+                ("Failed to insert sink"),
+                details: gst::Structure::builder("error-details")
+                            .field("error",
+                                   ErrorValue(Arc::new(Mutex::new(Some(err)))))
+                            .build()
+            );
         }
-
-        None
     });
 
-    // The playbin element itself is a playbin, so it can be used as one, despite being
-    // created from an element factory.
-    let bus = playbin.bus().unwrap();
+    pipeline.set_state(gst::State::Playing)?;
 
-    playbin
-        .set_state(gst::State::Playing)
-        .expect("Unable to set the pipeline to the `Playing` state");
+    let bus = pipeline
+        .bus()
+        .expect("Pipeline without bus. Shouldn't happen!");
 
+    // This code iterates over all messages that are sent across our pipeline's bus.
+    // In the callback ("pad-added" on the decodebin), we sent better error information
+    // using a bus message. This is the position where we get those messages and log
+    // the contained information.
     for msg in bus.iter_timed(gst::ClockTime::NONE) {
         use gst::MessageView;
 
         match msg.view() {
             MessageView::Eos(..) => break,
             MessageView::Error(err) => {
-                println!(
-                    "Error from {:?}: {} ({:?})",
-                    err.src().map(|s| s.path_string()),
-                    err.error(),
-                    err.debug()
-                );
-                break;
-            }
-            MessageView::StateChanged(state_changed) =>
-            // We are only interested in state-changed messages from playbin
-            {
-                if state_changed.src().map(|s| s == &playbin).unwrap_or(false)
-                    && state_changed.current() == gst::State::Playing
-                {
-                    // Generate a dot graph of the pipeline to GST_DEBUG_DUMP_DOT_DIR if defined
-                    let bin_ref = playbin.downcast_ref::<gst::Bin>().unwrap();
-                    bin_ref.debug_to_dot_file(gst::DebugGraphDetails::all(), "PLAYING");
-                }
-            }
+                pipeline.set_state(gst::State::Null)?;
 
+                match err.details() {
+                    // This bus-message of type error contained our custom error-details struct
+                    // that we sent in the pad-added callback above. So we unpack it and log
+                    // the detailed error information here. details contains a glib::SendValue.
+                    // The unpacked error is the converted to a Result::Err, stopping the
+                    // application's execution.
+                    Some(details) if details.name() == "error-details" => details
+                        .get::<&ErrorValue>("error")
+                        .unwrap()
+                        .clone()
+                        .0
+                        .lock()
+                        .unwrap()
+                        .take()
+                        .map(Result::Err)
+                        .expect("error-details message without actual error"),
+                    _ => Err(ErrorMessage {
+                        src: msg
+                            .src()
+                            .map(|s| s.path_string())
+                            .unwrap_or_else(|| glib::GString::from("UNKNOWN")),
+                        error: err.error(),
+                        debug: err.debug(),
+                    }
+                    .into()),
+                }?;
+            }
+            MessageView::StateChanged(s) => {
+                println!(
+                    "State changed from {:?}: {:?} -> {:?} ({:?})",
+                    s.src().map(|s| s.path_string()),
+                    s.old(),
+                    s.current(),
+                    s.pending()
+                );
+            }
             _ => (),
         }
     }
 
-    playbin
-        .set_state(gst::State::Null)
-        .expect("Unable to set the pipeline to the `Null` state");
+    pipeline.set_state(gst::State::Null)?;
+
+    Ok(())
+
 }
 
 fn main() {
     // examples_common::run is only required to set up the application environment on macOS
     // (but not necessary in normal Cocoa applications where this is set up automatically)
-    examples_common::run(example_main);
+    match examples_common::run(example_main) {
+        Ok(r) => r,
+        Err(e) => eprintln!("Error! {e}"),
+    }
 }

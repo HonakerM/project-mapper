@@ -6,3 +6,5 @@ edition = "2024"
 [dependencies]
 gst = { package = "gstreamer", version="0.23"  }
 glib = "0.20"
+anyhow = "1.0"
+derive_more = { version = "2", features = ["display", "error"] }
