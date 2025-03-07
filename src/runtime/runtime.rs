@@ -48,15 +48,14 @@ impl Runtime {
         let media_pipeline = pipeline::MediaPipeline::new(None)?;
  
         let runtime = Runtime {
-            pipeline,
+            pipeline: media_pipeline,
         };
-
-        app.setup()?;
-        Ok(app)
+        Ok(runtime)
     }
 
 
-    pub fn run(&self) -> Result<()> {
+    pub fn run(&mut self) -> Result<()> {
         self.pipeline.run();
+        Ok(())
     }
 }

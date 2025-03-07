@@ -13,9 +13,6 @@ use std::{
     ptr,
 };
 
-#[path = "../pipeline/pipeline.rs"]
-mod pipeline;
-
 
 use anyhow::{Context, Result};
 use glutin::{
@@ -324,9 +321,8 @@ pub(crate) enum Message {
     BusMessage(gst::Message),
 }
 
-pub(crate) struct OpenGLApp<'a> {
-    pipeline: &'a gst::Pipeline,
-    appsink: &'a gst_app::AppSink,
+pub(crate) struct OpenGLApp {
+    appsink: gst_app::AppSink,
     event_loop: Option<winit::event_loop::EventLoop<Message>>,
     window: Option<winit::window::Window>,
     not_current_gl_context: Option<glutin::context::NotCurrentContext>,
@@ -339,17 +335,11 @@ pub(crate) struct OpenGLApp<'a> {
     )>,
 }
 
-impl<'a> OpenGLApp<'a> {
-    pub(crate) fn new(gl_element: Option<&gst::Element>,  pipeline: &'a gst::Pipeline, appsink: &'a gst_app::AppSink) -> Result<OpenGLApp<'a>> {
+impl OpenGLApp {
+    pub(crate) fn new(gl_element: Option<&gst::Element>,  appsink: gst_app::AppSink) -> Result<OpenGLApp> {
         gst::init()?;
 
         let event_loop = winit::event_loop::EventLoop::with_user_event().build()?;
-
-        let bus = pipeline
-            .bus()
-            .context("Pipeline without bus. Shouldn't happen!")?;
-
-
 
         // Only Windows requires the window to be present before creating a `glutin::Display`. Other
         // platforms don't really need one (and on Android, none exists until `Event::Resumed`).
@@ -531,21 +521,7 @@ impl<'a> OpenGLApp<'a> {
                 .unwrap();
         }
 
-        let event_proxy = event_loop.create_proxy();
-
-        #[allow(clippy::single_match)]
-        bus.set_sync_handler(move |_bus, msg| {
-            if let Err(e) = event_proxy
-                // Forward all messages to winit's event loop
-                .send_event(Message::BusMessage(msg.to_owned()))
-            {
-                eprintln!("Failed to send BusEvent to event proxy: {e}")
-            }
-
-            gst::BusSyncReply::Drop
-        });
-        let app: OpenGLApp<'a> = OpenGLApp {
-            pipeline: pipeline,
+        let app: OpenGLApp = OpenGLApp {
             appsink: appsink,
             event_loop: Some(event_loop),
             window,
@@ -555,13 +531,25 @@ impl<'a> OpenGLApp<'a> {
             running_state: None,
         };
 
-        app.setup()?;
-
         Ok(app)
     }
 
-    fn setup(&self) -> Result<()> {
+    pub fn setup(&self, pipeline: &gst::Pipeline) -> Result<()> {
         let event_loop = self.event_loop.as_ref().unwrap();
+        let event_proxy = event_loop.create_proxy();
+        
+        #[allow(clippy::single_match)]
+        pipeline.bus().expect("yeah right").set_sync_handler(move |_bus, msg| {
+            if let Err(e) = event_proxy
+                // Forward all messages to winit's event loop
+                .send_event(Message::BusMessage(msg.to_owned()))
+            {
+                eprintln!("Failed to send BusEvent to event proxy: {e}")
+            }
+
+            gst::BusSyncReply::Drop
+        });
+
         let event_proxy = event_loop.create_proxy();
         self.appsink.set_callbacks(
             gst_app::AppSinkCallbacks::builder()
@@ -680,17 +668,17 @@ impl<'a> OpenGLApp<'a> {
         }
     }
 
-    pub fn run(mut self) -> Result<()> {
+    pub fn run(&mut self) -> Result<()> {
         let Some(event_loop) = self.event_loop.take() else {
             return Ok(());
         };
 
-        event_loop.run_app(&mut self)?;
+        event_loop.run_app(self)?;
         Ok(())
     }
 }
 
-impl<'a> winit::application::ApplicationHandler<Message> for OpenGLApp<'a> {
+impl winit::application::ApplicationHandler<Message> for OpenGLApp {
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
         let not_current_gl_context = self
             .not_current_gl_context
@@ -797,8 +785,8 @@ impl<'a> winit::application::ApplicationHandler<Message> for OpenGLApp<'a> {
                 ..
             } => {
                 self.curr_frame = None;
-                self.pipeline.send_event(gst::event::Eos::new());
-                self.pipeline.set_state(gst::State::Null).unwrap();
+                //self.pipeline.send_event(gst::event::Eos::new());
+                //self.pipeline.set_state(gst::State::Null).unwrap();
                 event_loop.exit();
             }
             winit::event::WindowEvent::Resized(size) => {

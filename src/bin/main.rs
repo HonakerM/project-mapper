@@ -21,10 +21,6 @@ use glutin_winit::GlWindow as _;
 use gst::{element_error, PadProbeReturn, PadProbeType, QueryViewMut};
 use gst_gl::prelude::*;
 
-#[path = "../gl/opengl.rs"]
-mod opengl;
-
-
 #[path = "../runtime/runtime.rs"]
 mod runtime;
 
@@ -33,7 +29,7 @@ pub mod main_wrapper;
 
 
 fn example_main() -> Result<()> {
-    let app = runtime::Runtime::new()?;
+    let mut app = runtime::Runtime::new()?;
     app.run();
     Ok(())
 }

@@ -17,6 +17,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
+use glib::clone::Downgrade;
 use glutin::{
     config::GetGlConfig as _,
     context::AsRawContext as _,
@@ -45,19 +46,20 @@ impl MediaPipeline {
 
         let (pipeline, appsink) = MediaPipeline::create_pipeline(gl_element)?;
 
+        let pipeline: gst::Pipeline = pipeline.to_owned();
+        let app = opengl::OpenGLApp::new(None, appsink)?;
 
-        let app = opengl::OpenGLApp::new(None, pipeline, appsink);
-
-        let pipeline = MediaPipeline {
-            pipeline,
-            app,
+        let media_pipeline: MediaPipeline = MediaPipeline {
+            pipeline: pipeline,
+            app: app,
         };
 
-        Ok(pipeline)
+        Ok(media_pipeline)
     }
 
 
-    pub(crate) fn run(&self) {
+    pub(crate) fn run(&mut self) {
+        self.app.setup(&self.pipeline);
         self.pipeline.set_state(gst::State::Playing).unwrap();
         self.app.run();
     }
