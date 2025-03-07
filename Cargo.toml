@@ -5,6 +5,36 @@ edition = "2024"
 
 [dependencies]
 gst = { package = "gstreamer", version="0.23"  }
+gst_app = { package = "gstreamer-app", version="0.23"  }
+gst_video = { package = "gstreamer-video", version="0.23"  }
+
 glib = "0.20"
 anyhow = "1.0"
 derive_more = { version = "2", features = ["display", "error"] }
+
+gst_gl = { package = "gstreamer-gl", version="0.23"  }
+glutin = {  version="0.32" , default-features = false}
+glutin_winit = { package = "glutin-winit", version = "0.5", default-features = false   }
+winit = { version = "0.30" , default-features = false}
+raw_window_handle = { package = "raw-window-handle", version = "0.6" }
+
+
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.60", features=["Win32_Graphics_Direct3D11",
+    "Win32_Foundation", "Win32_Graphics_Direct3D", "Win32_Graphics_Dxgi",
+    "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Direct2D",
+    "Win32_Graphics_Direct2D_Common", "Win32_Graphics_DirectWrite",
+    "Win32_Graphics_Imaging", "Win32_System_Com", "Foundation_Numerics"], optional = true }
+windows-numerics = "0.1"
+glutin = { version = "0.32", features = ["wgl"] }
+glutin-winit = { version = "0.5", features = ["wgl"] }
+
+
+
+[build-dependencies]
+gl_generator = { version = "0.14"}
+
+
+[[bin]]
+name = "main"

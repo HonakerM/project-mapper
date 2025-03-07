@@ -18,8 +18,11 @@ use anyhow::Error;
 use derive_more::derive::{Display, Error};
 use gst::{element_error, element_warning, prelude::*};
 
+#[path = "../opengl.rs"]
+mod glupload;
+use glupload::*;
 
-#[path = "./examples_common.rs"]
+#[path = "../examples_common.rs"]
 mod examples_common;
 
 #[derive(Debug, Display, Error)]
@@ -244,10 +247,12 @@ fn example_main() -> Result<(), Error> {
 }
 
 fn main() {
-    // examples_common::run is only required to set up the application environment on macOS
+    /*// examples_common::run is only required to set up the application environment on macOS
     // (but not necessary in normal Cocoa applications where this is set up automatically)
     match examples_common::run(example_main) {
         Ok(r) => r,
         Err(e) => eprintln!("Error! {e}"),
-    }
+    }*/
+    let app = App::new(None).expect("uh oh we couldn't create an app");
+    app.run().expect("we stopped or couldn't run")
 }
