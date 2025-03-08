@@ -8,6 +8,9 @@ gst = { package = "gstreamer", version="0.23"  }
 gst_app = { package = "gstreamer-app", version="0.23"  }
 gst_video = { package = "gstreamer-video", version="0.23"  }
 
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
 glib = "0.20"
 anyhow = "1.0"
 derive_more = { version = "2", features = ["display", "error"] }

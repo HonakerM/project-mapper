@@ -1,6 +1,3 @@
-
-
-
 //! This example demonstrates how to output GL textures, within an EGL/X11 context provided by the
 //! application, and render those textures in the GL application.
 //!
@@ -25,43 +22,53 @@ use glutin::{
     prelude::*,
 };
 use glutin_winit::GlWindow as _;
-use gst::{element_error, PadProbeReturn, PadProbeType, QueryViewMut};
+use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::prelude::*;
 use raw_window_handle::HasWindowHandle as _;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 
-#[path = "../gl/opengl.rs"]
-mod opengl;
+use crate::opengl;
 
+use std::sync::mpsc;
 
+use crate::config::events;
 
 pub(crate) struct MediaPipeline {
     pub pipeline: gst::Pipeline,
+    runtime_sender: mpsc::Sender<events::RuntimeEvent>,
     pub app: opengl::OpenGLApp,
 }
 
 impl MediaPipeline {
-    pub(crate) fn new(gl_element: Option<&gst::Element>) -> Result<MediaPipeline> {
+    pub(crate) fn new(
+        gl_element: Option<&gst::Element>,
+        runtime_sender: mpsc::Sender<events::RuntimeEvent>,
+    ) -> Result<MediaPipeline> {
         gst::init()?;
 
         let (pipeline, appsink) = MediaPipeline::create_pipeline(gl_element)?;
 
         let pipeline: gst::Pipeline = pipeline.to_owned();
-        let app = opengl::OpenGLApp::new(None, appsink)?;
+        let app = opengl::OpenGLApp::new(None, runtime_sender.clone(), appsink)?;
 
         let media_pipeline: MediaPipeline = MediaPipeline {
             pipeline: pipeline,
             app: app,
+            runtime_sender: runtime_sender,
         };
 
         Ok(media_pipeline)
     }
 
-
     pub(crate) fn run(&mut self) {
         self.app.setup(&self.pipeline);
         self.pipeline.set_state(gst::State::Playing).unwrap();
         self.app.run();
+    }
+
+    pub fn shutdown_pipeline(pipeline: gst::Pipeline) {
+        pipeline.send_event(gst::event::Eos::new());
+        pipeline.set_state(gst::State::Null).unwrap();
     }
 
     fn create_pipeline(
@@ -105,5 +112,4 @@ impl MediaPipeline {
             Ok((pipeline, appsink))
         }
     }
-
 }

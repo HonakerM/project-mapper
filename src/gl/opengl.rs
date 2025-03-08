@@ -11,8 +11,8 @@ use std::{
     mem,
     num::NonZeroU32,
     ptr,
+    rc::Weak,
 };
-
 
 use anyhow::{Context, Result};
 use glutin::{
@@ -22,10 +22,13 @@ use glutin::{
     prelude::*,
 };
 use glutin_winit::GlWindow as _;
-use gst::{element_error, PadProbeReturn, PadProbeType, QueryViewMut};
+use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::prelude::*;
 use raw_window_handle::HasWindowHandle as _;
+use std::sync::mpsc;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
+
+use crate::config::events;
 
 #[rustfmt::skip]
 static VERTICES: [f32; 20] = [
@@ -322,6 +325,7 @@ pub(crate) enum Message {
 }
 
 pub(crate) struct OpenGLApp {
+    runtime_sender: mpsc::Sender<events::RuntimeEvent>,
     appsink: gst_app::AppSink,
     event_loop: Option<winit::event_loop::EventLoop<Message>>,
     window: Option<winit::window::Window>,
@@ -336,7 +340,11 @@ pub(crate) struct OpenGLApp {
 }
 
 impl OpenGLApp {
-    pub(crate) fn new(gl_element: Option<&gst::Element>,  appsink: gst_app::AppSink) -> Result<OpenGLApp> {
+    pub(crate) fn new(
+        gl_element: Option<&gst::Element>,
+        runtime_sender: mpsc::Sender<events::RuntimeEvent>,
+        appsink: gst_app::AppSink,
+    ) -> Result<OpenGLApp> {
         gst::init()?;
 
         let event_loop = winit::event_loop::EventLoop::with_user_event().build()?;
@@ -522,6 +530,7 @@ impl OpenGLApp {
         }
 
         let app: OpenGLApp = OpenGLApp {
+            runtime_sender: runtime_sender,
             appsink: appsink,
             event_loop: Some(event_loop),
             window,
@@ -537,18 +546,21 @@ impl OpenGLApp {
     pub fn setup(&self, pipeline: &gst::Pipeline) -> Result<()> {
         let event_loop = self.event_loop.as_ref().unwrap();
         let event_proxy = event_loop.create_proxy();
-        
-        #[allow(clippy::single_match)]
-        pipeline.bus().expect("yeah right").set_sync_handler(move |_bus, msg| {
-            if let Err(e) = event_proxy
-                // Forward all messages to winit's event loop
-                .send_event(Message::BusMessage(msg.to_owned()))
-            {
-                eprintln!("Failed to send BusEvent to event proxy: {e}")
-            }
 
-            gst::BusSyncReply::Drop
-        });
+        #[allow(clippy::single_match)]
+        pipeline
+            .bus()
+            .expect("yeah right")
+            .set_sync_handler(move |_bus, msg| {
+                if let Err(e) = event_proxy
+                    // Forward all messages to winit's event loop
+                    .send_event(Message::BusMessage(msg.to_owned()))
+                {
+                    eprintln!("Failed to send BusEvent to event proxy: {e}")
+                }
+
+                gst::BusSyncReply::Drop
+            });
 
         let event_proxy = event_loop.create_proxy();
         self.appsink.set_callbacks(
@@ -695,7 +707,7 @@ impl winit::application::ApplicationHandler<Message> for OpenGLApp {
             } else {
                 "Monitor"
             };
-            
+
             if let Some(name) = monitor.name() {
                 println!("{intro}: {name}");
             } else {
@@ -715,7 +727,11 @@ impl winit::application::ApplicationHandler<Message> for OpenGLApp {
                 let PhysicalSize { width, height } = mode.size();
                 let bits = mode.bit_depth();
                 let m_hz = mode.refresh_rate_millihertz();
-                println!("    {width}x{height}x{bits} @ {}.{} Hz", m_hz / 1000, m_hz % 1000);
+                println!(
+                    "    {width}x{height}x{bits} @ {}.{} Hz",
+                    m_hz / 1000,
+                    m_hz % 1000
+                );
             }
         }
 
@@ -757,12 +773,12 @@ impl winit::application::ApplicationHandler<Message> for OpenGLApp {
         ) {
             eprintln!("Error setting vsync: {res:?}");
         }
-        
 
-        assert!(self
-            .running_state
-            .replace((gl, gl_context, gl_surface))
-            .is_none());
+        assert!(
+            self.running_state
+                .replace((gl, gl_context, gl_surface))
+                .is_none()
+        );
     }
 
     fn window_event(
@@ -785,8 +801,7 @@ impl winit::application::ApplicationHandler<Message> for OpenGLApp {
                 ..
             } => {
                 self.curr_frame = None;
-                //self.pipeline.send_event(gst::event::Eos::new());
-                //self.pipeline.set_state(gst::State::Null).unwrap();
+                self.runtime_sender.send(events::RuntimeEvent::UserExit());
                 event_loop.exit();
             }
             winit::event::WindowEvent::Resized(size) => {

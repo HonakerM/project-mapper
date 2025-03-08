@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
-
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 enum SourceType {
-    Test { },
+    Test {},
 }
 
 #[derive(Serialize, Deserialize)]
@@ -14,7 +13,6 @@ struct SourceConfig {
     id: u32,
     source: SourceType,
 }
-
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -28,7 +26,6 @@ struct SinkConfig {
     id: u32,
     sink: SinkType,
 }
-
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -44,10 +41,10 @@ struct RegionConfig {
     region: RegionType,
 }
 
-
+/*
 #[derive(Serialize, Deserialize)]
 struct RuntimeConfig {
     sinks: [SinkConfig],
     sources: [SourceConfig],
     regions: [RegionConfig]
-}
+} */

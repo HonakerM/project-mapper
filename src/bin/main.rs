@@ -9,7 +9,6 @@
 // Much of the playbin's behavior can be controlled by so-called flags, as well
 // as the playbin's properties and signals.
 
-use std::{thread, time::Duration};
 use anyhow::{Context, Result};
 use glutin::{
     config::GetGlConfig as _,
@@ -18,22 +17,30 @@ use glutin::{
     prelude::*,
 };
 use glutin_winit::GlWindow as _;
-use gst::{element_error, PadProbeReturn, PadProbeType, QueryViewMut};
+use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::prelude::*;
+use std::{thread, time::Duration};
 
 #[path = "../runtime/runtime.rs"]
 mod runtime;
 
+#[path = "../config/mod.rs"]
+mod config;
+
+#[path = "../gl/opengl.rs"]
+mod opengl;
+
+#[path = "../pipeline/pipeline.rs"]
+mod pipeline;
+
 #[path = "../utils/main_wrapper.rs"]
 pub mod main_wrapper;
-
 
 fn example_main() -> Result<()> {
     let mut app = runtime::Runtime::new()?;
     app.run();
     Ok(())
 }
-
 
 fn main() -> Result<()> {
     // examples_common::run is only required to set up the application environment on macOS
