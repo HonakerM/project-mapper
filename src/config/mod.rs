@@ -1,5 +1,9 @@
-#[path = "../config/config.rs"]
-pub mod config;
+#[path = "./source.rs"]
+pub mod source;
 
-#[path = "../config/events.rs"]
+#[path = "./events.rs"]
 pub mod events;
+#[path = "./runtime.rs"]
+pub mod runtime;
+#[path = "./sink.rs"]
+pub mod sink;

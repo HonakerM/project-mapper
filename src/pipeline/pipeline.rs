@@ -14,7 +14,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use glib::clone::Downgrade;
+use glib::{BoolError, clone::Downgrade};
 use glutin::{
     config::GetGlConfig as _,
     context::AsRawContext as _,
@@ -27,26 +27,31 @@ use gst_gl::prelude::*;
 use raw_window_handle::HasWindowHandle as _;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 
-use crate::opengl;
+use crate::{config, opengl};
 
 use std::sync::mpsc;
 
 use crate::config::events;
+use crate::config::runtime;
+use std::collections::HashMap;
 
 pub(crate) struct MediaPipeline {
     pub pipeline: gst::Pipeline,
     runtime_sender: mpsc::Sender<events::RuntimeEvent>,
     pub app: opengl::OpenGLApp,
+    pub config: runtime::RuntimeConfig,
+    elements: Vec<gst::Element>,
 }
 
 impl MediaPipeline {
     pub(crate) fn new(
         gl_element: Option<&gst::Element>,
         runtime_sender: mpsc::Sender<events::RuntimeEvent>,
+        config: runtime::RuntimeConfig,
     ) -> Result<MediaPipeline> {
         gst::init()?;
 
-        let (pipeline, appsink) = MediaPipeline::create_pipeline(gl_element)?;
+        let (elements, pipeline, appsink) = MediaPipeline::create_pipeline(gl_element, &config)?;
 
         let pipeline: gst::Pipeline = pipeline.to_owned();
         let app = opengl::OpenGLApp::new(None, runtime_sender.clone(), appsink)?;
@@ -55,6 +60,8 @@ impl MediaPipeline {
             pipeline: pipeline,
             app: app,
             runtime_sender: runtime_sender,
+            config: config,
+            elements: elements,
         };
 
         Ok(media_pipeline)
@@ -73,9 +80,24 @@ impl MediaPipeline {
 
     fn create_pipeline(
         gl_element: Option<&gst::Element>,
-    ) -> Result<(gst::Pipeline, gst_app::AppSink)> {
+        config: &runtime::RuntimeConfig,
+    ) -> Result<(Vec<gst::Element>, gst::Pipeline, gst_app::AppSink)> {
         let pipeline = gst::Pipeline::default();
-        let src = gst::ElementFactory::make("videotestsrc").build()?;
+
+        let mut elements = Vec::<gst::Element>::new();
+        let source_config = config.sources.get(0).unwrap();
+
+        let mut src_elements = HashMap::new();
+        match source_config.source {
+            config::source::SourceType::Test {} => {
+                let var = source_config.source.create_element()?;
+                src_elements.insert(source_config.id, var.clone());
+
+                elements.push(var);
+            }
+        }
+
+        let src = src_elements[&source_config.id].as_ref();
 
         let caps = gst_video::VideoCapsBuilder::new()
             .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
@@ -100,7 +122,7 @@ impl MediaPipeline {
             glupload.link(gl_element)?;
             gl_element.link(&appsink)?;
 
-            Ok((pipeline, appsink))
+            Ok((elements, pipeline, appsink))
         } else {
             let sink = gst::ElementFactory::make("glsinkbin")
                 .property("sink", &appsink)
@@ -109,7 +131,7 @@ impl MediaPipeline {
             pipeline.add_many([&src, &sink])?;
             src.link(&sink)?;
 
-            Ok((pipeline, appsink))
+            Ok((elements, pipeline, appsink))
         }
     }
 }

@@ -31,7 +31,7 @@ use raw_window_handle::HasWindowHandle as _;
 use std::sync::mpsc;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 
-use crate::config::events;
+use crate::config::{events, runtime};
 
 #[derive(Debug)]
 pub(crate) enum Message {
@@ -52,7 +52,8 @@ impl Runtime {
 
         let (send, recv) = mpsc::channel();
 
-        let media_pipeline = pipeline::MediaPipeline::new(None, send.clone())?;
+        let media_pipeline =
+            pipeline::MediaPipeline::new(None, send.clone(), runtime::RuntimeConfig::default())?;
 
         let runtime = Runtime {
             pipeline: media_pipeline,
