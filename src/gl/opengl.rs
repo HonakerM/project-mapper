@@ -345,8 +345,6 @@ impl OpenGLApp {
         runtime_sender: mpsc::Sender<events::RuntimeEvent>,
         appsink: gst_app::AppSink,
     ) -> Result<OpenGLApp> {
-        gst::init()?;
-
         let event_loop = winit::event_loop::EventLoop::with_user_event().build()?;
 
         // Only Windows requires the window to be present before creating a `glutin::Display`. Other

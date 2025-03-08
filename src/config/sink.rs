@@ -6,7 +6,7 @@ use serde_json::Result;
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum SinkType {
-    Monitor { name: String },
+    OpenGLMonitor { name: String },
 }
 
 #[derive(Serialize, Deserialize)]

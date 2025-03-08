@@ -41,7 +41,7 @@ impl RuntimeConfig {
         let sinkOne: SinkConfig = SinkConfig {
             name: String::from("main monitor"),
             id: 1,
-            sink: SinkType::Monitor {
+            sink: SinkType::OpenGLMonitor {
                 name: String::from(r"\\.\DISPLAY1"),
             },
         };

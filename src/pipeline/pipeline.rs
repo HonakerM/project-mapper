@@ -7,10 +7,7 @@
 // {videotestsrc} - { glsinkbin }
 
 use std::{
-    ffi::{CStr, CString},
-    mem,
-    num::NonZeroU32,
-    ptr,
+    ffi::{CStr, CString}, mem, num::NonZeroU32, ptr,  sync::{Arc, Mutex}, thread::{self, JoinHandle}
 };
 
 use anyhow::{Context, Result};
@@ -27,7 +24,7 @@ use gst_gl::prelude::*;
 use raw_window_handle::HasWindowHandle as _;
 use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 
-use crate::{config, opengl};
+use crate::{config, opengl::{self, OpenGLApp}};
 
 use std::sync::mpsc;
 
@@ -38,7 +35,7 @@ use std::collections::HashMap;
 pub(crate) struct MediaPipeline {
     pub pipeline: gst::Pipeline,
     runtime_sender: mpsc::Sender<events::RuntimeEvent>,
-    pub app: opengl::OpenGLApp,
+    pub app_sinks: Vec<gst_app::AppSink>,
     pub config: runtime::RuntimeConfig,
     elements: Vec<gst::Element>,
 }
@@ -54,11 +51,10 @@ impl MediaPipeline {
         let (elements, pipeline, appsink) = MediaPipeline::create_pipeline(gl_element, &config)?;
 
         let pipeline: gst::Pipeline = pipeline.to_owned();
-        let app = opengl::OpenGLApp::new(None, runtime_sender.clone(), appsink)?;
 
         let media_pipeline: MediaPipeline = MediaPipeline {
             pipeline: pipeline,
-            app: app,
+            app_sinks: Vec::from([appsink]),
             runtime_sender: runtime_sender,
             config: config,
             elements: elements,
@@ -68,9 +64,34 @@ impl MediaPipeline {
     }
 
     pub(crate) fn run(&mut self) {
-        self.app.setup(&self.pipeline);
+
+        let mut app_threads: Vec<JoinHandle<Result<()>>> = Vec::new();
+        while self.app_sinks.len() > 0 {
+            let app_sink: gst_app::AppSink = self.app_sinks.pop().expect("var");
+            let runtime_sender = self.runtime_sender.clone();
+            let pipeline_clone = self.pipeline.clone();
+
+            let background_thread: JoinHandle<Result<()>> = thread::spawn(move || {
+                let mut app = opengl::OpenGLApp::new(None, runtime_sender, app_sink)?;
+
+                let result = MediaPipeline::run_app(&mut app, pipeline_clone);
+                result
+            });
+            app_threads.push(background_thread);
+        }
         self.pipeline.set_state(gst::State::Playing).unwrap();
-        self.app.run();
+        
+        for app_thread in app_threads {
+            app_thread.join();
+        }
+
+    }
+
+
+    pub fn run_app(app: &mut OpenGLApp, pipeline: gst::Pipeline) -> Result<()> {
+        app.setup(&pipeline);
+        app.run();
+        Ok(())
     }
 
     pub fn shutdown_pipeline(pipeline: gst::Pipeline) {
