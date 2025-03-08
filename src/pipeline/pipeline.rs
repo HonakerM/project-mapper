@@ -35,6 +35,7 @@ use std::collections::HashMap;
 pub(crate) struct MediaPipeline {
     pub pipeline: gst::Pipeline,
     runtime_sender: mpsc::Sender<events::RuntimeEvent>,
+    pub app: opengl::OpenGLApp,
     pub app_sinks: Vec<gst_app::AppSink>,
     pub config: runtime::RuntimeConfig,
     elements: Vec<gst::Element>,
@@ -48,13 +49,15 @@ impl MediaPipeline {
     ) -> Result<MediaPipeline> {
         gst::init()?;
 
-        let (elements, pipeline, appsink) = MediaPipeline::create_pipeline(gl_element, &config)?;
+        let (elements, pipeline, appsinks) = MediaPipeline::create_pipeline(gl_element, &config)?;
+
+        let mut app = opengl::OpenGLApp::new(None, runtime_sender.clone(), appsinks)?;
+
 
         let pipeline: gst::Pipeline = pipeline.to_owned();
 
         let media_pipeline: MediaPipeline = MediaPipeline {
             pipeline: pipeline,
-            app_sinks: Vec::from([appsink]),
             runtime_sender: runtime_sender,
             config: config,
             elements: elements,
@@ -72,7 +75,6 @@ impl MediaPipeline {
             let pipeline_clone = self.pipeline.clone();
 
             let background_thread: JoinHandle<Result<()>> = thread::spawn(move || {
-                let mut app = opengl::OpenGLApp::new(None, runtime_sender, app_sink)?;
 
                 let result = MediaPipeline::run_app(&mut app, pipeline_clone);
                 result

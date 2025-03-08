@@ -9,7 +9,7 @@
 use std::{
     ffi::{CStr, CString},
     mem,
-    num::NonZeroU32,
+    num::
     ptr,
     rc::Weak,
 };
@@ -357,6 +357,7 @@ impl OpenGLApp {
 
         let display_builder =
             glutin_winit::DisplayBuilder::new().with_window_attributes(window_attributes);
+
         // XXX on macOS/cgl only one config can be queried at a time. If transparency is needed,
         // add .with_transparency(true) to ConfigTemplateBuilder.  EGL on X11 doesn't support
         // transparency at all.
