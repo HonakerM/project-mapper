@@ -120,7 +120,7 @@ impl MediaPipeline {
         if let Some(gl_element) = gl_element {
             let glupload = gst::ElementFactory::make("glupload").build()?;
 
-            pipeline.add_many([&src, &glupload])?;
+            pipeline.add_many([src, &glupload])?;
             pipeline.add(gl_element)?;
             pipeline.add(&appsink)?;
 

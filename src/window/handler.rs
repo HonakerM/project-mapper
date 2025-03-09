@@ -1,18 +1,23 @@
 use std::collections::HashMap;
+use std::sync::mpsc;
 
+use crate::config::events;
 use crate::opengl::{self, gl};
 use anyhow::{Context, Result};
-use glutin::config::GlConfig;
+use glutin::config::{GetGlConfig, GlConfig};
 use glutin::context::AsRawContext;
 use glutin::display::{AsRawDisplay, GetGlDisplay};
-use glutin::prelude::GlDisplay;
+use glutin::prelude::{GlDisplay, NotCurrentGlContext};
 use glutin::surface::GlSurface;
+use glutin_winit::GlWindow;
 use gst::prelude::GstObjectExt;
 use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::GLVideoFrameExt;
+use gst_gl::prelude::GLContextExt;
 use gst_video::VideoFrameExt;
 use raw_window_handle::HasWindowHandle;
 use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use winit::window::{Window, WindowId};
@@ -58,14 +63,19 @@ pub struct WindowHandler {
     sink_mapping: HashMap<glib::GString, AppSinkData>,
     windows: HashMap<WindowId, WindowData>,
     event_proxy: winit::event_loop::EventLoopProxy<Message>,
+    event_sender: mpsc::Sender<events::RuntimeEvent>,
 }
 
 impl WindowHandler {
-    pub fn new(event_proxy: winit::event_loop::EventLoopProxy<Message>) -> WindowHandler {
+    pub fn new(
+        event_proxy: winit::event_loop::EventLoopProxy<Message>,
+        event_sender: mpsc::Sender<events::RuntimeEvent>,
+    ) -> WindowHandler {
         WindowHandler {
             sink_mapping: HashMap::new(),
             windows: HashMap::new(),
             event_proxy: event_proxy,
+            event_sender: event_sender,
         }
     }
 
@@ -139,10 +149,7 @@ impl WindowHandler {
         &mut self,
         event_loop: &ActiveEventLoop,
         sink_id: &glib::GString,
-    ) -> Result<()> {
-        let mut app_sink_config: AppSinkData =
-            self.sink_mapping.get(sink_id).expect("uh oh").clone();
-
+    ) -> Result<WindowData> {
         let window_attributes = cfg!(windows).then(|| {
             winit::window::Window::default_attributes()
                 .with_transparent(true)
@@ -171,7 +178,6 @@ impl WindowHandler {
 
         let window = window.expect("give me a window");
         let window_handle = window.window_handle().expect("a window handle");
-        app_sink_config.window_id = Some(window.id());
 
         // XXX The display could be obtained from any object created by it, so we can query it from
         // the config.
@@ -251,15 +257,96 @@ impl WindowHandler {
         }
         .context("Couldn't wrap GL context")?;
 
+        let window_id = Some(window.id());
+
         let window_data = WindowData {
             window: window,
             running_state: None,
             not_current_gl_context: Some(not_current_gl_context),
             glutin_context: glutin_context,
         };
-        self.windows.insert(window_data.window.id(), window_data);
-        self.sink_mapping.insert(sink_id.clone(), app_sink_config);
-        Ok(())
+
+        Ok(window_data)
+    }
+
+    fn configure_running_window(
+        &mut self,
+        event_loop: &winit::event_loop::ActiveEventLoop,
+        window_data: &mut WindowData,
+    ) {
+        let not_current_gl_context = window_data
+            .not_current_gl_context
+            .take()
+            .expect("There must be a NotCurrentContext prior to Event::Resumed");
+
+        let gl_config = not_current_gl_context.config();
+        let gl_display = gl_config.display();
+        let primary_monitor = event_loop.primary_monitor();
+        for monitor in event_loop.available_monitors() {
+            let intro = if primary_monitor.as_ref() == Some(&monitor) {
+                "Primary monitor"
+            } else {
+                "Monitor"
+            };
+            if let Some(name) = monitor.name() {
+                println!("{intro}: {name}");
+            } else {
+                println!("{intro}: [no name]");
+            }
+            let PhysicalSize { width, height } = monitor.size();
+            println!(
+                "  Current mode: {width}x{height}{}",
+                if let Some(m_hz) = monitor.refresh_rate_millihertz() {
+                    format!(" @ {}.{} Hz", m_hz / 1000, m_hz % 1000)
+                } else {
+                    String::new()
+                }
+            );
+            println!("  Available modes (width x height x bit-depth):");
+            for mode in monitor.video_modes() {
+                let PhysicalSize { width, height } = mode.size();
+                let bits = mode.bit_depth();
+                let m_hz = mode.refresh_rate_millihertz();
+                println!(
+                    "    {width}x{height}x{bits} @ {}.{} Hz",
+                    m_hz / 1000,
+                    m_hz % 1000
+                );
+            }
+        }
+
+        //window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(event_loop.primary_monitor())));
+        let attrs = window_data
+            .window
+            .build_surface_attributes(<_>::default())
+            .unwrap();
+        let gl_surface = unsafe {
+            gl_config
+                .display()
+                .create_window_surface(&gl_config, &attrs)
+                .unwrap()
+        };
+        // Make it current.
+        let gl_context = not_current_gl_context.make_current(&gl_surface).unwrap();
+        // Tell GStreamer that the context has been made current (for borrowed contexts,
+        // this does not try to make it current again)
+        window_data.glutin_context.activate(true).unwrap();
+        window_data
+            .glutin_context
+            .fill_info()
+            .expect("Couldn't fill context info");
+        // The context needs to be current for the Renderer to set up shaders and buffers.
+        // It also performs function loading, which needs a current context on WGL.
+        let gl = opengl::load(&gl_display);
+        // Try setting vsync.
+        if let Err(res) = gl_surface.set_swap_interval(
+            &gl_context,
+            glutin::surface::SwapInterval::Wait(std::num::NonZeroU32::new(1).unwrap()),
+        ) {
+            eprintln!("Error setting vsync: {res:?}");
+        }
+
+        window_data.running_state = Some((gl, gl_context, gl_surface));
     }
 
     /// Should be called from within the event loop
@@ -292,14 +379,28 @@ impl ApplicationHandler<Message> for WindowHandler {
         }
 
         for id in windows_to_make {
-            self.create_window(event_loop, &id);
+            println!("Creating Window {id}");
+            let mut window_data = self
+                .create_window(event_loop, &id)
+                .expect("we get a result");
+
+            self.configure_running_window(event_loop, &mut window_data);
+
+            let window_id = Some(window_data.window.id());
+            self.windows.insert(window_data.window.id(), window_data);
+            self.sink_mapping
+                .entry(id.clone())
+                .and_modify(|config| config.window_id = window_id);
         }
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, id: WindowId, event: WindowEvent) {
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+
         match event {
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");
+                self.event_sender.send(events::RuntimeEvent::UserExit());
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {
@@ -333,6 +434,7 @@ impl ApplicationHandler<Message> for WindowHandler {
                     .windows
                     .get(&app_data.window_id.expect("we need a window id"))
                     .expect("a value");
+
                 if let Ok(frame) = gst_gl::GLVideoFrame::from_buffer_readable(buffer, &info) {
                     window_data.redraw(frame);
                 }

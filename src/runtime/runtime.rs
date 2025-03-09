@@ -65,9 +65,10 @@ impl Runtime {
         // input, and uses significantly less power/CPU time than ControlFlow::Poll.
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
-        let mut window_handler = window_handler::WindowHandler::new(event_loop.create_proxy());
-
         let (send, recv) = mpsc::channel();
+
+        let mut window_handler =
+            window_handler::WindowHandler::new(event_loop.create_proxy(), send.clone());
 
         let media_pipeline = pipeline::MediaPipeline::new(
             &mut window_handler,
