@@ -11,7 +11,7 @@ use glutin::display::{AsRawDisplay, GetGlDisplay};
 use glutin::prelude::{GlDisplay, NotCurrentGlContext};
 use glutin::surface::GlSurface;
 use glutin_winit::GlWindow;
-use gst::prelude::GstObjectExt;
+use gst::prelude::{ElementExt, GstObjectExt, PadExt, PadExtManual};
 use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::GLVideoFrameExt;
 use gst_gl::prelude::GLContextExt;
@@ -80,7 +80,12 @@ impl WindowHandler {
         }
     }
 
-    pub fn add_sink(&mut self, appsink: gst_app::AppSink, config: crate::config::sink::SinkConfig) {
+    pub fn add_sink(
+        &mut self,
+        appsink: gst_app::AppSink,
+        event_loop: &winit::event_loop::EventLoop<Message>,
+        config: crate::config::sink::SinkConfig,
+    ) {
         let event_proxy = self.event_proxy.clone();
         appsink.set_callbacks(
             gst_app::AppSinkCallbacks::builder()
@@ -137,19 +142,27 @@ impl WindowHandler {
                 .build(),
         );
 
+        let appsink_id = appsink.name();
+
+        let mut window_data = self
+            .create_window(appsink, event_loop)
+            .expect("we get a result");
+        let window_id = window_data.window.id();
+
+        self.windows.insert(window_id, window_data);
         self.sink_mapping.insert(
-            appsink.name(),
+            appsink_id,
             AppSinkData {
                 config: config,
-                window_id: None,
+                window_id: Some(window_id),
             },
         );
     }
 
-    pub fn create_window(
+    fn create_window(
         &mut self,
-        event_loop: &ActiveEventLoop,
-        sink_id: &glib::GString,
+        appsink: gst_app::AppSink,
+        event_loop: &winit::event_loop::EventLoop<Message>,
     ) -> Result<WindowData> {
         let window_attributes = cfg!(windows).then(|| {
             winit::window::Window::default_attributes()
@@ -176,6 +189,13 @@ impl WindowHandler {
                     .unwrap()
             })
             .expect("Failed to build display");
+        println!(
+            "Picked a config with {} samples and transparency {}. Pixel format: {:?}",
+            gl_config.num_samples(),
+            gl_config.supports_transparency().unwrap_or(false),
+            gl_config.color_buffer_type()
+        );
+        println!("Config supports GL API(s) {:?}", gl_config.api());
 
         let window = window.expect("give me a window");
         let window_handle = window.window_handle().expect("a window handle");
@@ -184,6 +204,8 @@ impl WindowHandler {
         // the config.
         let gl_display = gl_config.display();
         let raw_gl_display = gl_display.raw_display();
+
+        println!("Using raw display connection {:?}", raw_gl_display);
 
         // The context creation part. It can be created before surface and that's how
         // it's expected in multithreaded + multiwindow operation mode, since you
@@ -219,6 +241,7 @@ impl WindowHandler {
 
         let raw_gl_context = not_current_gl_context.raw_context();
         println!("Using raw GL context {:?}", raw_gl_context);
+
         #[cfg(not(any(target_os = "linux", windows)))]
         compile_error!("This example only has Linux and Windows support");
         let api = opengl::map_gl_api(gl_config.api());
@@ -258,7 +281,54 @@ impl WindowHandler {
         }
         .context("Couldn't wrap GL context")?;
 
-        let window_id = Some(window.id());
+        {
+            // Make a new context that isn't the wrapped glutin context so that it can be made
+            // current on a new "gstglcontext" thread (see `gst_gl_context_create_thread()`), while
+            // the wrapped glutin context is made current on the winit event loop thread (this main
+            // thread).
+            let shared_context = gst_gl::GLContext::new(&gst_gl_display);
+            shared_context
+                .create(Some(&glutin_context))
+                .context("Couldn't share wrapped Glutin GL context with new GL context")?;
+            // Return the shared `GLContext` out of a pad probe for "gst.gl.local_context" to
+            // make the underlying pipeline use it directly, instead of creating a new GL context
+            // that is *shared* with the resulting context from a context `Query` (among other
+            // elements) or `NeedContext` bus message for "gst.gl.app_context", as documented for
+            // `gst_gl_ensure_element_data()`.
+            //
+            // On Windows, such context sharing calls `wglShareLists()` which fails on certain
+            // drivers when one of the contexts is already current on another thread.  This would
+            // happen because the pipeline and specifically the aforementioned "gstglcontext"
+            // thread would be initialized asynchronously from the winit loop which makes our glutin
+            // context current.  By calling `GLContext::create()` above, context sharing happens
+            // directly.
+            //
+            // An alternative approach would be using `gst_gl::GLDisplay::add_context()` to store
+            // the context inside `GLDisplay`, but the pad probe takes precedence.
+            // While the pad probe could be installed anywhere, it makes logical sense to insert it
+            // on the appsink where the images are extracted and displayed to a window via the same
+            // GL contexts.
+            appsink
+                .static_pad("sink")
+                .unwrap()
+                .add_probe(PadProbeType::QUERY_DOWNSTREAM, move |pad, probe_info| {
+                    if let Some(q) = probe_info.query_mut() {
+                        if let QueryViewMut::Context(cq) = q.view_mut() {
+                            if gst_gl::functions::gl_handle_context_query(
+                                &pad.parent_element().unwrap(),
+                                cq,
+                                Some(&gst_gl_display),
+                                Some(&shared_context),
+                                None::<&gst_gl::GLContext>,
+                            ) {
+                                return PadProbeReturn::Handled;
+                            }
+                        }
+                    }
+                    PadProbeReturn::Ok
+                })
+                .unwrap();
+        }
 
         let window_data = WindowData {
             window: window,
@@ -270,11 +340,7 @@ impl WindowHandler {
         Ok(window_data)
     }
 
-    fn configure_running_window(
-        &mut self,
-        event_loop: &winit::event_loop::ActiveEventLoop,
-        window_data: &mut WindowData,
-    ) {
+    fn configure_running_window(window_data: &mut WindowData) {
         let not_current_gl_context = window_data
             .not_current_gl_context
             .take()
@@ -339,6 +405,7 @@ impl WindowHandler {
         // The context needs to be current for the Renderer to set up shaders and buffers.
         // It also performs function loading, which needs a current context on WGL.
         let gl = opengl::load(&gl_display);
+
         // Try setting vsync.
         if let Err(res) = gl_surface.set_swap_interval(
             &gl_context,
@@ -372,26 +439,14 @@ impl ApplicationHandler<Message> for WindowHandler {
         for (sink_id, data) in &self.sink_mapping {
             match data.window_id {
                 None => {
-                    let copied_id = sink_id.clone();
-                    windows_to_make.push(copied_id);
+                    windows_to_make.push(sink_id.clone());
                 }
                 _ => {}
             }
         }
 
-        for id in windows_to_make {
-            println!("Creating Window {id}");
-            let mut window_data = self
-                .create_window(event_loop, &id)
-                .expect("we get a result");
-
-            self.configure_running_window(event_loop, &mut window_data);
-
-            let window_id = Some(window_data.window.id());
-            self.windows.insert(window_data.window.id(), window_data);
-            self.sink_mapping
-                .entry(id.clone())
-                .and_modify(|config| config.window_id = window_id);
+        for (_, windows) in self.windows.iter_mut() {
+            WindowHandler::configure_running_window(windows);
         }
     }
 

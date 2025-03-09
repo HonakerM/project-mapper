@@ -50,13 +50,15 @@ pub(crate) struct MediaPipeline {
 
 impl MediaPipeline {
     pub(crate) fn new(
-        window_handler: &mut WindowHandler,
-        runtime_sender: mpsc::Sender<events::RuntimeEvent>,
         config: runtime::RuntimeConfig,
+        window_handler: &mut WindowHandler,
+        event_loop: &winit::event_loop::EventLoop<window_handler::Message>,
+        runtime_sender: mpsc::Sender<events::RuntimeEvent>,
     ) -> Result<MediaPipeline> {
         gst::init()?;
 
-        let (elements, pipeline) = MediaPipeline::create_pipeline(&config, window_handler)?;
+        let (elements, pipeline) =
+            MediaPipeline::create_pipeline(&config, window_handler, event_loop)?;
 
         let pipeline: gst::Pipeline = pipeline.to_owned();
 
@@ -82,6 +84,7 @@ impl MediaPipeline {
     fn create_pipeline(
         config: &runtime::RuntimeConfig,
         window_handler: &mut window_handler::WindowHandler,
+        event_loop: &winit::event_loop::EventLoop<window_handler::Message>,
     ) -> Result<(Vec<gst::Element>, gst::Pipeline)> {
         let pipeline = gst::Pipeline::default();
 
@@ -128,7 +131,7 @@ impl MediaPipeline {
         src.link(&sink)?;
         let sink_config = config.sinks.get(0).unwrap();
 
-        window_handler.add_sink(appsink, sink_config.clone());
+        window_handler.add_sink(appsink, event_loop, sink_config.clone());
 
         Ok((elements, pipeline))
     }

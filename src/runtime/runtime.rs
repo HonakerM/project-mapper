@@ -71,9 +71,10 @@ impl Runtime {
             window_handler::WindowHandler::new(event_loop.create_proxy(), send.clone());
 
         let media_pipeline = pipeline::MediaPipeline::new(
-            &mut window_handler,
-            send.clone(),
             runtime::RuntimeConfig::default(),
+            &mut window_handler,
+            &event_loop,
+            send.clone(),
         )?;
 
         let runtime = Runtime {
