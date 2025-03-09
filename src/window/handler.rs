@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::fs;
+use std::num::NonZeroU32;
 use std::sync::mpsc;
 
 use crate::config::events;
@@ -460,6 +461,22 @@ impl ApplicationHandler<Message> for WindowHandler {
                 self.windows.clear();
                 self.sink_mapping.clear();
                 event_loop.exit();
+            }
+            winit::event::WindowEvent::Resized(size) => {
+                // Some platforms like EGL require resizing GL surface to update the size
+                // Notable platforms here are Wayland and macOS, other don't require it
+                // and the function is no-op, but it's wise to resize it for portability
+                // reasons.
+                let window_data = self.windows.get(&id).expect("a window should exist");
+                if let Some((gl, gl_context, gl_surface)) = &window_data.running_state {
+                    gl_surface.resize(
+                        gl_context,
+                        // XXX Ignore minimizing
+                        NonZeroU32::new(size.width).unwrap(),
+                        NonZeroU32::new(size.height).unwrap(),
+                    );
+                    gl.resize(size);
+                }
             }
             WindowEvent::RedrawRequested => {
                 // Redraw the application.

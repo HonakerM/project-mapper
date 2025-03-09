@@ -153,7 +153,7 @@ impl Gl {
             }
         }
     }
-    fn resize(&self, size: winit::dpi::PhysicalSize<u32>) {
+    pub fn resize(&self, size: winit::dpi::PhysicalSize<u32>) {
         unsafe {
             self.gl
                 .Viewport(0, 0, size.width as i32, size.height as i32);
