@@ -24,7 +24,7 @@ use glutin::{
     prelude::*,
 };
 use glutin_winit::GlWindow as _;
-use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
+use gst::{Element, PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::prelude::*;
 use raw_window_handle::HasWindowHandle as _;
 use winit::{
@@ -94,6 +94,7 @@ impl MediaPipeline {
         let mut src_elements = HashMap::new();
         match source_config.source {
             config::source::SourceType::Test {} => {
+                println!("creating test source");
                 let var = source_config.source.create_element()?;
                 src_elements.insert(source_config.id, var.clone());
 
@@ -101,7 +102,7 @@ impl MediaPipeline {
             }
         }
 
-        let src = src_elements[&source_config.id].as_ref();
+        let src: &Element = src_elements[&source_config.id].as_ref();
 
         let caps = gst_video::VideoCapsBuilder::new()
             .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
@@ -115,33 +116,23 @@ impl MediaPipeline {
             .caps(&caps)
             .build();
 
+        let sink = gst::ElementFactory::make("glsinkbin")
+            .property("sink", &appsink)
+            .build()?;
+        elements.push(sink.clone());
+
+        pipeline.add_many(&elements)?;
+
+        for e in &elements {
+            e.sync_state_with_parent()?
+        }
+
+        src.link(&sink)?;
+
         let sink_config = config.sinks.get(0).unwrap();
 
-        if let Some(gl_element) = gl_element {
-            let glupload = gst::ElementFactory::make("glupload").build()?;
+        window_handler.add_sink(appsink, sink_config.clone());
 
-            pipeline.add_many([src, &glupload])?;
-            pipeline.add(gl_element)?;
-            pipeline.add(&appsink)?;
-
-            src.link(&glupload)?;
-            glupload.link(gl_element)?;
-            gl_element.link(&appsink)?;
-
-            window_handler.add_sink(appsink, sink_config.clone());
-
-            Ok((elements, pipeline))
-        } else {
-            let sink = gst::ElementFactory::make("glsinkbin")
-                .property("sink", &appsink)
-                .build()?;
-
-            pipeline.add_many([&src, &sink])?;
-            src.link(&sink)?;
-
-            window_handler.add_sink(appsink, sink_config.clone());
-
-            Ok((elements, pipeline))
-        }
+        Ok((elements, pipeline))
     }
 }

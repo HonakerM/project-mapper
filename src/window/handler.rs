@@ -281,39 +281,39 @@ impl WindowHandler {
 
         let gl_config = not_current_gl_context.config();
         let gl_display = gl_config.display();
-        let primary_monitor = event_loop.primary_monitor();
-        for monitor in event_loop.available_monitors() {
-            let intro = if primary_monitor.as_ref() == Some(&monitor) {
-                "Primary monitor"
-            } else {
-                "Monitor"
-            };
-            if let Some(name) = monitor.name() {
-                println!("{intro}: {name}");
-            } else {
-                println!("{intro}: [no name]");
-            }
-            let PhysicalSize { width, height } = monitor.size();
-            println!(
-                "  Current mode: {width}x{height}{}",
-                if let Some(m_hz) = monitor.refresh_rate_millihertz() {
-                    format!(" @ {}.{} Hz", m_hz / 1000, m_hz % 1000)
-                } else {
-                    String::new()
-                }
-            );
-            println!("  Available modes (width x height x bit-depth):");
-            for mode in monitor.video_modes() {
-                let PhysicalSize { width, height } = mode.size();
-                let bits = mode.bit_depth();
-                let m_hz = mode.refresh_rate_millihertz();
-                println!(
-                    "    {width}x{height}x{bits} @ {}.{} Hz",
-                    m_hz / 1000,
-                    m_hz % 1000
-                );
-            }
-        }
+        // let primary_monitor = event_loop.primary_monitor();
+        // for monitor in event_loop.available_monitors() {
+        //     let intro = if primary_monitor.as_ref() == Some(&monitor) {
+        //         "Primary monitor"
+        //     } else {
+        //         "Monitor"
+        //     };
+        //     if let Some(name) = monitor.name() {
+        //         println!("{intro}: {name}");
+        //     } else {
+        //         println!("{intro}: [no name]");
+        //     }
+        //     let PhysicalSize { width, height } = monitor.size();
+        //     println!(
+        //         "  Current mode: {width}x{height}{}",
+        //         if let Some(m_hz) = monitor.refresh_rate_millihertz() {
+        //             format!(" @ {}.{} Hz", m_hz / 1000, m_hz % 1000)
+        //         } else {
+        //             String::new()
+        //         }
+        //     );
+        //     println!("  Available modes (width x height x bit-depth):");
+        //     for mode in monitor.video_modes() {
+        //         let PhysicalSize { width, height } = mode.size();
+        //         let bits = mode.bit_depth();
+        //         let m_hz = mode.refresh_rate_millihertz();
+        //         println!(
+        //             "    {width}x{height}x{bits} @ {}.{} Hz",
+        //             m_hz / 1000,
+        //             m_hz % 1000
+        //         );
+        //     }
+        // }
 
         //window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(event_loop.primary_monitor())));
         let attrs = window_data

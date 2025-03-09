@@ -17,9 +17,9 @@ pub enum RegionType {
 #[derive(Serialize, Deserialize)]
 pub struct RegionConfig {
     //region: ?,
-    name: String,
-    id: u32,
-    region: RegionType,
+    pub name: String,
+    pub id: u32,
+    pub region: RegionType,
 }
 
 #[derive(Serialize, Deserialize)]
