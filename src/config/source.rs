@@ -11,7 +11,9 @@ pub enum SourceType {
 
 impl crate::config::source::SourceType {
     pub fn create_element(&self) -> Result<Element, glib::BoolError> {
-        return gst::ElementFactory::make("videotestsrc").build();
+        return gst::ElementFactory::make("videotestsrc")
+            .name("test-src")
+            .build();
     }
 }
 

@@ -72,7 +72,6 @@ impl Runtime {
 
         let media_pipeline = pipeline::MediaPipeline::new(
             &mut window_handler,
-            None,
             send.clone(),
             runtime::RuntimeConfig::default(),
         )?;

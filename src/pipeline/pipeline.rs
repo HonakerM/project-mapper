@@ -51,14 +51,12 @@ pub(crate) struct MediaPipeline {
 impl MediaPipeline {
     pub(crate) fn new(
         window_handler: &mut WindowHandler,
-        gl_element: Option<&gst::Element>,
         runtime_sender: mpsc::Sender<events::RuntimeEvent>,
         config: runtime::RuntimeConfig,
     ) -> Result<MediaPipeline> {
         gst::init()?;
 
-        let (elements, pipeline) =
-            MediaPipeline::create_pipeline(gl_element, &config, window_handler)?;
+        let (elements, pipeline) = MediaPipeline::create_pipeline(&config, window_handler)?;
 
         let pipeline: gst::Pipeline = pipeline.to_owned();
 
@@ -82,7 +80,6 @@ impl MediaPipeline {
     }
 
     fn create_pipeline(
-        gl_element: Option<&gst::Element>,
         config: &runtime::RuntimeConfig,
         window_handler: &mut window_handler::WindowHandler,
     ) -> Result<(Vec<gst::Element>, gst::Pipeline)> {
@@ -117,10 +114,11 @@ impl MediaPipeline {
             .build();
 
         let sink = gst::ElementFactory::make("glsinkbin")
+            .name("gl-sink-1")
             .property("sink", &appsink)
             .build()?;
-        elements.push(sink.clone());
 
+        elements.push(sink.clone());
         pipeline.add_many(&elements)?;
 
         for e in &elements {
@@ -128,7 +126,6 @@ impl MediaPipeline {
         }
 
         src.link(&sink)?;
-
         let sink_config = config.sinks.get(0).unwrap();
 
         window_handler.add_sink(appsink, sink_config.clone());
