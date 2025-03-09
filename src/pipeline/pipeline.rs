@@ -131,10 +131,15 @@ impl MediaPipeline {
 
         // construct sinks
         for sink_config in &config.sinks {
+            let id = sink_config.id;
+            let mut name = id.to_string();
+
+            let mut sink_element_option: Option<Element> = None;
+
             match &sink_config.sink {
                 config::sink::SinkType::OpenGLWindow { monitor } => {
-                    let id = sink_config.id;
-                    let name: String = format!("opengl-{}", id);
+                    name = format!("opengl-{}", id);
+
                     println!("creating opengl window sink {name}");
 
                     let caps = gst_video::VideoCapsBuilder::new()
@@ -150,19 +155,39 @@ impl MediaPipeline {
                         .build();
 
                     let sink = gst::ElementFactory::make("glsinkbin")
-                        .name(name)
+                        .name(name.clone())
                         .property("sink", &appsink)
                         .build()?;
 
                     // ensure the window handler knows about this sink
                     window_handler.add_sink(appsink, event_loop, sink_config.clone());
 
-                    // add to pipeline
-                    pipeline.add(&sink)?;
-
-                    sink_elements.insert(id, sink.clone());
-                    elements.push(sink);
+                    sink_element_option = Some(sink);
                 }
+            }
+
+            // for all sinks add a queue to enable parallel processing
+            if let Some(sink) = sink_element_option {
+                let queue_name = format!("queue-{}", name);
+                let queue_sink = gst::ElementFactory::make("queue")
+                    .name(queue_name)
+                    .build()?;
+
+                // add to pipeline
+                pipeline.add(&queue_sink)?;
+                pipeline.add(&sink)?;
+
+                // Add sync elements before linking
+                queue_sink.sync_state_with_parent()?;
+                sink.sync_state_with_parent()?;
+
+                // link elements and add mapping for this id to the tee
+                queue_sink.link(&sink)?;
+                sink_elements.insert(id, queue_sink.clone());
+
+                // add both to elements
+                elements.push(sink);
+                elements.push(queue_sink);
             }
         }
 
