@@ -28,36 +28,36 @@ pub struct RuntimeConfig {
 
 impl RuntimeConfig {
     pub(crate) fn default() -> RuntimeConfig {
-        let sourceOne: SourceConfig = SourceConfig {
+        let source_one: SourceConfig = SourceConfig {
             name: String::from("test source"),
             id: 1,
             source: SourceType::Test {},
         };
-        let sources = Vec::from([sourceOne]);
+        let sources = Vec::from([source_one]);
 
-        let sinkOne: SinkConfig = SinkConfig {
+        let sink_one: SinkConfig = SinkConfig {
             name: String::from("main monitor"),
             id: 1,
             sink: SinkType::OpenGLWindow { monitor: None },
         };
-        let sinkTwo: SinkConfig = SinkConfig {
+        let sink_two: SinkConfig = SinkConfig {
             name: String::from("other monitor"),
             id: 2,
             sink: SinkType::OpenGLWindow { monitor: None },
         };
-        let sinks = Vec::from([sinkOne, sinkTwo]);
+        let sinks = Vec::from([sink_one, sink_two]);
 
-        let regionOne: RegionConfig = RegionConfig {
+        let regio_one: RegionConfig = RegionConfig {
             name: String::from("main region"),
             id: 1,
             region: RegionType::Display { source: 1, sink: 1 },
         };
-        let regionTwo: RegionConfig = RegionConfig {
+        let region_two: RegionConfig = RegionConfig {
             name: String::from("secondary region"),
             id: 2,
             region: RegionType::Display { source: 1, sink: 2 },
         };
-        let regions = Vec::from([regionOne, regionTwo]);
+        let regions = Vec::from([regio_one, region_two]);
 
         let config = RuntimeConfig {
             sinks: sinks,

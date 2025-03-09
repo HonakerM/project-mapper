@@ -4,8 +4,6 @@
 //! This example follow common patterns from `glutin`:
 //! <https://github.com/rust-windowing/glutin/blob/master/glutin_examples/src/lib.rs>
 // {videotestsrc} - { glsinkbin }
-use glutin::prelude::*;
-use gst_gl::prelude::*;
 use std::{
     ffi::{CStr, CString},
     mem, ptr,

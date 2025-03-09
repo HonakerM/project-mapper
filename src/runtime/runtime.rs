@@ -12,16 +12,9 @@ use std::thread;
 use crate::{pipeline, window_handler};
 
 use anyhow::Result;
-use gst_gl::prelude::*;
 use std::sync::mpsc;
 
 use crate::config::{events, runtime};
-
-#[derive(Debug)]
-pub(crate) enum Message {
-    Frame(gst_video::VideoInfo, gst::Buffer),
-    BusMessage(gst::Message),
-}
 
 pub(crate) struct Runtime {
     pub pipeline: pipeline::MediaPipeline,
@@ -109,7 +102,6 @@ impl Runtime {
                     pipeline::MediaPipeline::shutdown_pipeline(pipeline);
                     break;
                 }
-                _ => println!("Unknown event"),
             }
         }
     }

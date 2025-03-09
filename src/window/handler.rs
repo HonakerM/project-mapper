@@ -8,7 +8,7 @@ use anyhow::{Context, Result};
 use glutin::config::{GetGlConfig, GlConfig};
 use glutin::context::AsRawContext;
 use glutin::display::{AsRawDisplay, GetGlDisplay};
-use glutin::prelude::{GlDisplay, NotCurrentGlContext};
+use glutin::prelude::{GlDisplay, NotCurrentGlContext, PossiblyCurrentGlContext};
 use glutin::surface::GlSurface;
 use glutin_winit::GlWindow;
 use gst::prelude::{ElementExt, GstObjectExt, PadExt, PadExtManual};
@@ -37,6 +37,10 @@ impl WindowData {
     /// Should be called from within the event loop
     fn redraw(&self, current_frame: gst_gl::GLVideoFrame<gst_gl::gl_video_frame::Readable>) {
         if let Some((gl, gl_context, gl_surface)) = &self.running_state {
+            gl_context
+                .make_current(gl_surface)
+                .expect("could not make current");
+
             let sync_meta = current_frame.buffer().meta::<gst_gl::GLSyncMeta>().unwrap();
             sync_meta.wait(&self.glutin_context);
             if let Ok(texture) = current_frame.texture_id(0) {
@@ -146,7 +150,7 @@ impl WindowHandler {
         );
 
         let window_data = self
-            .create_window(appsink, event_loop)
+            .create_window(appsink_id.clone(), appsink, event_loop)
             .expect("we get a result");
         let window_id = window_data.window.id();
 
@@ -162,13 +166,14 @@ impl WindowHandler {
 
     fn create_window(
         &mut self,
+        name: glib::GString,
         appsink: gst_app::AppSink,
         event_loop: &winit::event_loop::EventLoop<Message>,
     ) -> Result<WindowData> {
         let window_attributes = cfg!(windows).then(|| {
             winit::window::Window::default_attributes()
                 .with_transparent(true)
-                .with_title("GL rendering")
+                .with_title(name.clone().to_string())
         });
         let template = glutin::config::ConfigTemplateBuilder::new().with_alpha_size(8);
 
@@ -435,7 +440,7 @@ impl WindowHandler {
 }
 
 impl ApplicationHandler<Message> for WindowHandler {
-    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {
         for (_, windows) in self.windows.iter_mut() {
             WindowHandler::configure_running_window(windows);
         }

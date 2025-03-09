@@ -111,7 +111,6 @@ impl MediaPipeline {
         for sink_config in &config.sinks {
             let id = sink_config.id;
             let mut name = id.to_string();
-
             let mut sink_element_option: Option<Element> = None;
 
             match &sink_config.sink {
