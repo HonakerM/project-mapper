@@ -48,14 +48,19 @@ impl RuntimeConfig {
             id: 2,
             sink: SinkType::OpenGLWindow { monitor: None },
         };
-        let sinks = Vec::from([sinkOne]);
+        let sinks = Vec::from([sinkOne, sinkTwo]);
 
         let regionOne: RegionConfig = RegionConfig {
             name: String::from("main region"),
             id: 1,
             region: RegionType::Display { source: 1, sink: 1 },
         };
-        let regions = Vec::from([regionOne]);
+        let regionTwo: RegionConfig = RegionConfig {
+            name: String::from("secondary region"),
+            id: 2,
+            region: RegionType::Display { source: 1, sink: 2 },
+        };
+        let regions = Vec::from([regionOne, regionTwo]);
 
         let config = RuntimeConfig {
             sinks: sinks,

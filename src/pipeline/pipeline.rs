@@ -94,16 +94,38 @@ impl MediaPipeline {
 
         // construct sources
         for source_config in &config.sources {
+            let id = source_config.id;
+            let mut name = id.to_string();
+
+            let mut src_element_option: Option<Element> = None;
             match source_config.source {
                 config::source::SourceType::Test {} => {
-                    let id = source_config.id;
-                    let name: String = format!("test-{}", id);
                     println!("creating test source {id}");
-                    let var = source_config.source.create_element(name)?;
-                    src_elements.insert(id, var.clone());
-
-                    elements.push(var);
+                    name = format!("test-{}", id);
+                    src_element_option = Some(source_config.source.create_element(name.clone())?);
                 }
+            }
+
+            if let Some(src_element) = src_element_option {
+                // Add element to pipeline
+                pipeline.add(&src_element)?;
+
+                // Add tee to src element to allow multiple linkages
+                let tee_name: String = format!("tee-{}", name);
+                let src_tee = gst::ElementFactory::make("tee").name(tee_name).build()?;
+                pipeline.add(&src_tee)?;
+
+                // Add sync elements before linking
+                src_element.sync_state_with_parent()?;
+                src_tee.sync_state_with_parent()?;
+
+                // link elements and add mapping for this id to the tee
+                src_element.link(&src_tee)?;
+                src_elements.insert(id, src_tee.clone());
+
+                // Add elements to list
+                elements.push(src_element);
+                elements.push(src_tee);
             }
         }
 
@@ -132,7 +154,11 @@ impl MediaPipeline {
                         .property("sink", &appsink)
                         .build()?;
 
+                    // ensure the window handler knows about this sink
                     window_handler.add_sink(appsink, event_loop, sink_config.clone());
+
+                    // add to pipeline
+                    pipeline.add(&sink)?;
 
                     sink_elements.insert(id, sink.clone());
                     elements.push(sink);
@@ -141,8 +167,6 @@ impl MediaPipeline {
         }
 
         // ensure they're all added and configured to the pipeline before linking
-        pipeline.add_many(&elements)?;
-
         for e in &elements {
             e.sync_state_with_parent()?
         }
