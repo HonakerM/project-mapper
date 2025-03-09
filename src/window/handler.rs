@@ -81,11 +81,14 @@ impl WindowHandler {
 
     pub fn add_sink(
         &mut self,
+        sink_name: glib::GString,
         appsink: gst_app::AppSink,
         event_loop: &winit::event_loop::EventLoop<Message>,
         config: crate::config::sink::SinkConfig,
     ) {
         let event_proxy = self.event_proxy.clone();
+        let appsink_id = sink_name.clone();
+
         appsink.set_callbacks(
             gst_app::AppSinkCallbacks::builder()
                 .new_sample(move |appsink| {
@@ -126,8 +129,9 @@ impl WindowHandler {
                             meta.set_sync_point(&context);
                         }
                     }
+                    let name = sink_name.clone();
                     event_proxy
-                        .send_event(Message::Frame(info, buffer, appsink.name()))
+                        .send_event(Message::Frame(info, buffer, name))
                         .map(|()| gst::FlowSuccess::Ok)
                         .map_err(|e| {
                             element_error!(
@@ -140,8 +144,6 @@ impl WindowHandler {
                 })
                 .build(),
         );
-
-        let appsink_id = appsink.name();
 
         let window_data = self
             .create_window(appsink, event_loop)
@@ -434,16 +436,6 @@ impl WindowHandler {
 
 impl ApplicationHandler<Message> for WindowHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let mut windows_to_make = Vec::new();
-        for (sink_id, data) in &self.sink_mapping {
-            match data.window_id {
-                None => {
-                    windows_to_make.push(sink_id.clone());
-                }
-                _ => {}
-            }
-        }
-
         for (_, windows) in self.windows.iter_mut() {
             WindowHandler::configure_running_window(windows);
         }

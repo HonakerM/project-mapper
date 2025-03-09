@@ -127,6 +127,7 @@ impl MediaPipeline {
                         .build();
 
                     let appsink = gst_app::AppSink::builder()
+                        .name(name.clone())
                         .enable_last_sample(true)
                         .max_buffers(1)
                         .caps(&caps)
@@ -138,7 +139,12 @@ impl MediaPipeline {
                         .build()?;
 
                     // ensure the window handler knows about this sink
-                    window_handler.add_sink(appsink, event_loop, sink_config.clone());
+                    window_handler.add_sink(
+                        glib::GString::from(name.clone()),
+                        appsink,
+                        event_loop,
+                        sink_config.clone(),
+                    );
 
                     sink_element_option = Some(sink);
                 }
