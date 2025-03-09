@@ -10,10 +10,8 @@ pub enum SourceType {
 }
 
 impl crate::config::source::SourceType {
-    pub fn create_element(&self) -> Result<Element, glib::BoolError> {
-        return gst::ElementFactory::make("videotestsrc")
-            .name("test-src")
-            .build();
+    pub fn create_element(&self, name: String) -> Result<Element, glib::BoolError> {
+        return gst::ElementFactory::make("videotestsrc").name(name).build();
     }
 }
 

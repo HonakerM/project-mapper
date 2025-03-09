@@ -4,9 +4,14 @@ use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
 #[derive(Serialize, Deserialize, Clone)]
+pub struct MonitorInfo {
+    pub name: String,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum SinkType {
-    OpenGLMonitor { name: String },
+    OpenGLWindow { monitor: Option<MonitorInfo> },
 }
 
 #[derive(Serialize, Deserialize, Clone)]

@@ -41,16 +41,12 @@ impl RuntimeConfig {
         let sinkOne: SinkConfig = SinkConfig {
             name: String::from("main monitor"),
             id: 1,
-            sink: SinkType::OpenGLMonitor {
-                name: String::from(r"\\.\DISPLAY1"),
-            },
+            sink: SinkType::OpenGLWindow { monitor: None },
         };
         let sinkTwo: SinkConfig = SinkConfig {
             name: String::from("other monitor"),
             id: 2,
-            sink: SinkType::OpenGLMonitor {
-                name: String::from(r"\\.\DISPLAY2"),
-            },
+            sink: SinkType::OpenGLWindow { monitor: None },
         };
         let sinks = Vec::from([sinkOne]);
 

@@ -88,50 +88,76 @@ impl MediaPipeline {
     ) -> Result<(Vec<gst::Element>, gst::Pipeline)> {
         let pipeline = gst::Pipeline::default();
 
-        let mut elements = Vec::<gst::Element>::new();
-        let source_config = config.sources.get(0).unwrap();
+        let mut elements: Vec<gst::Element> = Vec::<gst::Element>::new();
+        let mut src_elements: HashMap<u32, Element> = HashMap::new();
+        let mut sink_elements: HashMap<u32, Element> = HashMap::new();
 
-        let mut src_elements = HashMap::new();
-        match source_config.source {
-            config::source::SourceType::Test {} => {
-                println!("creating test source");
-                let var = source_config.source.create_element()?;
-                src_elements.insert(source_config.id, var.clone());
+        // construct sources
+        for source_config in &config.sources {
+            match source_config.source {
+                config::source::SourceType::Test {} => {
+                    let id = source_config.id;
+                    let name: String = format!("test-{}", id);
+                    println!("creating test source {id}");
+                    let var = source_config.source.create_element(name)?;
+                    src_elements.insert(id, var.clone());
 
-                elements.push(var);
+                    elements.push(var);
+                }
             }
         }
 
-        let src: &Element = src_elements[&source_config.id].as_ref();
+        // construct sinks
+        for sink_config in &config.sinks {
+            match &sink_config.sink {
+                config::sink::SinkType::OpenGLWindow { monitor } => {
+                    let id = sink_config.id;
+                    let name: String = format!("opengl-{}", id);
+                    println!("creating opengl window sink {name}");
 
-        let caps = gst_video::VideoCapsBuilder::new()
-            .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
-            .format(gst_video::VideoFormat::Rgba)
-            .field("texture-target", "2D")
-            .build();
+                    let caps = gst_video::VideoCapsBuilder::new()
+                        .features([gst_gl::CAPS_FEATURE_MEMORY_GL_MEMORY])
+                        .format(gst_video::VideoFormat::Rgba)
+                        .field("texture-target", "2D")
+                        .build();
 
-        let appsink = gst_app::AppSink::builder()
-            .enable_last_sample(true)
-            .max_buffers(1)
-            .caps(&caps)
-            .build();
+                    let appsink = gst_app::AppSink::builder()
+                        .enable_last_sample(true)
+                        .max_buffers(1)
+                        .caps(&caps)
+                        .build();
 
-        let sink = gst::ElementFactory::make("glsinkbin")
-            .name("gl-sink-1")
-            .property("sink", &appsink)
-            .build()?;
+                    let sink = gst::ElementFactory::make("glsinkbin")
+                        .name(name)
+                        .property("sink", &appsink)
+                        .build()?;
 
-        elements.push(sink.clone());
+                    window_handler.add_sink(appsink, event_loop, sink_config.clone());
+
+                    sink_elements.insert(id, sink.clone());
+                    elements.push(sink);
+                }
+            }
+        }
+
+        // ensure they're all added and configured to the pipeline before linking
         pipeline.add_many(&elements)?;
 
         for e in &elements {
             e.sync_state_with_parent()?
         }
 
-        src.link(&sink)?;
-        let sink_config = config.sinks.get(0).unwrap();
+        // tie the regions together
+        for region in &config.regions {
+            match region.region {
+                config::runtime::RegionType::Display { source, sink } => {
+                    let src: &Element = src_elements[&source].as_ref();
+                    let sink: &Element = sink_elements[&sink].as_ref();
 
-        window_handler.add_sink(appsink, event_loop, sink_config.clone());
+                    src.link(sink)?;
+                }
+            }
+        }
 
         Ok((elements, pipeline))
     }
