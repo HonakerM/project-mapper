@@ -4,27 +4,12 @@
 //! This example follow common patterns from `glutin`:
 //! <https://github.com/rust-windowing/glutin/blob/master/glutin_examples/src/lib.rs>
 // {videotestsrc} - { glsinkbin }
-use crate::config::events;
-use anyhow::{Context, Result};
-use glutin::{
-    config::GetGlConfig as _,
-    context::AsRawContext as _,
-    display::{AsRawDisplay as _, GetGlDisplay as _},
-    prelude::*,
-};
-use glutin_winit::GlWindow as _;
-use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
+use glutin::prelude::*;
 use gst_gl::prelude::*;
-use raw_window_handle::HasWindowHandle as _;
-use std::sync::mpsc;
 use std::{
     ffi::{CStr, CString},
-    mem,
-    num::NonZeroU32,
-    ptr,
-    rc::Weak,
+    mem, ptr,
 };
-use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 #[rustfmt::skip]
 static VERTICES: [f32; 20] = [
      1.0,  1.0, 0.0, 1.0, 0.0,

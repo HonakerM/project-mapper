@@ -1,7 +1,4 @@
-use std::io::Sink;
-
 use serde::{Deserialize, Serialize};
-use serde_json::Result;
 
 use super::{
     sink::{SinkConfig, SinkType},

@@ -1,5 +1,3 @@
-use std::io::Sink;
-
 use gst::Element;
 use serde::{Deserialize, Serialize};
 

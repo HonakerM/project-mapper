@@ -6,31 +6,9 @@
 
 // {videotestsrc} - { glsinkbin }
 
-use std::{
-    ffi::{CStr, CString},
-    mem,
-    num::NonZeroU32,
-    ptr,
-    sync::{Arc, Mutex},
-    thread::{self, JoinHandle},
-};
-
-use anyhow::{Context, Result};
-use glib::{BoolError, clone::Downgrade};
-use glutin::{
-    config::GetGlConfig as _,
-    context::AsRawContext as _,
-    display::{AsRawDisplay as _, GetGlDisplay as _},
-    prelude::*,
-};
-use glutin_winit::GlWindow as _;
-use gst::{Element, PadProbeReturn, PadProbeType, QueryViewMut, element_error};
+use anyhow::Result;
+use gst::Element;
 use gst_gl::prelude::*;
-use raw_window_handle::HasWindowHandle as _;
-use winit::{
-    dpi::{LogicalSize, PhysicalPosition, PhysicalSize},
-    window,
-};
 
 use crate::window_handler;
 use crate::{config, window_handler::WindowHandler};

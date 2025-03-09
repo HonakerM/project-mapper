@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fs;
 use std::num::NonZeroU32;
 use std::sync::mpsc;
 
@@ -19,9 +18,8 @@ use gst_gl::prelude::GLContextExt;
 use gst_video::VideoFrameExt;
 use raw_window_handle::HasWindowHandle;
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
-use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
+use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
 
 struct WindowData {
@@ -145,7 +143,7 @@ impl WindowHandler {
 
         let appsink_id = appsink.name();
 
-        let mut window_data = self
+        let window_data = self
             .create_window(appsink, event_loop)
             .expect("we get a result");
         let window_id = window_data.window.id();

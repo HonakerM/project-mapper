@@ -9,17 +9,8 @@
 // Much of the playbin's behavior can be controlled by so-called flags, as well
 // as the playbin's properties and signals.
 
-use anyhow::{Context, Result};
-use glutin::{
-    config::GetGlConfig as _,
-    context::AsRawContext as _,
-    display::{AsRawDisplay as _, GetGlDisplay as _},
-    prelude::*,
-};
-use glutin_winit::GlWindow as _;
-use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
+use anyhow::Result;
 use gst_gl::prelude::*;
-use std::{thread, time::Duration};
 
 #[path = "../runtime/runtime.rs"]
 mod runtime;

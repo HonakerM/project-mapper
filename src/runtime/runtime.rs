@@ -6,30 +6,14 @@
 
 // {videotestsrc} - { glsinkbin }
 
+use std::sync::{Arc, Mutex};
 use std::thread;
-use std::{
-    ffi::{CStr, CString},
-    mem,
-    num::NonZeroU32,
-    ptr,
-    sync::{Arc, Mutex},
-};
 
 use crate::{pipeline, window_handler};
 
-use anyhow::{Context, Result};
-use glutin::{
-    config::GetGlConfig as _,
-    context::AsRawContext as _,
-    display::{AsRawDisplay as _, GetGlDisplay as _},
-    prelude::*,
-};
-use glutin_winit::GlWindow as _;
-use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
+use anyhow::Result;
 use gst_gl::prelude::*;
-use raw_window_handle::HasWindowHandle as _;
 use std::sync::mpsc;
-use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
 
 use crate::config::{events, runtime};
 
