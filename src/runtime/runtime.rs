@@ -15,7 +15,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use crate::pipeline;
+use crate::{pipeline, window_handler};
 
 use anyhow::{Context, Result};
 use glutin::{
@@ -41,34 +41,59 @@ pub(crate) enum Message {
 
 pub(crate) struct Runtime {
     pub pipeline: pipeline::MediaPipeline,
+    pub event_loop: Option<winit::event_loop::EventLoop<window_handler::Message>>,
     event_sender: mpsc::Sender<events::RuntimeEvent>,
     event_recver: Arc<Mutex<mpsc::Receiver<events::RuntimeEvent>>>,
     event_thread: Option<thread::JoinHandle<()>>,
+    window_handler: window_handler::WindowHandler,
 }
 
 impl Runtime {
     pub(crate) fn new() -> Result<Runtime> {
         gst::init()?;
 
+        let event_loop: winit::event_loop::EventLoop<window_handler::Message> =
+            winit::event_loop::EventLoop::with_user_event().build()?;
+
+        // ControlFlow::Wait pauses the event loop if no events are available to process.
+        // This is ideal for non-game applications that only update in response to user
+        // input, and uses significantly less power/CPU time than ControlFlow::Poll.
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+
+        // ControlFlow::Wait pauses the event loop if no events are available to process.
+        // This is ideal for non-game applications that only update in response to user
+        // input, and uses significantly less power/CPU time than ControlFlow::Poll.
+        event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
+
+        let mut window_handler = window_handler::WindowHandler::new(event_loop.create_proxy());
+
         let (send, recv) = mpsc::channel();
 
-        let media_pipeline =
-            pipeline::MediaPipeline::new(None, send.clone(), runtime::RuntimeConfig::default())?;
+        let media_pipeline = pipeline::MediaPipeline::new(
+            &mut window_handler,
+            None,
+            send.clone(),
+            runtime::RuntimeConfig::default(),
+        )?;
 
         let runtime = Runtime {
             pipeline: media_pipeline,
             event_recver: Arc::new(Mutex::new(recv)),
             event_sender: send,
             event_thread: None,
+            event_loop: Some(event_loop),
+            window_handler: window_handler,
         };
         Ok(runtime)
     }
 
     pub fn run(&mut self) -> Result<()> {
         let event_thread = self.start_background_thread()?;
-        self.pipeline.run();
 
-        self.event_sender.send(events::RuntimeEvent::StopThread());
+        self.pipeline.start();
+        let event_loop = std::mem::replace(&mut self.event_loop, None).expect("uh oh");
+        event_loop.run_app(&mut self.window_handler);
+
         event_thread.join();
         Ok(())
     }

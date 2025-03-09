@@ -27,7 +27,10 @@ mod runtime;
 #[path = "../config/mod.rs"]
 mod config;
 
-#[path = "../gl/opengl.rs"]
+#[path = "../window/handler.rs"]
+mod window_handler;
+
+#[path = "../render/opengl.rs"]
 mod opengl;
 
 #[path = "../pipeline/pipeline.rs"]

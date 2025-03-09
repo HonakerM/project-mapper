@@ -7,7 +7,12 @@
 // {videotestsrc} - { glsinkbin }
 
 use std::{
-    ffi::{CStr, CString}, mem, num::NonZeroU32, ptr,  sync::{Arc, Mutex}, thread::{self, JoinHandle}
+    ffi::{CStr, CString},
+    mem,
+    num::NonZeroU32,
+    ptr,
+    sync::{Arc, Mutex},
+    thread::{self, JoinHandle},
 };
 
 use anyhow::{Context, Result};
@@ -22,9 +27,13 @@ use glutin_winit::GlWindow as _;
 use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::prelude::*;
 use raw_window_handle::HasWindowHandle as _;
-use winit::dpi::{LogicalSize, PhysicalPosition, PhysicalSize};
+use winit::{
+    dpi::{LogicalSize, PhysicalPosition, PhysicalSize},
+    window,
+};
 
-use crate::{config, opengl::{self, OpenGLApp}};
+use crate::window_handler;
+use crate::{config, window_handler::WindowHandler};
 
 use std::sync::mpsc;
 
@@ -35,24 +44,21 @@ use std::collections::HashMap;
 pub(crate) struct MediaPipeline {
     pub pipeline: gst::Pipeline,
     runtime_sender: mpsc::Sender<events::RuntimeEvent>,
-    pub app: opengl::OpenGLApp,
-    pub app_sinks: Vec<gst_app::AppSink>,
     pub config: runtime::RuntimeConfig,
     elements: Vec<gst::Element>,
 }
 
 impl MediaPipeline {
     pub(crate) fn new(
+        window_handler: &mut WindowHandler,
         gl_element: Option<&gst::Element>,
         runtime_sender: mpsc::Sender<events::RuntimeEvent>,
         config: runtime::RuntimeConfig,
     ) -> Result<MediaPipeline> {
         gst::init()?;
 
-        let (elements, pipeline, appsinks) = MediaPipeline::create_pipeline(gl_element, &config)?;
-
-        let mut app = opengl::OpenGLApp::new(None, runtime_sender.clone(), appsinks)?;
-
+        let (elements, pipeline) =
+            MediaPipeline::create_pipeline(gl_element, &config, window_handler)?;
 
         let pipeline: gst::Pipeline = pipeline.to_owned();
 
@@ -66,34 +72,8 @@ impl MediaPipeline {
         Ok(media_pipeline)
     }
 
-    pub(crate) fn run(&mut self) {
-
-        let mut app_threads: Vec<JoinHandle<Result<()>>> = Vec::new();
-        while self.app_sinks.len() > 0 {
-            let app_sink: gst_app::AppSink = self.app_sinks.pop().expect("var");
-            let runtime_sender = self.runtime_sender.clone();
-            let pipeline_clone = self.pipeline.clone();
-
-            let background_thread: JoinHandle<Result<()>> = thread::spawn(move || {
-
-                let result = MediaPipeline::run_app(&mut app, pipeline_clone);
-                result
-            });
-            app_threads.push(background_thread);
-        }
+    pub(crate) fn start(&mut self) {
         self.pipeline.set_state(gst::State::Playing).unwrap();
-        
-        for app_thread in app_threads {
-            app_thread.join();
-        }
-
-    }
-
-
-    pub fn run_app(app: &mut OpenGLApp, pipeline: gst::Pipeline) -> Result<()> {
-        app.setup(&pipeline);
-        app.run();
-        Ok(())
     }
 
     pub fn shutdown_pipeline(pipeline: gst::Pipeline) {
@@ -104,7 +84,8 @@ impl MediaPipeline {
     fn create_pipeline(
         gl_element: Option<&gst::Element>,
         config: &runtime::RuntimeConfig,
-    ) -> Result<(Vec<gst::Element>, gst::Pipeline, gst_app::AppSink)> {
+        window_handler: &mut window_handler::WindowHandler,
+    ) -> Result<(Vec<gst::Element>, gst::Pipeline)> {
         let pipeline = gst::Pipeline::default();
 
         let mut elements = Vec::<gst::Element>::new();
@@ -134,6 +115,8 @@ impl MediaPipeline {
             .caps(&caps)
             .build();
 
+        let sink_config = config.sinks.get(0).unwrap();
+
         if let Some(gl_element) = gl_element {
             let glupload = gst::ElementFactory::make("glupload").build()?;
 
@@ -145,7 +128,9 @@ impl MediaPipeline {
             glupload.link(gl_element)?;
             gl_element.link(&appsink)?;
 
-            Ok((elements, pipeline, appsink))
+            window_handler.add_sink(appsink, sink_config.clone());
+
+            Ok((elements, pipeline))
         } else {
             let sink = gst::ElementFactory::make("glsinkbin")
                 .property("sink", &appsink)
@@ -154,7 +139,9 @@ impl MediaPipeline {
             pipeline.add_many([&src, &sink])?;
             src.link(&sink)?;
 
-            Ok((elements, pipeline, appsink))
+            window_handler.add_sink(appsink, sink_config.clone());
+
+            Ok((elements, pipeline))
         }
     }
 }

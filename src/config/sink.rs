@@ -3,13 +3,13 @@ use std::io::Sink;
 use serde::{Deserialize, Serialize};
 use serde_json::Result;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum SinkType {
     OpenGLMonitor { name: String },
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct SinkConfig {
     pub name: String,
     pub id: u32,
