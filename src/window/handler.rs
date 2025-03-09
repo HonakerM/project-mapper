@@ -401,6 +401,8 @@ impl ApplicationHandler<Message> for WindowHandler {
             WindowEvent::CloseRequested => {
                 println!("The close button was pressed; stopping");
                 self.event_sender.send(events::RuntimeEvent::UserExit());
+                self.windows.clear();
+                self.sink_mapping.clear();
                 event_loop.exit();
             }
             WindowEvent::RedrawRequested => {

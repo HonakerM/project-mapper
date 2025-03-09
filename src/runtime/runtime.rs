@@ -117,7 +117,8 @@ impl Runtime {
             match event {
                 events::RuntimeEvent::UserExit() => {
                     println!("User stop");
-                    pipeline::MediaPipeline::shutdown_pipeline(pipeline.clone())
+                    pipeline::MediaPipeline::shutdown_pipeline(pipeline);
+                    break;
                 }
                 events::RuntimeEvent::StopThread() => {
                     println!("Official stop");
