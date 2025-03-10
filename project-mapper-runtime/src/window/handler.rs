@@ -181,7 +181,7 @@ impl WindowHandler {
         event_loop: &winit::event_loop::EventLoop<Message>,
         sink_info: project_mapper_core::config::sink::SinkType,
     ) -> Result<WindowData> {
-        let mut window_attributes = winit::window::Window::default_attributes()
+        let window_attributes = winit::window::Window::default_attributes()
             .with_transparent(true)
             .with_title(name.clone().to_string());
 

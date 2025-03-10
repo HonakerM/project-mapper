@@ -77,7 +77,7 @@ impl MediaPipeline {
         // construct sources
         for source_config in &config.sources {
             let id = source_config.id;
-            let mut name = id.to_string();
+            let name = id.to_string();
 
             // Get source element from config
             let src_element =

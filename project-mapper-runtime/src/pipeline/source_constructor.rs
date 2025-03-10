@@ -5,7 +5,6 @@ use gst::{
     prelude::{ElementExt, ElementExtManual, GstBinExtManual, GstObjectExt, PadExt},
 };
 use project_mapper_core::config::source::{self, SourceType};
-use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, glib::Boxed)]
