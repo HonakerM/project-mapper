@@ -23,6 +23,7 @@ glutin_winit = { package = "glutin-winit", version = "0.5", default-features = f
 winit = { version = "0.30" , default-features = false}
 raw_window_handle = { package = "raw-window-handle", version = "0.6" }
 project-mapper-core = { workspace = true}
+clap = { version = "4.5.31", features = ["derive"] }
 
 
 [target.'cfg(windows)'.dependencies]

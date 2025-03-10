@@ -10,6 +10,8 @@
 // as the playbin's properties and signals.
 
 use anyhow::Result;
+use api::cli::Cli;
+use clap::Parser;
 use gst_gl::prelude::*;
 use std::{env, fs};
 
@@ -25,20 +27,26 @@ mod opengl;
 #[path = "../pipeline/pipeline.rs"]
 mod pipeline;
 
+#[path = "../api/mod.rs"]
+mod api;
+
 #[path = "../utils/main_wrapper.rs"]
 pub mod main_wrapper;
 
-fn example_main() -> Result<()> {
-    let args: Vec<String> = env::args().collect();
-    let config_path = args.get(1).expect("Runtime requires path to config file");
-    let config = project_mapper_core::loader::load_config(config_path)?;
-
-    let mut app = runtime::Runtime::new(config)?;
-    app.run()
+fn entrypoint() -> Result<()> {
+    let args = Cli::parse();
+    match &args {
+        Cli::Run(run) => {
+            let config = project_mapper_core::loader::load_config(&run.config_path)?;
+            let mut app = runtime::Runtime::new(config)?;
+            app.run()
+        }
+        Cli::GetAvailableConfig(gac) => Ok(()),
+    }
 }
 
 fn main() -> Result<()> {
     // examples_common::run is only required to set up the application environment on macOS
     // (but not necessary in normal Cocoa applications where this is set up automatically)
-    main_wrapper::run(example_main)
+    main_wrapper::run(entrypoint)
 }
