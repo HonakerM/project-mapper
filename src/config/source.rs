@@ -4,7 +4,7 @@ use anyhow::Error;
 use glib::clone::Downgrade;
 use gst::{
     Element, element_error, element_warning,
-    prelude::{ElementExt, GstBinExtManual, GstObjectExt, PadExt},
+    prelude::{ElementExt, ElementExtManual, GstBinExtManual, GstObjectExt, PadExt},
 };
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +14,12 @@ struct ErrorValue(Arc<Mutex<Option<Error>>>);
 
 pub trait SourceTypeConstructor {
     fn create_element(&self, id: String) -> Result<Element, glib::BoolError>;
-    fn initialize_element(&self, element: &gst::Element, pipeline: &gst::Pipeline);
+    fn initialize_element(
+        &self,
+        src_element: &gst::Element,
+        sink_element: &gst::Element,
+        pipeline: &gst::Pipeline,
+    ) -> Result<(), glib::error::BoolError>;
 }
 
 #[derive(Serialize, Deserialize)]
@@ -25,7 +30,14 @@ impl SourceTypeConstructor for &Test {
         gst::ElementFactory::make("videotestsrc").name(name).build()
     }
 
-    fn initialize_element(&self, element: &gst::Element, pipeline: &gst::Pipeline) {}
+    fn initialize_element(
+        &self,
+        src_element: &gst::Element,
+        sink_element: &gst::Element,
+        pipeline: &gst::Pipeline,
+    ) -> Result<(), glib::error::BoolError> {
+        src_element.link(sink_element)
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -41,7 +53,12 @@ impl SourceTypeConstructor for &URI {
             .build()
     }
 
-    fn initialize_element(&self, element: &gst::Element, pipeline: &gst::Pipeline) {
+    fn initialize_element(
+        &self,
+        src_element: &gst::Element,
+        sink_element: &gst::Element,
+        pipeline: &gst::Pipeline,
+    ) -> Result<(), glib::error::BoolError> {
         // Need to move a new reference into the closure.
         // !!ATTENTION!!:
         // It might seem appealing to use pipeline.clone() here, because that greatly
@@ -53,11 +70,14 @@ impl SourceTypeConstructor for &URI {
         // DO NOT USE pipeline.clone() TO USE THE PIPELINE WITHIN A CALLBACK
         let pipeline_weak = pipeline.downgrade();
 
+        // Clone sink element so it can be refenced in a callback
+        let sink_element = sink_element.clone();
+
         // Connect to decodebin's pad-added signal, that is emitted whenever
         // it found another stream from the input file and found a way to decode it to its raw format.
         // decodebin automatically adds a src-pad for this raw stream, which
         // we can use to build the follow-up pipeline.
-        element.connect_pad_added(move |dbin, src_pad| {
+        src_element.connect_pad_added(move |dbin, src_pad| {
             // Here we temporarily retrieve a strong reference on the pipeline from the weak one
             // we moved into this callback.
             let Some(pipeline) = pipeline_weak.upgrade() else {
@@ -92,55 +112,33 @@ impl SourceTypeConstructor for &URI {
             // improves readability for error-handling. Like this, we can simply use the
             // ?-operator within the closure, and handle the actual error down below where
             // we call the insert_sink(..) closure.
-            let insert_sink = |is_audio, is_video| -> Result<(), Error> {
-                if is_audio {
-                    // decodebin found a raw audiostream, so we build the follow-up pipeline to
-                    // play it on the default audio playback device (using autoaudiosink).
-                    let queue = gst::ElementFactory::make("queue").build()?;
-                    let convert = gst::ElementFactory::make("audioconvert").build()?;
-                    let resample = gst::ElementFactory::make("audioresample").build()?;
-                    let sink = gst::ElementFactory::make("autoaudiosink").build()?;
+            let insert_sink =
+                |is_audio, is_video, sink_element: &gst::Element| -> Result<(), Error> {
+                    if is_video {
+                        // decodebin found a raw videostream, so we build the follow-up pipeline to
+                        // display it using the autovideosink.
+                        let queue = gst::ElementFactory::make("queue").build()?;
+                        let convert = gst::ElementFactory::make("videoconvert").build()?;
+                        let scale = gst::ElementFactory::make("videoscale").build()?;
 
-                    let elements = &[&queue, &convert, &resample, &sink];
-                    pipeline.add_many(elements)?;
-                    gst::Element::link_many(elements)?;
+                        let elements = &[&queue, &convert, &scale];
+                        pipeline.add_many(elements)?;
+                        gst::Element::link_many(elements)?;
 
-                    // !!ATTENTION!!:
-                    // This is quite important and people forget it often. Without making sure that
-                    // the new elements have the same state as the pipeline, things will fail later.
-                    // They would still be in Null state and can't process data.
-                    for e in elements {
-                        e.sync_state_with_parent()?;
+                        for e in elements {
+                            e.sync_state_with_parent()?
+                        }
+
+                        // Get the queue element's sink pad and link the decodebin's newly created
+                        // src pad for the video stream to it.
+                        let sink_pad = sink_element
+                            .static_pad("sink")
+                            .expect("queue has no sinkpad");
+                        src_pad.link(&sink_pad)?;
                     }
 
-                    // Get the queue element's sink pad and link the decodebin's newly created
-                    // src pad for the audio stream to it.
-                    let sink_pad = queue.static_pad("sink").expect("queue has no sinkpad");
-                    src_pad.link(&sink_pad)?;
-                } else if is_video {
-                    // decodebin found a raw videostream, so we build the follow-up pipeline to
-                    // display it using the autovideosink.
-                    let queue = gst::ElementFactory::make("queue").build()?;
-                    let convert = gst::ElementFactory::make("videoconvert").build()?;
-                    let scale = gst::ElementFactory::make("videoscale").build()?;
-                    let sink = gst::ElementFactory::make("autovideosink").build()?;
-
-                    let elements = &[&queue, &convert, &scale, &sink];
-                    pipeline.add_many(elements)?;
-                    gst::Element::link_many(elements)?;
-
-                    for e in elements {
-                        e.sync_state_with_parent()?
-                    }
-
-                    // Get the queue element's sink pad and link the decodebin's newly created
-                    // src pad for the video stream to it.
-                    let sink_pad = queue.static_pad("sink").expect("queue has no sinkpad");
-                    src_pad.link(&sink_pad)?;
-                }
-
-                Ok(())
-            };
+                    Ok(())
+                };
 
             // When adding and linking new elements in a callback fails, error information is often sparse.
             // GStreamer's built-in debugging can be hard to link back to the exact position within the code
@@ -150,7 +148,7 @@ impl SourceTypeConstructor for &URI {
             // What we send here is unpacked down below, in the iteration-code over sent bus-messages.
             // Because we are using the failure crate for error details here, we even get a backtrace for
             // where the error was constructed. (If RUST_BACKTRACE=1 is set)
-            if let Err(err) = insert_sink(is_audio, is_video) {
+            if let Err(err) = insert_sink(is_audio, is_video, &sink_element) {
                 // The following sends a message of type Error on the bus, containing our detailed
                 // error information.
                 element_error!(
@@ -164,6 +162,7 @@ impl SourceTypeConstructor for &URI {
                 );
             }
         });
+        Ok(())
     }
 }
 
@@ -190,13 +189,24 @@ impl SourceType {
         ))
     }
 
-    pub fn initialize_element(&self, element: &gst::Element, pipeline: &gst::Pipeline) {
+    pub fn initialize_element(
+        &self,
+        element: &gst::Element,
+        sink: &gst::Element,
+        pipeline: &gst::Pipeline,
+    ) -> Result<(), glib::error::BoolError> {
         if let Ok(value) = self.get_uri_type() {
-            return value.initialize_element(element, pipeline);
+            return value.initialize_element(element, sink, pipeline);
         }
         if let Ok(value) = self.get_test_type() {
-            return value.initialize_element(element, pipeline);
+            return value.initialize_element(element, sink, pipeline);
         }
+        Err(glib::BoolError::new(
+            "can't init element",
+            "pipeline",
+            "func",
+            1,
+        ))
     }
 
     fn get_uri_type(&self) -> anyhow::Result<impl SourceTypeConstructor> {

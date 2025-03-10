@@ -81,9 +81,6 @@ impl MediaPipeline {
 
             // Add element to pipeline and configure it
             pipeline.add(&src_element)?;
-            source_config
-                .source
-                .initialize_element(&src_element, &pipeline);
 
             // Add tee to src element to allow multiple linkages
             let tee_name: String = format!("tee-{}", name);
@@ -95,7 +92,10 @@ impl MediaPipeline {
             src_tee.sync_state_with_parent()?;
 
             // link elements and add mapping for this id to the tee
-            src_element.link(&src_tee)?;
+            source_config
+                .source
+                .initialize_element(&src_element, &src_tee, &pipeline)?;
+
             src_elements.insert(id, src_tee.clone());
 
             // Add elements to list
