@@ -18,6 +18,7 @@ use gst_gl::prelude::GLContextExt;
 use gst_video::VideoFrameExt;
 use raw_window_handle::HasWindowHandle;
 use winit::application::ApplicationHandler;
+use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowId};
@@ -35,7 +36,7 @@ struct WindowData {
 
 impl WindowData {
     /// Should be called from within the event loop
-    fn redraw(&self, current_frame: gst_gl::GLVideoFrame<gst_gl::gl_video_frame::Readable>) {
+    pub fn redraw(&self, current_frame: gst_gl::GLVideoFrame<gst_gl::gl_video_frame::Readable>) {
         if let Some((gl, gl_context, gl_surface)) = &self.running_state {
             gl_context
                 .make_current(gl_surface)
@@ -47,6 +48,22 @@ impl WindowData {
                 gl.draw_frame(texture as gl::types::GLuint);
             }
             gl_surface.swap_buffers(gl_context).unwrap();
+        }
+    }
+
+    pub fn resize(&self, size: PhysicalSize<u32>) {
+        if let Some((gl, gl_context, gl_surface)) = &self.running_state {
+            gl_context
+                .make_current(gl_surface)
+                .expect("could not make current");
+
+            gl_surface.resize(
+                gl_context,
+                // XXX Ignore minimizing
+                NonZeroU32::new(size.width).unwrap(),
+                NonZeroU32::new(size.height).unwrap(),
+            );
+            gl.resize(size);
         }
     }
 }
@@ -463,15 +480,7 @@ impl ApplicationHandler<Message> for WindowHandler {
                 // and the function is no-op, but it's wise to resize it for portability
                 // reasons.
                 let window_data = self.windows.get(&id).expect("a window should exist");
-                if let Some((gl, gl_context, gl_surface)) = &window_data.running_state {
-                    gl_surface.resize(
-                        gl_context,
-                        // XXX Ignore minimizing
-                        NonZeroU32::new(size.width).unwrap(),
-                        NonZeroU32::new(size.height).unwrap(),
-                    );
-                    gl.resize(size);
-                }
+                window_data.resize(size);
             }
             WindowEvent::RedrawRequested => {
                 // Redraw the application.
