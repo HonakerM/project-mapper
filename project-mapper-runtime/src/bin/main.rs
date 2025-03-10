@@ -11,6 +11,7 @@
 
 use anyhow::Result;
 use gst_gl::prelude::*;
+use std::{env, fs};
 
 #[path = "../runtime/runtime.rs"]
 mod runtime;
@@ -28,9 +29,12 @@ mod pipeline;
 pub mod main_wrapper;
 
 fn example_main() -> Result<()> {
-    let mut app = runtime::Runtime::new()?;
-    app.run();
-    Ok(())
+    let args: Vec<String> = env::args().collect();
+    let config_path = args.get(1).expect("Runtime requires path to config file");
+    let config = project_mapper_core::loader::load_config(config_path)?;
+
+    let mut app = runtime::Runtime::new(config)?;
+    app.run()
 }
 
 fn main() -> Result<()> {

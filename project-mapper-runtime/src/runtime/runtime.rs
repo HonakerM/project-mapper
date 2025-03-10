@@ -26,7 +26,7 @@ pub(crate) struct Runtime {
 }
 
 impl Runtime {
-    pub(crate) fn new() -> Result<Runtime> {
+    pub(crate) fn new(config: runtime::RuntimeConfig) -> Result<Runtime> {
         gst::init()?;
 
         let event_loop: winit::event_loop::EventLoop<window_handler::Message> =
@@ -47,12 +47,8 @@ impl Runtime {
         let mut window_handler =
             window_handler::WindowHandler::new(event_loop.create_proxy(), send.clone());
 
-        let media_pipeline = pipeline::MediaPipeline::new(
-            runtime::RuntimeConfig::default(),
-            &mut window_handler,
-            &event_loop,
-            send.clone(),
-        )?;
+        let media_pipeline =
+            pipeline::MediaPipeline::new(config, &mut window_handler, &event_loop, send.clone())?;
 
         let runtime = Runtime {
             pipeline: media_pipeline,
