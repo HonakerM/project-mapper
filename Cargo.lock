@@ -1281,7 +1281,6 @@ dependencies = [
  "anyhow",
  "serde",
  "serde_json",
- "winit",
 ]
 
 [[package]]

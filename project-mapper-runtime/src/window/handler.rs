@@ -482,7 +482,11 @@ impl WindowHandler {
             let mut resolution_map: HashMap<Resolution, HashMap<u32, VideoModeHandle>> =
                 HashMap::new();
             for monitor_handle in monitor.video_modes() {
-                let resolution = Resolution::from_size(monitor.size());
+                let size = monitor.size();
+                let resolution = Resolution {
+                    height: size.height,
+                    width: size.width,
+                };
 
                 if !resolution_map.contains_key(&resolution) {
                     resolution_map.insert(resolution.clone(), HashMap::new());

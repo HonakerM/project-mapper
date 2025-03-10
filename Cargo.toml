@@ -20,3 +20,6 @@ rust-version = "1.87"
 [workspace.dependencies]
 project-mapper-runtime = { path = "project-mapper-runtime" }
 project-mapper-core = { path = "project-mapper-core" }
+
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

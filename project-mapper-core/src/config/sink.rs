@@ -1,19 +1,9 @@
 use serde::{Deserialize, Serialize};
-use winit::dpi::PhysicalSize;
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Debug)]
 pub struct Resolution {
     pub width: u32,
     pub height: u32,
-}
-
-impl Resolution {
-    pub fn from_size(size: PhysicalSize<u32>) -> Resolution {
-        Resolution {
-            width: size.width,
-            height: size.height,
-        }
-    }
 }
 
 impl Eq for Resolution {}
