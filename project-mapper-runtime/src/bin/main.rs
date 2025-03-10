@@ -15,9 +15,6 @@ use gst_gl::prelude::*;
 #[path = "../runtime/runtime.rs"]
 mod runtime;
 
-#[path = "../config/mod.rs"]
-mod config;
-
 #[path = "../window/handler.rs"]
 mod window_handler;
 

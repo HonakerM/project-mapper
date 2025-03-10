@@ -14,7 +14,7 @@ use crate::{pipeline, window_handler};
 use anyhow::Result;
 use std::sync::mpsc;
 
-use crate::config::{events, runtime};
+use project_mapper_core::config::{events, runtime};
 
 pub(crate) struct Runtime {
     pub pipeline: pipeline::MediaPipeline,

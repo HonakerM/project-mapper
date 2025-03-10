@@ -1,12 +1,12 @@
-use std::sync::{Arc, Mutex};
-
 use anyhow::Error;
 use glib::clone::Downgrade;
 use gst::{
     Element, element_error, element_warning,
     prelude::{ElementExt, ElementExtManual, GstBinExtManual, GstObjectExt, PadExt},
 };
+use project_mapper_core::config::source::{self, SourceType};
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, Mutex};
 
 #[derive(Clone, Debug, glib::Boxed)]
 #[boxed_type(name = "ErrorValue")]
@@ -22,9 +22,7 @@ pub trait SourceTypeConstructor {
     ) -> Result<(), glib::error::BoolError>;
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct Test {}
-impl SourceTypeConstructor for &Test {
+impl SourceTypeConstructor for &source::Test {
     fn create_element(&self, id: String) -> Result<Element, glib::BoolError> {
         let name = format!("test-{}", id);
         gst::ElementFactory::make("videotestsrc").name(name).build()
@@ -40,11 +38,7 @@ impl SourceTypeConstructor for &Test {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct URI {
-    pub uri: String,
-}
-impl SourceTypeConstructor for &URI {
+impl SourceTypeConstructor for &source::URI {
     fn create_element(&self, id: String) -> Result<Element, glib::BoolError> {
         let name = format!("uri-{}", id);
         gst::ElementFactory::make("uridecodebin")
@@ -166,67 +160,51 @@ impl SourceTypeConstructor for &URI {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum SourceType {
-    Test(Test),
-    URI(URI),
+pub fn create_element(source: &SourceType, id: String) -> Result<Element, glib::BoolError> {
+    if let Ok(value) = get_uri_type(source) {
+        return value.create_element(id);
+    }
+    if let Ok(value) = get_test_type(source) {
+        return value.create_element(id);
+    }
+    Err(glib::BoolError::new(
+        "can't create element",
+        "pipeline",
+        "func",
+        1,
+    ))
 }
 
-impl SourceType {
-    pub fn create_element(&self, id: String) -> Result<Element, glib::BoolError> {
-        if let Ok(value) = self.get_uri_type() {
-            return value.create_element(id);
-        }
-        if let Ok(value) = self.get_test_type() {
-            return value.create_element(id);
-        }
-        Err(glib::BoolError::new(
-            "can't create element",
-            "pipeline",
-            "func",
-            1,
-        ))
+pub fn initialize_element(
+    config: &SourceType,
+    element: &gst::Element,
+    sink: &gst::Element,
+    pipeline: &gst::Pipeline,
+) -> Result<(), glib::error::BoolError> {
+    if let Ok(value) = get_uri_type(config) {
+        return value.initialize_element(element, sink, pipeline);
     }
-
-    pub fn initialize_element(
-        &self,
-        element: &gst::Element,
-        sink: &gst::Element,
-        pipeline: &gst::Pipeline,
-    ) -> Result<(), glib::error::BoolError> {
-        if let Ok(value) = self.get_uri_type() {
-            return value.initialize_element(element, sink, pipeline);
-        }
-        if let Ok(value) = self.get_test_type() {
-            return value.initialize_element(element, sink, pipeline);
-        }
-        Err(glib::BoolError::new(
-            "can't init element",
-            "pipeline",
-            "func",
-            1,
-        ))
+    if let Ok(value) = get_test_type(config) {
+        return value.initialize_element(element, sink, pipeline);
     }
-
-    fn get_uri_type(&self) -> anyhow::Result<impl SourceTypeConstructor> {
-        if let SourceType::URI(uri) = self {
-            return Ok(uri);
-        }
-        Err(anyhow::Error::msg("Could not find constructor Type"))
-    }
-
-    fn get_test_type(&self) -> anyhow::Result<impl SourceTypeConstructor> {
-        if let SourceType::Test(test) = self {
-            return Ok(test);
-        }
-        Err(anyhow::Error::msg("Could not find constructor Type"))
-    }
+    Err(glib::BoolError::new(
+        "can't init element",
+        "pipeline",
+        "func",
+        1,
+    ))
 }
 
-#[derive(Serialize, Deserialize)]
-pub struct SourceConfig {
-    pub name: String,
-    pub id: u32,
-    pub source: SourceType,
+fn get_uri_type(config: &SourceType) -> anyhow::Result<impl SourceTypeConstructor> {
+    if let SourceType::URI(uri) = config {
+        return Ok(uri);
+    }
+    Err(anyhow::Error::msg("Could not find constructor Type"))
+}
+
+fn get_test_type(config: &SourceType) -> anyhow::Result<impl SourceTypeConstructor> {
+    if let SourceType::Test(test) = config {
+        return Ok(test);
+    }
+    Err(anyhow::Error::msg("Could not find constructor Type"))
 }

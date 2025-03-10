@@ -10,14 +10,17 @@ use anyhow::Result;
 use gst::Element;
 use gst_gl::prelude::*;
 
-use crate::config::source::{self, SourceTypeConstructor};
 use crate::window_handler;
-use crate::{config, window_handler::WindowHandler};
+use crate::window_handler::WindowHandler;
+use project_mapper_core::config;
 
 use std::sync::mpsc;
 
-use crate::config::events;
-use crate::config::runtime;
+#[path = "./source_constructor.rs"]
+mod source_constructor;
+
+use project_mapper_core::config::events;
+use project_mapper_core::config::runtime;
 use std::collections::HashMap;
 
 pub(crate) struct MediaPipeline {
@@ -77,7 +80,8 @@ impl MediaPipeline {
             let mut name = id.to_string();
 
             // Get source element from config
-            let src_element = source_config.source.create_element(name.clone())?;
+            let src_element =
+                source_constructor::create_element(&source_config.source, name.clone())?;
 
             // Add element to pipeline and configure it
             pipeline.add(&src_element)?;
@@ -92,9 +96,12 @@ impl MediaPipeline {
             src_tee.sync_state_with_parent()?;
 
             // link elements and add mapping for this id to the tee
-            source_config
-                .source
-                .initialize_element(&src_element, &src_tee, &pipeline)?;
+            source_constructor::initialize_element(
+                &source_config.source,
+                &src_element,
+                &src_tee,
+                &pipeline,
+            )?;
 
             src_elements.insert(id, src_tee.clone());
 

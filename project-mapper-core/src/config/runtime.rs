@@ -27,7 +27,7 @@ pub struct RuntimeConfig {
 }
 
 impl RuntimeConfig {
-    pub(crate) fn default() -> RuntimeConfig {
+    pub fn default() -> RuntimeConfig {
         let source_one: SourceConfig = SourceConfig {
             name: String::from("test source"),
             id: 1,

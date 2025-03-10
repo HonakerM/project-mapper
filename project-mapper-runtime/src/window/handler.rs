@@ -2,8 +2,6 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::sync::mpsc;
 
-use crate::config::events;
-use crate::config::sink::Resolution;
 use crate::opengl::{self, gl};
 use anyhow::{Context, Error, Result};
 use glutin::config::{GetGlConfig, GlConfig};
@@ -17,6 +15,8 @@ use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
 use gst_gl::GLVideoFrameExt;
 use gst_gl::prelude::GLContextExt;
 use gst_video::VideoFrameExt;
+use project_mapper_core::config::events;
+use project_mapper_core::config::sink::Resolution;
 use raw_window_handle::HasWindowHandle;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
@@ -40,7 +40,7 @@ struct WindowData {
     )>,
     not_current_gl_context: Option<glutin::context::NotCurrentContext>,
     glutin_context: gst_gl::GLContext,
-    config: crate::config::sink::SinkType,
+    config: project_mapper_core::config::sink::SinkType,
 }
 
 impl WindowData {
@@ -106,7 +106,7 @@ impl WindowHandler {
         sink_name: glib::GString,
         appsink: gst_app::AppSink,
         event_loop: &winit::event_loop::EventLoop<Message>,
-        sink_info: crate::config::sink::SinkType,
+        sink_info: project_mapper_core::config::sink::SinkType,
     ) {
         let event_proxy = self.event_proxy.clone();
         let appsink_id = sink_name.clone();
@@ -179,7 +179,7 @@ impl WindowHandler {
         name: glib::GString,
         appsink: &gst_app::AppSink,
         event_loop: &winit::event_loop::EventLoop<Message>,
-        sink_info: crate::config::sink::SinkType,
+        sink_info: project_mapper_core::config::sink::SinkType,
     ) -> Result<WindowData> {
         let mut window_attributes = winit::window::Window::default_attributes()
             .with_transparent(true)
@@ -427,50 +427,52 @@ impl WindowHandler {
         monitor_data: &HashMap<String, MonitorData>,
     ) -> Result<()> {
         match &window_data.config {
-            crate::config::sink::SinkType::OpenGLWindow { full_screen } => match full_screen {
-                crate::config::sink::FullScreenMode::Borderless { name } => {
-                    match &monitor_data.get(name) {
-                        None => {
-                            let monitor_names = monitor_data.keys();
-                            Err(Error::msg(format!(
-                                "Unkown monitor name {name} supported monitors: {monitor_names:?}"
-                            )))
-                        }
-                        Some(monitor) => {
-                            window_data.window.set_fullscreen(Some(
-                                winit::window::Fullscreen::Borderless(Some(
-                                    monitor.monitor.clone(),
-                                )),
-                            ));
-                            Ok(())
-                        }
-                    }
-                }
-                crate::config::sink::FullScreenMode::Exclusive { info } => {
-                    match &monitor_data.get(&info.name) {
-                        None => {
-                            let attempted_name = &info.name;
-                            let monitor_names = monitor_data.keys();
-                            Err(Error::msg(format!(
-                                "Unkown monitor name {attempted_name} supported monitors: {monitor_names:?}"
-                            )))
-                        }
-                        Some(monitor) => {
-                            let video_mode = monitor
-                                .mode_lookup
-                                .get(&info.resolution)
-                                .ok_or(Error::msg("unknown resolution"))?
-                                .get(&info.refresh_rate)
-                                .ok_or(Error::msg("unknown refresh rate"))?;
-                            window_data.window.set_fullscreen(Some(
-                                winit::window::Fullscreen::Exclusive(video_mode.clone()),
-                            ));
-                            Ok(())
+            project_mapper_core::config::sink::SinkType::OpenGLWindow { full_screen } => {
+                match full_screen {
+                    project_mapper_core::config::sink::FullScreenMode::Borderless { name } => {
+                        match &monitor_data.get(name) {
+                            None => {
+                                let monitor_names = monitor_data.keys();
+                                Err(Error::msg(format!(
+                                    "Unkown monitor name {name} supported monitors: {monitor_names:?}"
+                                )))
+                            }
+                            Some(monitor) => {
+                                window_data.window.set_fullscreen(Some(
+                                    winit::window::Fullscreen::Borderless(Some(
+                                        monitor.monitor.clone(),
+                                    )),
+                                ));
+                                Ok(())
+                            }
                         }
                     }
+                    project_mapper_core::config::sink::FullScreenMode::Exclusive { info } => {
+                        match &monitor_data.get(&info.name) {
+                            None => {
+                                let attempted_name = &info.name;
+                                let monitor_names = monitor_data.keys();
+                                Err(Error::msg(format!(
+                                    "Unkown monitor name {attempted_name} supported monitors: {monitor_names:?}"
+                                )))
+                            }
+                            Some(monitor) => {
+                                let video_mode = monitor
+                                    .mode_lookup
+                                    .get(&info.resolution)
+                                    .ok_or(Error::msg("unknown resolution"))?
+                                    .get(&info.refresh_rate)
+                                    .ok_or(Error::msg("unknown refresh rate"))?;
+                                window_data.window.set_fullscreen(Some(
+                                    winit::window::Fullscreen::Exclusive(video_mode.clone()),
+                                ));
+                                Ok(())
+                            }
+                        }
+                    }
+                    project_mapper_core::config::sink::FullScreenMode::Windowed {} => Ok(()),
                 }
-                crate::config::sink::FullScreenMode::Windowed {} => Ok(()),
-            },
+            }
         }
     }
 
