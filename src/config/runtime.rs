@@ -60,23 +60,23 @@ impl RuntimeConfig {
                 },
             },
         };
-        let sink_three: SinkConfig = SinkConfig {
-            name: String::from("other monitor"),
-            id: 3,
-            sink: SinkType::OpenGLWindow {
-                full_screen: super::sink::FullScreenMode::Exclusive {
-                    info: MonitorInfo {
-                        name: String::from("\\\\.\\DISPLAY2"),
-                        resolution: Resolution {
-                            width: 1920,
-                            height: 1080,
-                        },
-                        refresh_rate: 64,
-                    },
-                },
-            },
-        };
-        let sinks = Vec::from([sink_one, sink_two, sink_three]);
+        // let sink_three: SinkConfig = SinkConfig {
+        // name: String::from("other monitor"),
+        // id: 3,
+        // sink: SinkType::OpenGLWindow {
+        // full_screen: super::sink::FullScreenMode::Exclusive {
+        // info: MonitorInfo {
+        // name: String::from("\\\\.\\DISPLAY2"),
+        // resolution: Resolution {
+        // width: 2560,
+        // height: 1440,
+        // },
+        // refresh_rate: 120000,
+        // },
+        // },
+        // },
+        // };
+        let sinks = Vec::from([sink_one, sink_two]);
 
         let regio_one: RegionConfig = RegionConfig {
             name: String::from("main region"),
@@ -88,12 +88,7 @@ impl RuntimeConfig {
             id: 2,
             region: RegionType::Display { source: 2, sink: 2 },
         };
-        let region_three: RegionConfig = RegionConfig {
-            name: String::from("third region"),
-            id: 2,
-            region: RegionType::Display { source: 2, sink: 3 },
-        };
-        let regions = Vec::from([regio_one, region_two, region_three]);
+        let regions = Vec::from([regio_one, region_two]);
 
         let config = RuntimeConfig {
             sinks: sinks,

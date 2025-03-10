@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use winit::dpi::PhysicalSize;
 
-#[derive(Serialize, Deserialize, Clone, Hash, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Debug)]
 pub struct Resolution {
     pub width: u32,
     pub height: u32,

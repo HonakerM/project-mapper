@@ -489,6 +489,7 @@ impl WindowHandler {
                 let frequency_map = resolution_map.get_mut(&resolution).expect("we just added");
 
                 let refresh_rate = monitor_handle.refresh_rate_millihertz();
+
                 frequency_map.insert(refresh_rate, monitor_handle);
             }
             let monitor_name = monitor.name().expect("we have a name");
