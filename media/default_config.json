@@ -17,7 +17,7 @@
                 "type": "OpenGLWindow",
                 "full_screen": {
                     "type": "Borderless",
-                    "name": "\\\\.\\DISPLAY1"
+                    "name": ".DISPLAY1"
                 }
             }
         },
@@ -29,7 +29,7 @@
                 "full_screen": {
                     "type": "Exclusive",
                     "info": {
-                        "name": "\\\\.\\DISPLAY2",
+                        "name": ".DISPLAY2",
                         "resolution": {
                             "width": 2560,
                             "height": 1440

@@ -498,7 +498,9 @@ impl WindowHandler {
 
                 frequency_map.insert(refresh_rate, monitor_handle);
             }
-            let monitor_name = monitor.name().expect("we have a name");
+            let monitor_name =
+                WindowHandler::sanitize_monitor_name(monitor.name().expect("we have a name"));
+
             let monitor_data = MonitorData {
                 name: monitor_name.clone(),
                 monitor: monitor,
@@ -507,6 +509,10 @@ impl WindowHandler {
             monitor_map.insert(monitor_name, monitor_data);
         }
         monitor_map
+    }
+
+    fn sanitize_monitor_name(monitor_name: String) -> String {
+        monitor_name.replace("\\", "")
     }
 }
 
