@@ -1,14 +1,42 @@
 use serde::{Deserialize, Serialize};
+use winit::dpi::PhysicalSize;
+
+#[derive(Serialize, Deserialize, Clone, Hash, PartialEq)]
+pub struct Resolution {
+    pub width: u32,
+    pub height: u32,
+}
+
+impl Resolution {
+    pub fn from_size(size: PhysicalSize<u32>) -> Resolution {
+        Resolution {
+            width: size.width,
+            height: size.height,
+        }
+    }
+}
+
+impl Eq for Resolution {}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MonitorInfo {
     pub name: String,
+    pub resolution: Resolution,
+    pub refresh_rate: u32,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+pub enum FullScreenMode {
+    Windowed {},
+    Borderless { name: String },
+    Exclusive { info: MonitorInfo },
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
 pub enum SinkType {
-    OpenGLWindow { monitor: Option<MonitorInfo> },
+    OpenGLWindow { full_screen: FullScreenMode },
 }
 
 #[derive(Serialize, Deserialize, Clone)]

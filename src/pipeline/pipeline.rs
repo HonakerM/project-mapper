@@ -110,7 +110,7 @@ impl MediaPipeline {
             let mut sink_element_option: Option<Element> = None;
 
             match &sink_config.sink {
-                config::sink::SinkType::OpenGLWindow { monitor } => {
+                config::sink::SinkType::OpenGLWindow { full_screen } => {
                     name = format!("opengl-{}", id);
 
                     println!("creating opengl window sink {name}");
@@ -138,7 +138,7 @@ impl MediaPipeline {
                         glib::GString::from(name.clone()),
                         appsink,
                         event_loop,
-                        sink_config.clone(),
+                        sink_config.sink.clone(),
                     );
 
                     sink_element_option = Some(sink);

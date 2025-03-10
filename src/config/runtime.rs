@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
-    sink::{SinkConfig, SinkType},
+    sink::{MonitorInfo, Resolution, SinkConfig, SinkType},
     source::{SourceConfig, SourceType},
 };
 
@@ -47,14 +47,36 @@ impl RuntimeConfig {
         let sink_one: SinkConfig = SinkConfig {
             name: String::from("main monitor"),
             id: 1,
-            sink: SinkType::OpenGLWindow { monitor: None },
+            sink: SinkType::OpenGLWindow {
+                full_screen: super::sink::FullScreenMode::Windowed {},
+            },
         };
         let sink_two: SinkConfig = SinkConfig {
             name: String::from("other monitor"),
             id: 2,
-            sink: SinkType::OpenGLWindow { monitor: None },
+            sink: SinkType::OpenGLWindow {
+                full_screen: super::sink::FullScreenMode::Borderless {
+                    name: String::from("\\\\.\\DISPLAY1"),
+                },
+            },
         };
-        let sinks = Vec::from([sink_one, sink_two]);
+        let sink_three: SinkConfig = SinkConfig {
+            name: String::from("other monitor"),
+            id: 3,
+            sink: SinkType::OpenGLWindow {
+                full_screen: super::sink::FullScreenMode::Exclusive {
+                    info: MonitorInfo {
+                        name: String::from("\\\\.\\DISPLAY2"),
+                        resolution: Resolution {
+                            width: 1920,
+                            height: 1080,
+                        },
+                        refresh_rate: 64,
+                    },
+                },
+            },
+        };
+        let sinks = Vec::from([sink_one, sink_two, sink_three]);
 
         let regio_one: RegionConfig = RegionConfig {
             name: String::from("main region"),
@@ -66,7 +88,12 @@ impl RuntimeConfig {
             id: 2,
             region: RegionType::Display { source: 2, sink: 2 },
         };
-        let regions = Vec::from([regio_one, region_two]);
+        let region_three: RegionConfig = RegionConfig {
+            name: String::from("third region"),
+            id: 2,
+            region: RegionType::Display { source: 2, sink: 3 },
+        };
+        let regions = Vec::from([regio_one, region_two, region_three]);
 
         let config = RuntimeConfig {
             sinks: sinks,

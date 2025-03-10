@@ -3,8 +3,9 @@ use std::num::NonZeroU32;
 use std::sync::mpsc;
 
 use crate::config::events;
+use crate::config::sink::Resolution;
 use crate::opengl::{self, gl};
-use anyhow::{Context, Result};
+use anyhow::{Context, Error, Result};
 use glutin::config::{GetGlConfig, GlConfig};
 use glutin::context::AsRawContext;
 use glutin::display::{AsRawDisplay, GetGlDisplay};
@@ -21,7 +22,14 @@ use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
+use winit::monitor::{MonitorHandle, VideoModeHandle};
 use winit::window::{Window, WindowId};
+
+struct MonitorData {
+    name: String,
+    monitor: MonitorHandle,
+    mode_lookup: HashMap<Resolution, HashMap<u32, VideoModeHandle>>,
+}
 
 struct WindowData {
     window: Window,
@@ -32,6 +40,7 @@ struct WindowData {
     )>,
     not_current_gl_context: Option<glutin::context::NotCurrentContext>,
     glutin_context: gst_gl::GLContext,
+    config: crate::config::sink::SinkType,
 }
 
 impl WindowData {
@@ -97,13 +106,13 @@ impl WindowHandler {
         sink_name: glib::GString,
         appsink: gst_app::AppSink,
         event_loop: &winit::event_loop::EventLoop<Message>,
-        config: crate::config::sink::SinkConfig,
+        sink_info: crate::config::sink::SinkType,
     ) {
         let event_proxy = self.event_proxy.clone();
         let appsink_id = sink_name.clone();
 
         let window_data = self
-            .create_window(appsink_id.clone(), &appsink, event_loop)
+            .create_window(appsink_id.clone(), &appsink, event_loop, sink_info)
             .expect("we get a result");
         let window_id = window_data.window.id();
 
@@ -170,16 +179,16 @@ impl WindowHandler {
         name: glib::GString,
         appsink: &gst_app::AppSink,
         event_loop: &winit::event_loop::EventLoop<Message>,
+        sink_info: crate::config::sink::SinkType,
     ) -> Result<WindowData> {
-        let window_attributes = cfg!(windows).then(|| {
-            winit::window::Window::default_attributes()
-                .with_transparent(true)
-                .with_title(name.clone().to_string())
-        });
+        let mut window_attributes = winit::window::Window::default_attributes()
+            .with_transparent(true)
+            .with_title(name.clone().to_string());
+
         let template = glutin::config::ConfigTemplateBuilder::new().with_alpha_size(8);
 
         let display_builder =
-            glutin_winit::DisplayBuilder::new().with_window_attributes(window_attributes);
+            glutin_winit::DisplayBuilder::new().with_window_attributes(Some(window_attributes));
         let (window, gl_config) = display_builder
             .build(event_loop, template, |configs| {
                 configs
@@ -342,12 +351,16 @@ impl WindowHandler {
             running_state: None,
             not_current_gl_context: Some(not_current_gl_context),
             glutin_context: glutin_context,
+            config: sink_info,
         };
 
         Ok(window_data)
     }
 
-    fn configure_running_window(window_data: &mut WindowData) {
+    fn configure_running_window(
+        window_data: &mut WindowData,
+        monitor_data: &HashMap<String, MonitorData>,
+    ) {
         let not_current_gl_context = window_data
             .not_current_gl_context
             .take()
@@ -357,6 +370,9 @@ impl WindowHandler {
         let gl_display = gl_config.display();
 
         //window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(event_loop.primary_monitor())));
+        WindowHandler::configure_fullscreen(window_data, monitor_data)
+            .expect("you did bad cause error");
+
         let attrs = window_data
             .window
             .build_surface_attributes(<_>::default())
@@ -405,12 +421,93 @@ impl WindowHandler {
             panic!("Received error from {src}: {error} (debug: {debug:?})");
         }
     }
+
+    fn configure_fullscreen(
+        window_data: &mut WindowData,
+        monitor_data: &HashMap<String, MonitorData>,
+    ) -> Result<()> {
+        match &window_data.config {
+            crate::config::sink::SinkType::OpenGLWindow { full_screen } => match full_screen {
+                crate::config::sink::FullScreenMode::Borderless { name } => {
+                    match &monitor_data.get(name) {
+                        None => {
+                            let monitor_names = monitor_data.keys();
+                            Err(Error::msg(format!(
+                                "Unkown monitor name {name} supported monitors: {monitor_names:?}"
+                            )))
+                        }
+                        Some(monitor) => {
+                            window_data.window.set_fullscreen(Some(
+                                winit::window::Fullscreen::Borderless(Some(
+                                    monitor.monitor.clone(),
+                                )),
+                            ));
+                            Ok(())
+                        }
+                    }
+                }
+                crate::config::sink::FullScreenMode::Exclusive { info } => {
+                    match &monitor_data.get(&info.name) {
+                        None => {
+                            let attempted_name = &info.name;
+                            let monitor_names = monitor_data.keys();
+                            Err(Error::msg(format!(
+                                "Unkown monitor name {attempted_name} supported monitors: {monitor_names:?}"
+                            )))
+                        }
+                        Some(monitor) => {
+                            let video_mode = monitor
+                                .mode_lookup
+                                .get(&info.resolution)
+                                .ok_or(Error::msg("unknown resolution"))?
+                                .get(&info.refresh_rate)
+                                .ok_or(Error::msg("unknown refresh rate"))?;
+                            window_data.window.set_fullscreen(Some(
+                                winit::window::Fullscreen::Exclusive(video_mode.clone()),
+                            ));
+                            Ok(())
+                        }
+                    }
+                }
+                crate::config::sink::FullScreenMode::Windowed {} => Ok(()),
+            },
+        }
+    }
+
+    fn gather_monitor_info(event_loop: &ActiveEventLoop) -> HashMap<String, MonitorData> {
+        let mut monitor_map = HashMap::new();
+        for monitor in event_loop.available_monitors() {
+            let mut resolution_map: HashMap<Resolution, HashMap<u32, VideoModeHandle>> =
+                HashMap::new();
+            for monitor_handle in monitor.video_modes() {
+                let resolution = Resolution::from_size(monitor.size());
+
+                if !resolution_map.contains_key(&resolution) {
+                    resolution_map.insert(resolution.clone(), HashMap::new());
+                }
+
+                let frequency_map = resolution_map.get_mut(&resolution).expect("we just added");
+
+                let refresh_rate = monitor_handle.refresh_rate_millihertz();
+                frequency_map.insert(refresh_rate, monitor_handle);
+            }
+            let monitor_name = monitor.name().expect("we have a name");
+            let monitor_data = MonitorData {
+                name: monitor_name.clone(),
+                monitor: monitor,
+                mode_lookup: resolution_map,
+            };
+            monitor_map.insert(monitor_name, monitor_data);
+        }
+        monitor_map
+    }
 }
 
 impl ApplicationHandler<Message> for WindowHandler {
-    fn resumed(&mut self, _event_loop: &ActiveEventLoop) {
+    fn resumed(&mut self, event_loop: &ActiveEventLoop) {
+        let monitor_data = WindowHandler::gather_monitor_info(event_loop);
         for (_, windows) in self.windows.iter_mut() {
-            WindowHandler::configure_running_window(windows);
+            WindowHandler::configure_running_window(windows, &monitor_data);
         }
     }
 
