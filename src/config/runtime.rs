@@ -64,27 +64,18 @@ impl RuntimeConfig {
             name: String::from("other monitor"),
             id: 3,
             sink: SinkType::OpenGLWindow {
-                full_screen: super::sink::FullScreenMode::Borderless {
-                    name: String::from("\\\\.\\DISPLAY2"),
+                full_screen: super::sink::FullScreenMode::Exclusive {
+                    info: MonitorInfo {
+                        name: String::from("\\\\.\\DISPLAY2"),
+                        resolution: Resolution {
+                            width: 2560,
+                            height: 1440,
+                        },
+                        refresh_rate: 120000,
+                    },
                 },
             },
         };
-        // let sink_three: SinkConfig = SinkConfig {
-        // name: String::from("other monitor"),
-        // id: 3,
-        // sink: SinkType::OpenGLWindow {
-        // full_screen: super::sink::FullScreenMode::Exclusive {
-        // info: MonitorInfo {
-        // name: String::from("\\\\.\\DISPLAY2"),
-        // resolution: Resolution {
-        // width: 2560,
-        // height: 1440,
-        // },
-        // refresh_rate: 120000,
-        // },
-        // },
-        // },
-        // };
         let sinks = Vec::from([sink_one, sink_two, sink_three]);
 
         let regio_one: RegionConfig = RegionConfig {
