@@ -31,9 +31,18 @@ impl RuntimeConfig {
         let source_one: SourceConfig = SourceConfig {
             name: String::from("test source"),
             id: 1,
-            source: SourceType::Test {},
+            source: crate::config::source::SourceType::Test(super::source::Test {}),
         };
-        let sources = Vec::from([source_one]);
+        let source_two: SourceConfig = SourceConfig {
+            name: String::from("uri source"),
+            id: 2,
+            source: crate::config::source::SourceType::URI(super::source::URI {
+                uri: String::from(
+                    "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm",
+                ),
+            }),
+        };
+        let sources = Vec::from([source_one, source_two]);
 
         let sink_one: SinkConfig = SinkConfig {
             name: String::from("main monitor"),
@@ -55,7 +64,7 @@ impl RuntimeConfig {
         let region_two: RegionConfig = RegionConfig {
             name: String::from("secondary region"),
             id: 2,
-            region: RegionType::Display { source: 1, sink: 2 },
+            region: RegionType::Display { source: 2, sink: 2 },
         };
         let regions = Vec::from([regio_one, region_two]);
 

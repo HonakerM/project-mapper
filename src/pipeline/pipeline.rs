@@ -10,6 +10,7 @@ use anyhow::Result;
 use gst::Element;
 use gst_gl::prelude::*;
 
+use crate::config::source::{self, SourceTypeConstructor};
 use crate::window_handler;
 use crate::{config, window_handler::WindowHandler};
 
@@ -75,36 +76,31 @@ impl MediaPipeline {
             let id = source_config.id;
             let mut name = id.to_string();
 
-            let mut src_element_option: Option<Element> = None;
-            match source_config.source {
-                config::source::SourceType::Test {} => {
-                    println!("creating test source {id}");
-                    name = format!("test-{}", id);
-                    src_element_option = Some(source_config.source.create_element(name.clone())?);
-                }
-            }
+            // Get source element from config
+            let src_element = source_config.source.create_element(name.clone())?;
 
-            if let Some(src_element) = src_element_option {
-                // Add element to pipeline
-                pipeline.add(&src_element)?;
+            // Add element to pipeline and configure it
+            pipeline.add(&src_element)?;
+            source_config
+                .source
+                .initialize_element(&src_element, &pipeline);
 
-                // Add tee to src element to allow multiple linkages
-                let tee_name: String = format!("tee-{}", name);
-                let src_tee = gst::ElementFactory::make("tee").name(tee_name).build()?;
-                pipeline.add(&src_tee)?;
+            // Add tee to src element to allow multiple linkages
+            let tee_name: String = format!("tee-{}", name);
+            let src_tee = gst::ElementFactory::make("tee").name(tee_name).build()?;
+            pipeline.add(&src_tee)?;
 
-                // Add sync elements before linking
-                src_element.sync_state_with_parent()?;
-                src_tee.sync_state_with_parent()?;
+            // Add sync elements before linking
+            src_element.sync_state_with_parent()?;
+            src_tee.sync_state_with_parent()?;
 
-                // link elements and add mapping for this id to the tee
-                src_element.link(&src_tee)?;
-                src_elements.insert(id, src_tee.clone());
+            // link elements and add mapping for this id to the tee
+            src_element.link(&src_tee)?;
+            src_elements.insert(id, src_tee.clone());
 
-                // Add elements to list
-                elements.push(src_element);
-                elements.push(src_tee);
-            }
+            // Add elements to list
+            elements.push(src_element);
+            elements.push(src_tee);
         }
 
         // construct sinks
