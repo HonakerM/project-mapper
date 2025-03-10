@@ -68,20 +68,13 @@ impl WindowData {
     }
 }
 
-#[derive(Clone)]
-struct AppSinkData {
-    window_id: Option<WindowId>,
-    config: crate::config::sink::SinkConfig,
-}
-
 #[derive(Debug)]
 pub(crate) enum Message {
-    Frame(gst_video::VideoInfo, gst::Buffer, glib::GString),
+    Frame(gst_video::VideoInfo, gst::Buffer, WindowId),
     BusMessage(gst::Message),
 }
 
 pub struct WindowHandler {
-    sink_mapping: HashMap<glib::GString, AppSinkData>,
     windows: HashMap<WindowId, WindowData>,
     event_proxy: winit::event_loop::EventLoopProxy<Message>,
     event_sender: mpsc::Sender<events::RuntimeEvent>,
@@ -93,7 +86,6 @@ impl WindowHandler {
         event_sender: mpsc::Sender<events::RuntimeEvent>,
     ) -> WindowHandler {
         WindowHandler {
-            sink_mapping: HashMap::new(),
             windows: HashMap::new(),
             event_proxy: event_proxy,
             event_sender: event_sender,
@@ -109,6 +101,11 @@ impl WindowHandler {
     ) {
         let event_proxy = self.event_proxy.clone();
         let appsink_id = sink_name.clone();
+
+        let window_data = self
+            .create_window(appsink_id.clone(), &appsink, event_loop)
+            .expect("we get a result");
+        let window_id = window_data.window.id();
 
         appsink.set_callbacks(
             gst_app::AppSinkCallbacks::builder()
@@ -150,9 +147,8 @@ impl WindowHandler {
                             meta.set_sync_point(&context);
                         }
                     }
-                    let name = sink_name.clone();
                     event_proxy
-                        .send_event(Message::Frame(info, buffer, name))
+                        .send_event(Message::Frame(info, buffer, window_id))
                         .map(|()| gst::FlowSuccess::Ok)
                         .map_err(|e| {
                             element_error!(
@@ -166,25 +162,13 @@ impl WindowHandler {
                 .build(),
         );
 
-        let window_data = self
-            .create_window(appsink_id.clone(), appsink, event_loop)
-            .expect("we get a result");
-        let window_id = window_data.window.id();
-
-        self.windows.insert(window_id, window_data);
-        self.sink_mapping.insert(
-            appsink_id,
-            AppSinkData {
-                config: config,
-                window_id: Some(window_id),
-            },
-        );
+        self.windows.insert(window_id.clone(), window_data);
     }
 
     fn create_window(
         &mut self,
         name: glib::GString,
-        appsink: gst_app::AppSink,
+        appsink: &gst_app::AppSink,
         event_loop: &winit::event_loop::EventLoop<Message>,
     ) -> Result<WindowData> {
         let window_attributes = cfg!(windows).then(|| {
@@ -371,39 +355,6 @@ impl WindowHandler {
 
         let gl_config = not_current_gl_context.config();
         let gl_display = gl_config.display();
-        // let primary_monitor = event_loop.primary_monitor();
-        // for monitor in event_loop.available_monitors() {
-        //     let intro = if primary_monitor.as_ref() == Some(&monitor) {
-        //         "Primary monitor"
-        //     } else {
-        //         "Monitor"
-        //     };
-        //     if let Some(name) = monitor.name() {
-        //         println!("{intro}: {name}");
-        //     } else {
-        //         println!("{intro}: [no name]");
-        //     }
-        //     let PhysicalSize { width, height } = monitor.size();
-        //     println!(
-        //         "  Current mode: {width}x{height}{}",
-        //         if let Some(m_hz) = monitor.refresh_rate_millihertz() {
-        //             format!(" @ {}.{} Hz", m_hz / 1000, m_hz % 1000)
-        //         } else {
-        //             String::new()
-        //         }
-        //     );
-        //     println!("  Available modes (width x height x bit-depth):");
-        //     for mode in monitor.video_modes() {
-        //         let PhysicalSize { width, height } = mode.size();
-        //         let bits = mode.bit_depth();
-        //         let m_hz = mode.refresh_rate_millihertz();
-        //         println!(
-        //             "    {width}x{height}x{bits} @ {}.{} Hz",
-        //             m_hz / 1000,
-        //             m_hz % 1000
-        //         );
-        //     }
-        // }
 
         //window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(event_loop.primary_monitor())));
         let attrs = window_data
@@ -471,7 +422,6 @@ impl ApplicationHandler<Message> for WindowHandler {
                 println!("The close button was pressed; stopping");
                 self.event_sender.send(events::RuntimeEvent::UserExit());
                 self.windows.clear();
-                self.sink_mapping.clear();
                 event_loop.exit();
             }
             winit::event::WindowEvent::Resized(size) => {
@@ -506,13 +456,9 @@ impl ApplicationHandler<Message> for WindowHandler {
     fn user_event(&mut self, _event_loop: &winit::event_loop::ActiveEventLoop, event: Message) {
         match event {
             // Receive a frame
-            Message::Frame(info, buffer, sink_id) => {
+            Message::Frame(info, buffer, window_id) => {
                 // ! This might be slow?
-                let app_data = self.sink_mapping.get(&sink_id).expect("there should be");
-                let window_data = self
-                    .windows
-                    .get(&app_data.window_id.expect("we need a window id"))
-                    .expect("a value");
+                let window_data = self.windows.get(&window_id).expect("a value");
 
                 if let Ok(frame) = gst_gl::GLVideoFrame::from_buffer_readable(buffer, &info) {
                     window_data.redraw(frame);
