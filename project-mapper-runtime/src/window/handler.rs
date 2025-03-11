@@ -25,11 +25,7 @@ use winit::event_loop::ActiveEventLoop;
 use winit::monitor::{MonitorHandle, VideoModeHandle};
 use winit::window::{Window, WindowId};
 
-struct MonitorData {
-    name: String,
-    monitor: MonitorHandle,
-    mode_lookup: HashMap<Resolution, HashMap<RefreshRate, VideoModeHandle>>,
-}
+use super::utils::MonitorData;
 
 struct WindowData {
     window: Window,
@@ -475,50 +471,11 @@ impl WindowHandler {
             }
         }
     }
-
-    fn gather_monitor_info(event_loop: &ActiveEventLoop) -> HashMap<String, MonitorData> {
-        let mut monitor_map = HashMap::new();
-        for monitor in event_loop.available_monitors() {
-            let mut resolution_map: HashMap<Resolution, HashMap<RefreshRate, VideoModeHandle>> =
-                HashMap::new();
-            for monitor_handle in monitor.video_modes() {
-                let size = monitor.size();
-                let resolution = Resolution {
-                    height: size.height,
-                    width: size.width,
-                };
-
-                if !resolution_map.contains_key(&resolution) {
-                    resolution_map.insert(resolution.clone(), HashMap::new());
-                }
-
-                let frequency_map = resolution_map.get_mut(&resolution).expect("we just added");
-
-                let refresh_rate_mhz: RefreshRate =
-                    RefreshRate::from(monitor_handle.refresh_rate_millihertz());
-                frequency_map.insert(refresh_rate_mhz, monitor_handle);
-            }
-            let monitor_name =
-                WindowHandler::sanitize_monitor_name(monitor.name().expect("we have a name"));
-
-            let monitor_data = MonitorData {
-                name: monitor_name.clone(),
-                monitor: monitor,
-                mode_lookup: resolution_map,
-            };
-            monitor_map.insert(monitor_name, monitor_data);
-        }
-        monitor_map
-    }
-
-    fn sanitize_monitor_name(monitor_name: String) -> String {
-        monitor_name.replace("\\", "")
-    }
 }
 
 impl ApplicationHandler<Message> for WindowHandler {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        let monitor_data = WindowHandler::gather_monitor_info(event_loop);
+        let monitor_data = super::utils::gather_monitor_info(event_loop);
         for (_, windows) in self.windows.iter_mut() {
             WindowHandler::configure_running_window(windows, &monitor_data);
         }

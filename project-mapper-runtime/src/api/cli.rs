@@ -1,3 +1,5 @@
+use std::fs;
+
 use clap::Parser;
 
 use crate::runtime;
@@ -18,11 +20,21 @@ impl Run {
 }
 
 #[derive(Parser)]
-pub struct GetAvailableConfig {}
+pub struct GetAvailableConfig {
+    #[clap(short, long)]
+    pub config_path: Option<String>,
+}
 
 impl GetAvailableConfig {
     pub fn run(&self) -> Result<()> {
-        Ok(())
+        let available_config = runtime::options::generate_options()?;
+        let config_string = serde_json::to_string(&available_config)?;
+        if let Some(path) = &self.config_path {
+            Ok(fs::write(path, config_string)?)
+        } else {
+            println!("{}", config_string);
+            Ok(())
+        }
     }
 }
 

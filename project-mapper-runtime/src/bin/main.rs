@@ -15,10 +15,10 @@ use clap::Parser;
 use gst_gl::prelude::*;
 use std::{env, fs};
 
-#[path = "../runtime/runtime.rs"]
+#[path = "../runtime/mod.rs"]
 mod runtime;
 
-#[path = "../window/handler.rs"]
+#[path = "../window/mod.rs"]
 mod window_handler;
 
 #[path = "../render/opengl.rs"]

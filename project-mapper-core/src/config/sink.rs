@@ -1,8 +1,11 @@
 use std::mem;
 
+use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
 
 pub type RefreshRate = u32;
+
+pub type ResolutionJson = String;
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Debug)]
 pub struct Resolution {
@@ -10,12 +13,29 @@ pub struct Resolution {
     pub height: u32,
 }
 
+impl Resolution {
+    pub fn to_json(&self) -> ResolutionJson {
+        format!("{}x{}", self.width, self.height)
+    }
+    pub fn from_json(res: &ResolutionJson) -> Result<Resolution> {
+        let options: Vec<&str> = res.split("x").collect();
+        let width = options.get(0).ok_or(Error::msg("no width"))?;
+        let height = options.get(1).ok_or(Error::msg("no height"))?;
+
+        let width = width.parse::<u32>()?;
+        let height = height.parse::<u32>()?;
+        Ok(Resolution {
+            width: width,
+            height: height,
+        })
+    }
+}
 impl Eq for Resolution {}
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MonitorInfo {
     pub name: String,
-    pub resolution: Resolution,
+    pub resolution: ResolutionJson,
     pub refresh_rate_mhz: RefreshRate,
 }
 

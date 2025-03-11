@@ -37,11 +37,6 @@ impl Runtime {
         // input, and uses significantly less power/CPU time than ControlFlow::Poll.
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
-        // ControlFlow::Wait pauses the event loop if no events are available to process.
-        // This is ideal for non-game applications that only update in response to user
-        // input, and uses significantly less power/CPU time than ControlFlow::Poll.
-        event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
-
         let (send, recv) = mpsc::channel();
 
         let mut window_handler =
