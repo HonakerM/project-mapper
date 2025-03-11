@@ -17,7 +17,7 @@ use gst_gl::prelude::GLContextExt;
 use gst_video::VideoFrameExt;
 use project_mapper_core::config::events;
 use project_mapper_core::config::options::{
-    BorderlessOptions, ExclusiveOptions, FullscreenOptions, WindowOptions,
+    BorderlessOptions, ExclusiveOptions, FullscreenOptions, SinkTypeOptions, WindowOptions,
 };
 use project_mapper_core::config::sink::{RefreshRate, Resolution, ResolutionJson};
 use raw_window_handle::HasWindowHandle;
@@ -64,22 +64,22 @@ impl ApplicationHandler<Message> for ConfigHandler {
             monitor_names.push(name.clone());
         }
 
-        let fullscreen_options = FullscreenOptions {
-            exclusive: ExclusiveOptions {
-                type_name: String::from("Exclusive"),
+        let fullscreen_options = vec![
+            FullscreenOptions::Exclusive(ExclusiveOptions {
                 monitor_configs: monitor_configs,
-            },
-            windowed: WindowOptions {
-                type_name: String::from("Windowed"),
-            },
-            borderless: BorderlessOptions {
-                type_name: String::from("Borderless"),
+            }),
+            FullscreenOptions::Windowed(WindowOptions {}),
+            FullscreenOptions::Borderless(BorderlessOptions {
                 monitors: monitor_names,
-            },
+            }),
+        ];
+
+        let sink_options = SinkTypeOptions::OpenGLWindow {
+            full_screen_modes: fullscreen_options,
         };
 
         self.event_sender
-            .send(events::OptionEvent::OpenGLWindowOptions(fullscreen_options));
+            .send(events::OptionEvent::OpenGLWindowOptions(sink_options));
 
         // close event loop after sending configs
         event_loop.exit();

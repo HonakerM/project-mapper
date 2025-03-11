@@ -1,4 +1,4 @@
-use super::options::FullscreenOptions;
+use super::options::SinkTypeOptions;
 
 pub enum RuntimeEvent {
     UserExit(),
@@ -6,5 +6,5 @@ pub enum RuntimeEvent {
 }
 
 pub enum OptionEvent {
-    OpenGLWindowOptions(FullscreenOptions),
+    OpenGLWindowOptions(SinkTypeOptions),
 }

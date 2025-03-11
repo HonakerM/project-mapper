@@ -14,39 +14,32 @@ pub enum RegionType {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct WindowOptions {
-    pub type_name: String,
-}
+pub struct WindowOptions {}
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct BorderlessOptions {
-    pub type_name: String,
     pub monitors: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ExclusiveOptions {
-    pub type_name: String,
     pub monitor_configs: HashMap<String, HashMap<ResolutionJson, Vec<RefreshRate>>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct FullscreenOptions {
-    pub windowed: WindowOptions,
-    pub borderless: BorderlessOptions,
-    pub exclusive: ExclusiveOptions,
+#[serde(tag = "type")]
+pub enum FullscreenOptions {
+    Windowed(WindowOptions),
+    Borderless(BorderlessOptions),
+    Exclusive(ExclusiveOptions),
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type")]
 pub enum SinkTypeOptions {
-    OpenGLWindow { full_screen: FullscreenOptions },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SinkOption {
-    pub type_name: String,
-    pub type_options: SinkTypeOptions,
+    OpenGLWindow {
+        full_screen_modes: Vec<FullscreenOptions>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -54,11 +47,6 @@ pub struct SinkOption {
 pub enum SourceTypeOptions {
     Test {},
     URI { uri_types: Vec<String> },
-}
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SourceOption {
-    pub type_name: String,
-    pub type_options: SourceTypeOptions,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -68,14 +56,8 @@ pub enum RegionTypeOptions {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct RegionOption {
-    pub type_name: String,
-    pub type_options: RegionTypeOptions,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct AvailableConfig {
-    pub sinks: Vec<SinkOption>,
-    pub sources: Vec<SourceOption>,
-    pub regions: Vec<RegionOption>,
+    pub sinks: Vec<SinkTypeOptions>,
+    pub sources: Vec<SourceTypeOptions>,
+    pub regions: Vec<RegionTypeOptions>,
 }

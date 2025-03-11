@@ -3,10 +3,7 @@ use std::sync::mpsc;
 use glutin::api::egl::config;
 use project_mapper_core::config::{
     events::OptionEvent,
-    options::{
-        AvailableConfig, RegionOption, RegionTypeOptions, SinkOption, SinkTypeOptions,
-        SourceOption, SourceTypeOptions,
-    },
+    options::{AvailableConfig, RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
 };
 use raw_window_handle::HasDisplayHandle;
 
@@ -19,14 +16,9 @@ pub fn generate_options() -> Result<AvailableConfig> {
 
     let opengl_sink = generate_opengl_option()?;
     let uri_source = generate_uri_option()?;
-    let test_source = SourceOption {
-        type_name: "Test".to_owned(),
-        type_options: SourceTypeOptions::Test {},
-    };
-    let display_region = RegionOption {
-        type_name: "Display".to_owned(),
-        type_options: RegionTypeOptions::Display {},
-    };
+    let test_source = SourceTypeOptions::Test {};
+    let display_region = RegionTypeOptions::Display {};
+
     Ok(AvailableConfig {
         sinks: vec![opengl_sink],
         sources: vec![uri_source, test_source],
@@ -34,7 +26,7 @@ pub fn generate_options() -> Result<AvailableConfig> {
     })
 }
 
-pub fn generate_opengl_option() -> Result<SinkOption> {
+pub fn generate_opengl_option() -> Result<SinkTypeOptions> {
     let event_loop: winit::event_loop::EventLoop<window_handler::Message> =
         winit::event_loop::EventLoop::with_user_event().build()?;
 
@@ -49,16 +41,11 @@ pub fn generate_opengl_option() -> Result<SinkOption> {
     let event = recv.recv()?;
 
     match event {
-        OptionEvent::OpenGLWindowOptions(full_screen) => Ok(SinkOption {
-            type_name: String::from("OpenGLWindow"),
-            type_options: SinkTypeOptions::OpenGLWindow {
-                full_screen: full_screen,
-            },
-        }),
+        OptionEvent::OpenGLWindowOptions(options) => Ok(options),
     }
 }
 
-pub fn generate_uri_option() -> Result<SourceOption> {
+pub fn generate_uri_option() -> Result<SourceTypeOptions> {
     let mut uri_types = vec![];
 
     let factory_types = vec![
@@ -76,10 +63,7 @@ pub fn generate_uri_option() -> Result<SourceOption> {
         }
     }
 
-    Ok(SourceOption {
-        type_name: String::from("URI"),
-        type_options: SourceTypeOptions::URI {
-            uri_types: uri_types,
-        },
+    Ok(SourceTypeOptions::URI {
+        uri_types: uri_types,
     })
 }
