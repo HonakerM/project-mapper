@@ -1,4 +1,8 @@
+use std::mem;
+
 use serde::{Deserialize, Serialize};
+
+pub type RefreshRate = u32;
 
 #[derive(Serialize, Deserialize, Clone, Hash, PartialEq, Debug)]
 pub struct Resolution {
@@ -12,7 +16,7 @@ impl Eq for Resolution {}
 pub struct MonitorInfo {
     pub name: String,
     pub resolution: Resolution,
-    pub refresh_rate: u32,
+    pub refresh_rate_mhz: RefreshRate,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

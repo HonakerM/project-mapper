@@ -16,7 +16,7 @@ use gst_gl::GLVideoFrameExt;
 use gst_gl::prelude::GLContextExt;
 use gst_video::VideoFrameExt;
 use project_mapper_core::config::events;
-use project_mapper_core::config::sink::Resolution;
+use project_mapper_core::config::sink::{RefreshRate, Resolution};
 use raw_window_handle::HasWindowHandle;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
@@ -28,7 +28,7 @@ use winit::window::{Window, WindowId};
 struct MonitorData {
     name: String,
     monitor: MonitorHandle,
-    mode_lookup: HashMap<Resolution, HashMap<u32, VideoModeHandle>>,
+    mode_lookup: HashMap<Resolution, HashMap<RefreshRate, VideoModeHandle>>,
 }
 
 struct WindowData {
@@ -461,7 +461,7 @@ impl WindowHandler {
                                     .mode_lookup
                                     .get(&info.resolution)
                                     .ok_or(Error::msg("unknown resolution"))?
-                                    .get(&info.refresh_rate)
+                                    .get(&info.refresh_rate_mhz)
                                     .ok_or(Error::msg("unknown refresh rate"))?;
                                 window_data.window.set_fullscreen(Some(
                                     winit::window::Fullscreen::Exclusive(video_mode.clone()),
@@ -479,7 +479,7 @@ impl WindowHandler {
     fn gather_monitor_info(event_loop: &ActiveEventLoop) -> HashMap<String, MonitorData> {
         let mut monitor_map = HashMap::new();
         for monitor in event_loop.available_monitors() {
-            let mut resolution_map: HashMap<Resolution, HashMap<u32, VideoModeHandle>> =
+            let mut resolution_map: HashMap<Resolution, HashMap<RefreshRate, VideoModeHandle>> =
                 HashMap::new();
             for monitor_handle in monitor.video_modes() {
                 let size = monitor.size();
@@ -494,9 +494,9 @@ impl WindowHandler {
 
                 let frequency_map = resolution_map.get_mut(&resolution).expect("we just added");
 
-                let refresh_rate = monitor_handle.refresh_rate_millihertz();
-
-                frequency_map.insert(refresh_rate, monitor_handle);
+                let refresh_rate_mhz: RefreshRate =
+                    RefreshRate::from(monitor_handle.refresh_rate_millihertz());
+                frequency_map.insert(refresh_rate_mhz, monitor_handle);
             }
             let monitor_name =
                 WindowHandler::sanitize_monitor_name(monitor.name().expect("we have a name"));
