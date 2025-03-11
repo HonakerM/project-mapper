@@ -1,35 +1,18 @@
 use std::collections::HashMap;
-use std::num::NonZeroU32;
 use std::sync::mpsc;
 
-use crate::opengl::{self, gl};
-use anyhow::{Context, Error, Result};
-use glutin::config::{GetGlConfig, GlConfig};
-use glutin::context::AsRawContext;
-use glutin::display::{AsRawDisplay, GetGlDisplay};
-use glutin::prelude::{GlDisplay, NotCurrentGlContext, PossiblyCurrentGlContext};
-use glutin::surface::GlSurface;
-use glutin_winit::GlWindow;
-use gst::prelude::{ElementExt, GstObjectExt, PadExt, PadExtManual};
-use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
-use gst_gl::GLVideoFrameExt;
-use gst_gl::prelude::GLContextExt;
-use gst_video::VideoFrameExt;
+use gst::prelude::PadExt;
 use project_mapper_core::config::events;
 use project_mapper_core::config::options::{
     BorderlessOptions, ExclusiveOptions, FullscreenOptions, SinkTypeOptions, WindowOptions,
 };
-use project_mapper_core::config::sink::{RefreshRate, Resolution, ResolutionJson};
-use raw_window_handle::HasWindowHandle;
+use project_mapper_core::config::sink::{RefreshRate, ResolutionJson};
 use winit::application::ApplicationHandler;
-use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::monitor::{MonitorHandle, VideoModeHandle};
-use winit::window::{Window, WindowId};
+use winit::window::WindowId;
 
 use super::Message;
-use super::utils::MonitorData;
 
 pub struct ConfigHandler {
     event_sender: mpsc::Sender<events::OptionEvent>,

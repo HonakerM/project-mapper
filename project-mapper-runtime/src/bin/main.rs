@@ -13,7 +13,6 @@ use anyhow::Result;
 use api::cli::Cli;
 use clap::Parser;
 use gst_gl::prelude::*;
-use std::{env, fs};
 
 #[path = "../runtime/mod.rs"]
 mod runtime;

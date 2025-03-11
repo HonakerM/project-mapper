@@ -16,13 +16,11 @@ use gst_gl::GLVideoFrameExt;
 use gst_gl::prelude::GLContextExt;
 use gst_video::VideoFrameExt;
 use project_mapper_core::config::events;
-use project_mapper_core::config::sink::{RefreshRate, Resolution};
 use raw_window_handle::HasWindowHandle;
 use winit::application::ApplicationHandler;
 use winit::dpi::PhysicalSize;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::monitor::{MonitorHandle, VideoModeHandle};
 use winit::window::{Window, WindowId};
 
 use super::utils::MonitorData;
@@ -201,14 +199,6 @@ impl WindowHandler {
                     .unwrap()
             })
             .expect("Failed to build display");
-        println!(
-            "Picked a config with {} samples and transparency {}. Pixel format: {:?}",
-            gl_config.num_samples(),
-            gl_config.supports_transparency().unwrap_or(false),
-            gl_config.color_buffer_type()
-        );
-        println!("Config supports GL API(s) {:?}", gl_config.api());
-
         let window = window.expect("give me a window");
         let window_handle = window.window_handle().expect("a window handle");
 
@@ -216,8 +206,6 @@ impl WindowHandler {
         // the config.
         let gl_display = gl_config.display();
         let raw_gl_display = gl_display.raw_display();
-
-        println!("Using raw display connection {:?}", raw_gl_display);
 
         // The context creation part. It can be created before surface and that's how
         // it's expected in multithreaded + multiwindow operation mode, since you
@@ -252,7 +240,6 @@ impl WindowHandler {
         .context("failed to create context")?;
 
         let raw_gl_context = not_current_gl_context.raw_context();
-        println!("Using raw GL context {:?}", raw_gl_context);
 
         #[cfg(not(any(target_os = "linux", windows)))]
         compile_error!("This example only has Linux and Windows support");

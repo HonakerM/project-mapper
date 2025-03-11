@@ -1,11 +1,9 @@
 use std::sync::mpsc;
 
-use glutin::api::egl::config;
 use project_mapper_core::config::{
     events::OptionEvent,
     options::{AvailableConfig, RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
 };
-use raw_window_handle::HasDisplayHandle;
 
 use crate::window_handler::{self, config::ConfigHandler};
 

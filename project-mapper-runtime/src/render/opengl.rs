@@ -154,7 +154,6 @@ pub fn load(gl_display: &impl glutin::display::GlDisplay) -> Gl {
         let version = CStr::from_ptr(version.cast());
         version.to_string_lossy()
     };
-    println!("OpenGL version {version}");
     let (program, attr_position, attr_texture, vao, vertex_buffer, vbo_indices) = unsafe {
         let vs = gl.CreateShader(gl::VERTEX_SHADER);
         gl.ShaderSource(vs, 1, [VS_SRC.as_ptr() as *const _].as_ptr(), ptr::null());

@@ -30,10 +30,7 @@
                     "type": "Exclusive",
                     "info": {
                         "name": ".DISPLAY2",
-                        "resolution": {
-                            "width": 2560,
-                            "height": 1440
-                        },
+                        "resolution": "2560x1440",
                         "refresh_rate_mhz": 120000
                     }
                 }
