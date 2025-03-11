@@ -36,12 +36,8 @@ pub mod main_wrapper;
 fn entrypoint() -> Result<()> {
     let args = Cli::parse();
     match &args {
-        Cli::Run(run) => {
-            let config = project_mapper_core::loader::load_config(&run.config_path)?;
-            let mut app = runtime::Runtime::new(config)?;
-            app.run()
-        }
-        Cli::GetAvailableConfig(gac) => Ok(()),
+        Cli::Run(run) => run.run(),
+        Cli::GetAvailableConfig(gac) => gac.run(),
     }
 }
 
