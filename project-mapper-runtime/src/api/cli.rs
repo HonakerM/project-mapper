@@ -13,6 +13,7 @@ pub struct Run {
 
 impl Run {
     pub fn run(&self) -> Result<()> {
+        println!("attempting to load config from '{}'", self.config_path);
         let config = project_mapper_core::loader::load_config(&self.config_path)?;
         let mut app = runtime::Runtime::new(config)?;
         app.run()

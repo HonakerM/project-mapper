@@ -483,8 +483,9 @@ impl ApplicationHandler<Message> for WindowHandler {
                 // Notable platforms here are Wayland and macOS, other don't require it
                 // and the function is no-op, but it's wise to resize it for portability
                 // reasons.
-                let window_data = self.windows.get(&id).expect("a window should exist");
-                window_data.resize(size);
+                if let Some(window_data) = self.windows.get(&id) {
+                    window_data.resize(size);
+                }
             }
             WindowEvent::RedrawRequested => {
                 // Redraw the application.
@@ -500,8 +501,9 @@ impl ApplicationHandler<Message> for WindowHandler {
                 // You only need to call this if you've determined that you need to redraw in
                 // applications which do not always need to. Applications that redraw continuously
                 // can render here instead.
-                let window_data = self.windows.get(&id).expect("a window should exist");
-                window_data.window.request_redraw();
+                if let Some(window_data) = self.windows.get(&id) {
+                    window_data.window.request_redraw();
+                }
             }
             _ => (),
         }

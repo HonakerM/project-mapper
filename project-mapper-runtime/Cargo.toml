@@ -43,5 +43,5 @@ gl_generator = { version = "0.14"}
 
 
 [[bin]]
-name = "runtime"
-path = "./src/bin/main.rs"
+name = "project-mapper-runtime"
+path = "./src/main.rs"

@@ -8,7 +8,7 @@ default-members = [
 
 members = [
   "project-mapper-runtime",
-  "project-mapper-core",
+  "project-mapper-core", "project-mapper-gui",
 ]
 
 [workspace.package]

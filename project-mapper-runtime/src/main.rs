@@ -14,22 +14,22 @@ use api::cli::Cli;
 use clap::Parser;
 use gst_gl::prelude::*;
 
-#[path = "../runtime/mod.rs"]
+#[path = "./runtime/mod.rs"]
 mod runtime;
 
-#[path = "../window/mod.rs"]
+#[path = "./window/mod.rs"]
 mod window_handler;
 
-#[path = "../render/opengl.rs"]
+#[path = "./render/opengl.rs"]
 mod opengl;
 
-#[path = "../pipeline/pipeline.rs"]
+#[path = "./pipeline/pipeline.rs"]
 mod pipeline;
 
-#[path = "../api/mod.rs"]
+#[path = "./api/mod.rs"]
 mod api;
 
-#[path = "../utils/main_wrapper.rs"]
+#[path = "./utils/main_wrapper.rs"]
 pub mod main_wrapper;
 
 fn entrypoint() -> Result<()> {
