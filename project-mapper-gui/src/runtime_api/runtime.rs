@@ -7,8 +7,8 @@ use std::{
 };
 
 use anyhow::{Error, Result};
-use project_mapper_core::config::{
-    env::EnvConfig, options::AvailableConfig, runtime::RuntimeConfig,
+use crate::config::{
+    EnvConfig,
 };
 use tempdir::TempDir;
 
@@ -18,15 +18,13 @@ pub struct RunApi {
 }
 
 impl RunApi {
-    pub fn construct_and_start_runtime(config: RuntimeConfig) -> Result<RunApi> {
+    pub fn construct_and_start_runtime(config: &String) -> Result<RunApi> {
         let env_config = EnvConfig::get_config();
-
-        let config_json = serde_json::to_string(&config)?;
 
         let temp_dir = TempDir::new("temp_config")?;
 
         let file_path = temp_dir.path().join("config.yml");
-        fs::write(&file_path, config_json)?;
+        fs::write(&file_path, config)?;
         let file_path = file_path.to_str().ok_or(Error::msg("no temp file path"))?;
 
         let mut command_output = Command::new(env_config.runtime_bin)
