@@ -11,3 +11,9 @@ serde.workspace = true
 serde_json.workspace = true
 anyhow = "1.0"
 tempdir = "0.3"
+
+
+
+[[bin]]
+name = "project-mapper-gui"
+path = "./src/main.rs"
