@@ -6,10 +6,8 @@ use std::{
     time::Duration,
 };
 
+use crate::config::EnvConfig;
 use anyhow::{Error, Result};
-use crate::config::{
-    EnvConfig,
-};
 use tempdir::TempDir;
 
 pub struct RunApi {

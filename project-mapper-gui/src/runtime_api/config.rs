@@ -1,6 +1,6 @@
 use std::process::Command;
 
-use crate::config::{EnvConfig};
+use crate::config::EnvConfig;
 
 use anyhow::Result;
 
@@ -11,9 +11,7 @@ pub fn get_available_config() -> Result<json::JsonValue> {
         .arg("get-available-config")
         .output()?;
 
-    let output = String::from_utf8(
-        command_output.stdout
-    )?;
+    let output = String::from_utf8(command_output.stdout)?;
     let config = json::parse(&output)?;
     Ok(config)
 }

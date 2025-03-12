@@ -48,18 +48,14 @@ impl SimpleUI {
         ui.add(egui::TextEdit::singleline(uri).hint_text("URI"));
         ui.end_row();
 
-
         ui.label("Fullscreen Mode");
-        
+
         egui::ComboBox::from_label("")
             .selected_text(format!("{mode:?}"))
-            .show_ui(ui, |ui| {
-            });
+            .show_ui(ui, |ui| {});
         ui.end_row();
 
         ui.label("Fullscreen Mode");
-
-
     }
 }
 impl eframe::App for SimpleUI {

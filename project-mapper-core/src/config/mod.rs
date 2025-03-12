@@ -10,6 +10,3 @@ pub mod sink;
 
 #[path = "./options.rs"]
 pub mod options;
-
-#[path = "./env.rs"]
-pub mod env;
