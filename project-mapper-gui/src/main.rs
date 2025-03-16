@@ -1,6 +1,6 @@
 use anyhow::Result;
 
-#[path = "./core/core.rs"]
+#[path = "./core/mod.rs"]
 pub mod core;
 
 #[path = "./runtime_api/mod.rs"]
@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     eframe::run_native(
         "My egui App",
         native_options,
-        Box::new(|cc| Ok(Box::new(core::SimpleUI::new(cc)?))),
+        Box::new(|cc| Ok(Box::new(core::simple_ui::SimpleUI::new(cc)?))),
     );
 
     Ok(())
