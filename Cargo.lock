@@ -2702,6 +2702,7 @@ dependencies = [
  "anyhow",
  "eframe",
  "json",
+ "project-mapper-core",
  "serde",
  "serde_json",
  "tempdir",

@@ -68,6 +68,11 @@ impl SimpleUI {
     }
 
     fn simple_ui_grid_contents(&mut self, ui: &mut egui::Ui) {
+        self.uri_source_ui(ui);
+        self.monitor_sink_ui(ui);
+    }
+
+    fn uri_source_ui(&mut self, ui: &mut egui::Ui) {
         let Self {
             config,
             uri,
@@ -77,77 +82,101 @@ impl SimpleUI {
             refresh_rate,
         } = self;
 
-        ui.label("Source");
-        ui.add(egui::TextEdit::singleline(uri).hint_text("URI"));
-        ui.end_row();
-
-        ui.label("Fullscreen Mode");
-
-        egui::ComboBox::from_id_salt("Fullscreen Mode")
-            .selected_text(format!("{mode:?}"))
-            .show_ui(ui, |ui| {
-                for ava_mode in config.full_screen_modes.clone() {
-                    ui.selectable_value(mode, ava_mode.clone(), ava_mode.clone());
-                }
+        egui::Grid::new("soure_grid")
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("Source");
+                ui.add(egui::TextEdit::singleline(uri).hint_text("URI"));
+                ui.end_row();
             });
-        ui.end_row();
+    }
 
-        if mode == EXCLUSIVE_FULLSCREEN_MODE || mode == BORDERLESS_FULLSCREEN_MODE {
-            ui.label("Monitor");
-            egui::ComboBox::from_id_salt("Monitor")
-                .selected_text(format!("{monitor:?}"))
-                .show_ui(ui, |ui| {
-                    for ava_monitors in config.monitors.keys() {
-                        ui.selectable_value(monitor, ava_monitors.clone(), ava_monitors.clone());
-                    }
-                });
-            ui.end_row();
+    fn monitor_sink_ui(&mut self, ui: &mut egui::Ui) {
+        let Self {
+            config,
+            uri,
+            mode,
+            monitor,
+            resolution,
+            refresh_rate,
+        } = self;
 
-            if mode == EXCLUSIVE_FULLSCREEN_MODE {
-                if let Some(monitor_config) = config.monitors.get(monitor) {
-                    ui.label("Resolution");
-                    egui::ComboBox::from_id_salt("Resolution")
-                        .selected_text(format!("{resolution:?}"))
+        egui::Grid::new("monitor_grid")
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label("Fullscreen Mode");
+
+                egui::ComboBox::from_id_salt("Fullscreen Mode")
+                    .selected_text(format!("{mode:?}"))
+                    .show_ui(ui, |ui| {
+                        for ava_mode in config.full_screen_modes.clone() {
+                            ui.selectable_value(mode, ava_mode.clone(), ava_mode.clone());
+                        }
+                    });
+                ui.end_row();
+
+                if mode == EXCLUSIVE_FULLSCREEN_MODE || mode == BORDERLESS_FULLSCREEN_MODE {
+                    ui.label("Monitor");
+                    egui::ComboBox::from_id_salt("Monitor")
+                        .selected_text(format!("{monitor:?}"))
                         .show_ui(ui, |ui| {
-                            let mut resolutions: Vec<Resolution> = monitor_config
-                                .keys()
-                                .map(|x| Resolution::from_json(x).expect("we can convert"))
-                                .collect::<Vec<Resolution>>();
-                            resolutions.sort();
-                            for possible_resolution in resolutions {
+                            for ava_monitors in config.monitors.keys() {
                                 ui.selectable_value(
-                                    resolution,
-                                    possible_resolution.to_json(),
-                                    possible_resolution.to_json(),
+                                    monitor,
+                                    ava_monitors.clone(),
+                                    ava_monitors.clone(),
                                 );
                             }
                         });
                     ui.end_row();
 
-                    if let Some(refresh_rates) = monitor_config.get(resolution) {
-                        let rr_text = (*refresh_rate / 1000);
+                    if mode == EXCLUSIVE_FULLSCREEN_MODE {
+                        if let Some(monitor_config) = config.monitors.get(monitor) {
+                            ui.label("Resolution");
+                            egui::ComboBox::from_id_salt("Resolution")
+                                .selected_text(format!("{resolution:?}"))
+                                .show_ui(ui, |ui| {
+                                    let mut resolutions: Vec<Resolution> = monitor_config
+                                        .keys()
+                                        .map(|x| Resolution::from_json(x).expect("we can convert"))
+                                        .collect::<Vec<Resolution>>();
+                                    resolutions.sort_by(|a, b| b.cmp(a));
+                                    for possible_resolution in resolutions {
+                                        ui.selectable_value(
+                                            resolution,
+                                            possible_resolution.to_json(),
+                                            possible_resolution.to_json(),
+                                        );
+                                    }
+                                });
+                            ui.end_row();
 
-                        ui.label("Refresh Rate");
-                        egui::ComboBox::from_id_salt("Refresh Rate")
-                            .selected_text(format!("{rr_text:?}"))
-                            .show_ui(ui, |ui| {
-                                for possible_refresh_rate in refresh_rates {
-                                    ui.selectable_value(
-                                        refresh_rate,
-                                        possible_refresh_rate.clone(),
-                                        (possible_refresh_rate / 1000).to_string(),
-                                    );
-                                }
-                            });
-                        ui.end_row();
+                            if let Some(refresh_rates) = monitor_config.get(resolution) {
+                                let rr_text = (*refresh_rate / 1000);
+
+                                ui.label("Refresh Rate");
+                                egui::ComboBox::from_id_salt("Refresh Rate")
+                                    .selected_text(format!("{rr_text:?}"))
+                                    .show_ui(ui, |ui| {
+                                        for possible_refresh_rate in refresh_rates {
+                                            ui.selectable_value(
+                                                refresh_rate,
+                                                possible_refresh_rate.clone(),
+                                                (possible_refresh_rate / 1000).to_string(),
+                                            );
+                                        }
+                                    });
+                                ui.end_row();
+                            }
+                        }
                     }
+                } else if mode == WINDOWED_FULLSCREEN_MODE {
+                    /* Maybe do something */
                 }
-            }
-        } else if mode == WINDOWED_FULLSCREEN_MODE {
-            /* Maybe do something */
-        }
+            });
     }
-
     fn ensure_good_defaults(&mut self) -> Result<()> {
         let mut default_monitor = self.monitor.clone();
         if default_monitor == "" {
@@ -203,12 +232,7 @@ impl eframe::App for SimpleUI {
 
             let mut ui_builder = egui::UiBuilder::new();
             ui.scope_builder(ui_builder, |ui| {
-                egui::Grid::new("my_grid")
-                    .num_columns(2)
-                    .striped(true)
-                    .show(ui, |ui| {
-                        self.simple_ui_grid_contents(ui);
-                    });
+                self.simple_ui_grid_contents(ui);
             });
         });
     }

@@ -1,4 +1,4 @@
-use std::mem;
+use std::{cmp::Ordering, mem};
 
 use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,16 @@ impl Resolution {
     }
 }
 impl Eq for Resolution {}
-
+impl Ord for Resolution {
+    fn cmp(&self, other: &Self) -> Ordering {
+        (self.width, self.height).cmp(&(other.width, other.height))
+    }
+}
+impl PartialOrd for Resolution {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MonitorInfo {
     pub name: String,
