@@ -8,6 +8,8 @@ pub mod runtime_api;
 
 #[path = "./config/mod.rs"]
 pub mod config;
+#[path = "./wigets/mod.rs"]
+pub mod wigets;
 
 fn main() -> Result<()> {
     // let available_config = runtime_api::config::get_available_config()?;
@@ -22,7 +24,7 @@ fn main() -> Result<()> {
     eframe::run_native(
         "My egui App",
         native_options,
-        Box::new(|cc| Ok(Box::new(core::app::CoreApp::new(cc)?))),
+        Box::new(|cc| Ok(Box::new(core::simple_ui::SimpleUiApp::new()?))),
     );
 
     Ok(())

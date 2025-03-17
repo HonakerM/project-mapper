@@ -13,14 +13,12 @@ use crate::{
 };
 use anyhow::{Error, Result};
 
-use super::simple_ui::SimpleUiWidget;
-
 pub struct CoreApp {
-    config: ParsedAvailableConfig,
+    pub config: ParsedAvailableConfig,
 }
 
 impl CoreApp {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Result<CoreApp> {
+    pub fn new() -> Result<CoreApp> {
         let available_config: json::JsonValue = runtime_api::config::get_available_config()?;
         let parsed_config = ParsedAvailableConfig::new(&available_config)?;
 
@@ -28,17 +26,10 @@ impl CoreApp {
             config: parsed_config,
         })
     }
-}
 
-impl eframe::App for CoreApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    pub fn header(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
             ui.label("Hello World! From `TopBottomPanel`, that must be before `CentralPanel`!");
-        });
-
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let mut simple_ui = SimpleUiWidget::new(self.config.clone());
-            ui.add(&mut simple_ui);
         });
     }
 }

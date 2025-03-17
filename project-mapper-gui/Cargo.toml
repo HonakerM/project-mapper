@@ -12,6 +12,7 @@ anyhow = "1.0"
 tempdir = "0.3"
 eframe = "0.31" 
 json ="0.12"
+strum_macros = "0.27"
 
 project-mapper-core = { workspace = true}
 
