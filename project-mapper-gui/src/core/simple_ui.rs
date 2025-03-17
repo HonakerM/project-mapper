@@ -13,7 +13,7 @@ use crate::{
 };
 use anyhow::{Error, Result};
 
-pub struct SimpleUI {
+pub struct SimpleUiWidget {
     config: ParsedAvailableConfig,
     uri: String,
     mode: String,
@@ -22,55 +22,26 @@ pub struct SimpleUI {
     refresh_rate: u32,
 }
 
-impl SimpleUI {
-    pub fn new(cc: &eframe::CreationContext<'_>) -> Result<Self> {
+impl SimpleUiWidget {
+    pub fn new(config: ParsedAvailableConfig) -> Self {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
 
-        let available_config: json::JsonValue = runtime_api::config::get_available_config()?;
-        let parsed_config = ParsedAvailableConfig::new(&available_config)?;
-
-        let default_monitor = parsed_config
-            .monitors
-            .keys()
-            .next()
-            .or(Some(&String::from("")))
-            .ok_or(Error::msg("def have value"))?
-            .clone();
-
-        let mut default_resolution: String = "".to_owned();
-        if default_monitor != "" {
-            default_resolution = parsed_config.monitors[&default_monitor]
-                .keys()
-                .next()
-                .unwrap_or(&String::from(""))
-                .clone();
-        }
-
-        let mut default_refresh_rate: u32 = 0;
-        if default_monitor != "" && default_resolution != "" {
-            default_refresh_rate = parsed_config.monitors[&default_monitor][&default_resolution]
-                .iter()
-                .next()
-                .unwrap_or(&0)
-                .clone()
-        }
-        Ok(Self {
-            config: parsed_config,
+        Self {
+            config: config,
             uri: String::new(),
             mode: WINDOWED_FULLSCREEN_MODE.to_string(),
-            monitor: default_monitor,
-            resolution: default_resolution,
-            refresh_rate: default_refresh_rate,
-        })
+            monitor: String::from(""),
+            resolution: String::from(""),
+            refresh_rate: 0,
+        }
     }
 
     fn simple_ui_grid_contents(&mut self, ui: &mut egui::Ui) {
         self.uri_source_ui(ui);
         self.monitor_sink_ui(ui, "monitor_1");
-        self.monitor_sink_ui(ui, "monitor_2");
     }
 
     fn uri_source_ui(&mut self, ui: &mut egui::Ui) {
@@ -229,17 +200,16 @@ impl SimpleUI {
         format!("{prefix}_{id}")
     }
 }
-impl eframe::App for SimpleUI {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+impl egui::Widget for &mut SimpleUiWidget {
+    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         self.ensure_good_defaults();
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Simple UI For Project Mapper");
+        ui.heading("Simple UI For Project Mapper");
 
-            let mut ui_builder = egui::UiBuilder::new();
-            ui.scope_builder(ui_builder, |ui| {
-                self.simple_ui_grid_contents(ui);
-            });
-        });
+        let mut ui_builder = egui::UiBuilder::new();
+        ui.scope_builder(ui_builder, |ui| {
+            self.simple_ui_grid_contents(ui);
+        })
+        .response
     }
 }

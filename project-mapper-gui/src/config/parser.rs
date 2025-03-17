@@ -6,6 +6,7 @@ use project_mapper_core::config::{
     sink::{RefreshRate, ResolutionJson},
 };
 
+#[derive(Clone, Debug)]
 pub struct ParsedAvailableConfig {
     pub full_screen_modes: Vec<String>,
     pub monitors: MonitorResolutionRefreshRateMap,

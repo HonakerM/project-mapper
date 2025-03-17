@@ -22,7 +22,7 @@ fn main() -> Result<()> {
     eframe::run_native(
         "My egui App",
         native_options,
-        Box::new(|cc| Ok(Box::new(core::simple_ui::SimpleUI::new(cc)?))),
+        Box::new(|cc| Ok(Box::new(core::app::CoreApp::new(cc)?))),
     );
 
     Ok(())
