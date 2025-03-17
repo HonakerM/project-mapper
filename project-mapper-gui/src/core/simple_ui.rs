@@ -69,7 +69,8 @@ impl SimpleUI {
 
     fn simple_ui_grid_contents(&mut self, ui: &mut egui::Ui) {
         self.uri_source_ui(ui);
-        self.monitor_sink_ui(ui);
+        self.monitor_sink_ui(ui, "monitor_1");
+        self.monitor_sink_ui(ui, "monitor_2");
     }
 
     fn uri_source_ui(&mut self, ui: &mut egui::Ui) {
@@ -92,7 +93,7 @@ impl SimpleUI {
             });
     }
 
-    fn monitor_sink_ui(&mut self, ui: &mut egui::Ui) {
+    fn monitor_sink_ui(&mut self, ui: &mut egui::Ui, prefix: &str) {
         let Self {
             config,
             uri,
@@ -102,13 +103,13 @@ impl SimpleUI {
             refresh_rate,
         } = self;
 
-        egui::Grid::new("monitor_grid")
+        egui::Grid::new(Self::get_id(prefix, "monitor_grid"))
             .num_columns(2)
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Fullscreen Mode");
 
-                egui::ComboBox::from_id_salt("Fullscreen Mode")
+                egui::ComboBox::from_id_salt(Self::get_id(prefix, "Fullscreen Mode"))
                     .selected_text(format!("{mode:?}"))
                     .show_ui(ui, |ui| {
                         for ava_mode in config.full_screen_modes.clone() {
@@ -119,7 +120,7 @@ impl SimpleUI {
 
                 if mode == EXCLUSIVE_FULLSCREEN_MODE || mode == BORDERLESS_FULLSCREEN_MODE {
                     ui.label("Monitor");
-                    egui::ComboBox::from_id_salt("Monitor")
+                    egui::ComboBox::from_id_salt(Self::get_id(prefix, "Monitor"))
                         .selected_text(format!("{monitor:?}"))
                         .show_ui(ui, |ui| {
                             for ava_monitors in config.monitors.keys() {
@@ -135,7 +136,7 @@ impl SimpleUI {
                     if mode == EXCLUSIVE_FULLSCREEN_MODE {
                         if let Some(monitor_config) = config.monitors.get(monitor) {
                             ui.label("Resolution");
-                            egui::ComboBox::from_id_salt("Resolution")
+                            egui::ComboBox::from_id_salt(Self::get_id(prefix, "Resolution"))
                                 .selected_text(format!("{resolution:?}"))
                                 .show_ui(ui, |ui| {
                                     let mut resolutions: Vec<Resolution> = monitor_config
@@ -157,7 +158,7 @@ impl SimpleUI {
                                 let rr_text = (*refresh_rate / 1000);
 
                                 ui.label("Refresh Rate");
-                                egui::ComboBox::from_id_salt("Refresh Rate")
+                                egui::ComboBox::from_id_salt(Self::get_id(prefix, "Refresh Rate"))
                                     .selected_text(format!("{rr_text:?}"))
                                     .show_ui(ui, |ui| {
                                         for possible_refresh_rate in refresh_rates {
@@ -177,6 +178,7 @@ impl SimpleUI {
                 }
             });
     }
+
     fn ensure_good_defaults(&mut self) -> Result<()> {
         let mut default_monitor = self.monitor.clone();
         if default_monitor == "" {
@@ -221,6 +223,10 @@ impl SimpleUI {
         self.resolution = default_resolution;
         self.monitor = default_monitor;
         Ok(())
+    }
+
+    fn get_id(prefix: &str, id: &str) -> String {
+        format!("{prefix}_{id}")
     }
 }
 impl eframe::App for SimpleUI {
