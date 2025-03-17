@@ -39,13 +39,30 @@ impl SimpleUI {
             .ok_or(Error::msg("def have value"))?
             .clone();
 
+        let mut default_resolution: String = "".to_owned();
+        if default_monitor != "" {
+            default_resolution = parsed_config.monitors[&default_monitor]
+                .keys()
+                .next()
+                .unwrap_or(&String::from(""))
+                .clone();
+        }
+
+        let mut default_refresh_rate: u32 = 0;
+        if default_monitor != "" && default_resolution != "" {
+            default_refresh_rate = parsed_config.monitors[&default_monitor][&default_resolution]
+                .iter()
+                .next()
+                .unwrap_or(&0)
+                .clone()
+        }
         Ok(Self {
             config: parsed_config,
             uri: String::new(),
             mode: WINDOWED_FULLSCREEN_MODE.to_string(),
             monitor: default_monitor,
-            resolution: String::new(),
-            refresh_rate: 0,
+            resolution: default_resolution,
+            refresh_rate: default_refresh_rate,
         })
     }
 
@@ -65,7 +82,7 @@ impl SimpleUI {
 
         ui.label("Fullscreen Mode");
 
-        egui::ComboBox::from_label("Fullscreen Mode")
+        egui::ComboBox::from_id_salt("Fullscreen Mode")
             .selected_text(format!("{mode:?}"))
             .show_ui(ui, |ui| {
                 for ava_mode in config.full_screen_modes.clone() {
@@ -74,9 +91,9 @@ impl SimpleUI {
             });
         ui.end_row();
 
-        if mode == EXCLUSIVE_FULLSCREEN_MODE {
+        if mode == EXCLUSIVE_FULLSCREEN_MODE || mode == BORDERLESS_FULLSCREEN_MODE {
             ui.label("Monitor");
-            egui::ComboBox::from_label("Monitor")
+            egui::ComboBox::from_id_salt("Monitor")
                 .selected_text(format!("{monitor:?}"))
                 .show_ui(ui, |ui| {
                     for ava_monitors in config.monitors.keys() {
@@ -85,49 +102,44 @@ impl SimpleUI {
                 });
             ui.end_row();
 
-            if let Some(monitor_config) = config.monitors.get(monitor) {
-                ui.label("Resolution");
-                egui::ComboBox::from_label("Resolution")
-                    .selected_text(format!("{resolution:?}"))
-                    .show_ui(ui, |ui| {
-                        for resolutions in monitor_config.keys() {
-                            ui.selectable_value(
-                                resolution,
-                                resolutions.clone(),
-                                resolutions.clone(),
-                            );
-                        }
-                    });
-                ui.end_row();
-
-                if let Some(refresh_rates) = monitor_config.get(resolution) {
-                    let rr_text = (*refresh_rate / 1000);
-
-                    ui.label("Refresh Rate");
-                    egui::ComboBox::from_label("Refresh Rate")
-                        .selected_text(format!("{rr_text:?}"))
+            if mode == EXCLUSIVE_FULLSCREEN_MODE {
+                if let Some(monitor_config) = config.monitors.get(monitor) {
+                    ui.label("Resolution");
+                    egui::ComboBox::from_id_salt("Resolution")
+                        .selected_text(format!("{resolution:?}"))
                         .show_ui(ui, |ui| {
-                            for possible_refresh_rate in refresh_rates {
+                            let mut resolution_set: Vec<&String> =
+                                Vec::from(monitor_config.keys().collect::<Vec<&String>>());
+                            resolution_set.sort();
+                            for resolutions in resolution_set {
                                 ui.selectable_value(
-                                    refresh_rate,
-                                    possible_refresh_rate.clone(),
-                                    (possible_refresh_rate / 1000).to_string(),
+                                    resolution,
+                                    resolutions.clone(),
+                                    resolutions.clone(),
                                 );
                             }
                         });
                     ui.end_row();
+
+                    if let Some(refresh_rates) = monitor_config.get(resolution) {
+                        let rr_text = (*refresh_rate / 1000);
+
+                        ui.label("Refresh Rate");
+                        egui::ComboBox::from_id_salt("Refresh Rate")
+                            .selected_text(format!("{rr_text:?}"))
+                            .show_ui(ui, |ui| {
+                                for possible_refresh_rate in refresh_rates {
+                                    ui.selectable_value(
+                                        refresh_rate,
+                                        possible_refresh_rate.clone(),
+                                        (possible_refresh_rate / 1000).to_string(),
+                                    );
+                                }
+                            });
+                        ui.end_row();
+                    }
                 }
             }
-        } else if mode == BORDERLESS_FULLSCREEN_MODE {
-            ui.label("Monitor");
-            egui::ComboBox::from_label("Monitor")
-                .selected_text(format!("{monitor:?}"))
-                .show_ui(ui, |ui| {
-                    for ava_monitors in config.monitors.keys() {
-                        ui.selectable_value(monitor, ava_monitors.clone(), ava_monitors.clone());
-                    }
-                });
-            ui.end_row();
         } else if mode == WINDOWED_FULLSCREEN_MODE {
             /* Maybe do something */
         }

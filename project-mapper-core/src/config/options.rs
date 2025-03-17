@@ -21,9 +21,12 @@ pub struct BorderlessOptions {
     pub monitors: Vec<String>,
 }
 
+pub type MonitorResolutionRefreshRateMap = HashMap<String, HashMap<ResolutionJson, Vec<RefreshRate>>>;
+
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct ExclusiveOptions {
-    pub monitor_configs: HashMap<String, HashMap<ResolutionJson, Vec<RefreshRate>>>,
+    pub monitor_configs: MonitorResolutionRefreshRateMap,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

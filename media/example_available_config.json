@@ -1,0 +1,118 @@
+{
+    "sinks": [
+        {
+            "type": "OpenGLWindow",
+            "full_screen_modes": [
+                {
+                    "type": "Exclusive",
+                    "monitor_configs": {
+                        ".DISPLAY1": {
+                            "2560x1440": [
+                                50000,
+                                70000,
+                                119000,
+                                120000,
+                                75000,
+                                60000,
+                                72000,
+                                59000,
+                                144000,
+                                56000
+                            ]
+                        },
+                        ".DISPLAY2": {
+                            "2560x1440": [
+                                119000,
+                                120000,
+                                75000,
+                                100000,
+                                59000,
+                                60000,
+                                50000
+                            ],
+                            "1080x1920": [
+                                119000,
+                                120000,
+                                75000,
+                                100000,
+                                59000,
+                                60000,
+                                50000
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "Windowed"
+                },
+                {
+                    "type": "Borderless",
+                    "monitors": [
+                        ".DISPLAY1",
+                        ".DISPLAY2"
+                    ]
+                }
+            ]
+        }
+    ],
+    "sources": [
+        {
+            "type": "URI",
+            "uri_types": [
+                "rtmp",
+                "rtmps",
+                "s3",
+                "s3",
+                "data",
+                "file",
+                "rist",
+                "rtsp",
+                "rtspu",
+                "rtspt",
+                "rtsph",
+                "rtsp-sdp",
+                "rtsps",
+                "rtspsu",
+                "rtspst",
+                "rtspsh",
+                "s3",
+                "s3",
+                "http",
+                "https",
+                "icy",
+                "icyx",
+                "srt",
+                "gstwebrtc",
+                "gstwebrtcs",
+                "file",
+                "resource",
+                "resource",
+                "http",
+                "https",
+                "appsrc",
+                "fd",
+                "imagesequence",
+                "multifile",
+                "rfb",
+                "rtsp",
+                "rtspu",
+                "rtspt",
+                "sdp",
+                "splitfile",
+                "srt",
+                "srt",
+                "udp",
+                "imagesequence",
+                "rfb"
+            ]
+        },
+        {
+            "type": "Test"
+        }
+    ],
+    "regions": [
+        {
+            "type": "Display"
+        }
+    ]
+}

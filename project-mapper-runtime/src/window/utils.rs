@@ -20,7 +20,7 @@ pub fn gather_monitor_info(event_loop: &ActiveEventLoop) -> HashMap<String, Moni
         let mut resolution_map: HashMap<ResolutionJson, HashMap<RefreshRate, VideoModeHandle>> =
             HashMap::new();
         for monitor_handle in monitor.video_modes() {
-            let size = monitor.size();
+            let size = monitor_handle.size();
             let resolution = Resolution {
                 height: size.height,
                 width: size.width,

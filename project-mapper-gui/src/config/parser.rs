@@ -55,6 +55,7 @@ impl ParsedAvailableConfig {
                             let u32_rate = rr.as_u32().ok_or(Error::msg("uh oh"))?;
                             u32_refresh_rate.push(u32_rate);
                         }
+                        u32_refresh_rate.sort_by(|a, b| b.cmp(a));
                         refresh_rate_hashmap.insert(String::from(resolution), u32_refresh_rate);
                     }
 
