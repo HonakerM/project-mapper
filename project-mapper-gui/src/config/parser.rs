@@ -1,10 +1,14 @@
 use std::{collections::HashMap, hash::Hash};
 
 use anyhow::{Error, Result};
+use project_mapper_core::config::{
+    options::MonitorResolutionRefreshRateMap,
+    sink::{RefreshRate, ResolutionJson},
+};
 
 pub struct ParsedAvailableConfig {
     pub full_screen_modes: Vec<String>,
-    pub monitors: HashMap<String, HashMap<String, Vec<u32>>>,
+    pub monitors: MonitorResolutionRefreshRateMap,
 }
 
 impl ParsedAvailableConfig {
@@ -33,8 +37,9 @@ impl ParsedAvailableConfig {
 
     pub fn extract_monitor_info(
         config: &json::JsonValue,
-    ) -> Result<HashMap<String, HashMap<String, Vec<u32>>>> {
-        let mut monitor_hashmap: HashMap<String, HashMap<String, Vec<u32>>> = HashMap::new();
+    ) -> Result<MonitorResolutionRefreshRateMap> {
+        let mut monitor_hashmap: HashMap<String, HashMap<ResolutionJson, Vec<RefreshRate>>> =
+            HashMap::new();
         for data in config["sinks"].members() {
             if data["type"] != "OpenGLWindow" {
                 continue;

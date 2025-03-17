@@ -13,6 +13,8 @@ tempdir = "0.3"
 eframe = "0.31" 
 json ="0.12"
 
+project-mapper-core = { workspace = true}
+
 
 [[bin]]
 name = "project-mapper-gui"

@@ -2,6 +2,7 @@ use eframe::{
     self,
     egui::{self, TextBuffer},
 };
+use project_mapper_core::config::sink::Resolution;
 
 use crate::{
     config::{
@@ -108,14 +109,16 @@ impl SimpleUI {
                     egui::ComboBox::from_id_salt("Resolution")
                         .selected_text(format!("{resolution:?}"))
                         .show_ui(ui, |ui| {
-                            let mut resolution_set: Vec<&String> =
-                                Vec::from(monitor_config.keys().collect::<Vec<&String>>());
-                            resolution_set.sort();
-                            for resolutions in resolution_set {
+                            let mut resolutions: Vec<Resolution> = monitor_config
+                                .keys()
+                                .map(|x| Resolution::from_json(x).expect("we can convert"))
+                                .collect::<Vec<Resolution>>();
+                            resolutions.sort();
+                            for possible_resolution in resolutions {
                                 ui.selectable_value(
                                     resolution,
-                                    resolutions.clone(),
-                                    resolutions.clone(),
+                                    possible_resolution.to_json(),
+                                    possible_resolution.to_json(),
                                 );
                             }
                         });
@@ -144,9 +147,57 @@ impl SimpleUI {
             /* Maybe do something */
         }
     }
+
+    fn ensure_good_defaults(&mut self) -> Result<()> {
+        let mut default_monitor = self.monitor.clone();
+        if default_monitor == "" {
+            default_monitor = self
+                .config
+                .monitors
+                .keys()
+                .next()
+                .or(Some(&String::from("")))
+                .ok_or(Error::msg("def have value"))?
+                .clone();
+        }
+
+        let mut default_resolution: String = self.resolution.clone();
+        if default_monitor != "" {
+            if default_resolution == ""
+                || !self.config.monitors[&default_monitor].contains_key(&default_resolution)
+            {
+                default_resolution = self.config.monitors[&default_monitor]
+                    .keys()
+                    .next()
+                    .unwrap_or(&String::from(""))
+                    .clone();
+            }
+        }
+
+        let mut default_refresh_rate: u32 = self.refresh_rate.clone();
+        if default_resolution != "" {
+            if default_refresh_rate == 0
+                || !self.config.monitors[&default_monitor][&default_resolution]
+                    .contains(&default_refresh_rate)
+            {
+                default_refresh_rate = self.config.monitors[&default_monitor][&default_resolution]
+                    .iter()
+                    .next()
+                    .unwrap_or(&0)
+                    .clone()
+            }
+        }
+
+        self.refresh_rate = default_refresh_rate;
+        self.resolution = default_resolution;
+        self.monitor = default_monitor;
+        Ok(())
+    }
 }
 impl eframe::App for SimpleUI {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        self.ensure_good_defaults();
+
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("Simple UI For Project Mapper");
 
