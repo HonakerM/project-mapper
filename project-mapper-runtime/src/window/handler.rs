@@ -444,7 +444,7 @@ impl WindowHandler {
                                     .mode_lookup
                                     .get(&info.resolution)
                                     .ok_or(Error::msg("unknown resolution"))?
-                                    .get(&info.refresh_rate_mhz)
+                                    .get(&info.refresh_rate_hz)
                                     .ok_or(Error::msg("unknown refresh rate"))?;
                                 window_data.window.set_fullscreen(Some(
                                     winit::window::Fullscreen::Exclusive(video_mode.clone()),

@@ -45,7 +45,7 @@ impl PartialOrd for Resolution {
 pub struct MonitorInfo {
     pub name: String,
     pub resolution: ResolutionJson,
-    pub refresh_rate_mhz: RefreshRate,
+    pub refresh_rate_hz: RefreshRate,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

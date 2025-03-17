@@ -1,6 +1,6 @@
 use eframe::{
     self, App,
-    egui::{self, TextBuffer},
+    egui::{self, Response, TextBuffer, Widget},
 };
 use project_mapper_core::config::sink::{MonitorInfo, Resolution};
 
@@ -21,22 +21,22 @@ use anyhow::{Error, Result};
 
 use super::app::CoreApp;
 
-pub struct SimpleUiApp {
-    app: CoreApp,
+pub struct SimpleUiCore {
+    config: ParsedAvailableConfig,
     uri: String,
     element: ElementData,
     elements: Vec<UiElementData>,
 }
 
-impl SimpleUiApp {
-    pub fn new() -> Result<SimpleUiApp> {
+impl SimpleUiCore {
+    pub fn new(config: ParsedAvailableConfig) -> Result<SimpleUiCore> {
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
         // for e.g. egui::PaintCallback.
 
         Ok(Self {
-            app: CoreApp::new()?,
+            config: config,
             uri: String::new(),
             elements: Vec::new(),
             element: ElementData::Sink(SinkElementConfig {
@@ -53,15 +53,15 @@ impl SimpleUiApp {
             }),
         })
     }
+}
 
-    fn simple_ui_grid_contents(&mut self, ui: &mut egui::Ui) {
-        ui.heading("Simple UI For Project Mapper");
+pub struct SimpleUiApp<'a> {
+    pub core: &'a mut SimpleUiCore,
+}
 
-        self.uri_source_ui(ui);
-
-        let mut widget =
-            MonitorElementWidget::new(self.app.config.clone(), &mut self.element).expect("uh oh");
-        ui.add(&mut widget);
+impl<'a> SimpleUiApp<'a> {
+    pub fn new(core: &mut SimpleUiCore) -> SimpleUiApp {
+        SimpleUiApp { core: core }
     }
 
     fn uri_source_ui(&mut self, ui: &mut egui::Ui) {
@@ -70,20 +70,24 @@ impl SimpleUiApp {
             .striped(true)
             .show(ui, |ui| {
                 ui.label("Source");
-                ui.add(egui::TextEdit::singleline(&mut self.uri).hint_text("URI"));
+                ui.add(egui::TextEdit::singleline(&mut self.core.uri).hint_text("URI"));
                 ui.end_row();
             });
     }
 }
-impl App for SimpleUiApp {
-    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        self.app.header(ctx, frame);
+impl<'a> Widget for SimpleUiApp<'a> {
+    fn ui(mut self, ui: &mut egui::Ui) -> Response {
+        let mut ui_builder = egui::UiBuilder::new();
+        ui.scope_builder(ui_builder, |ui| {
+            ui.heading("Simple UI For Project Mapper");
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            let mut ui_builder = egui::UiBuilder::new();
-            ui.scope_builder(ui_builder, |ui| {
-                self.simple_ui_grid_contents(ui);
-            });
-        });
+            self.uri_source_ui(ui);
+
+            let mut widget =
+                MonitorElementWidget::new(self.core.config.clone(), &mut self.core.element)
+                    .expect("uh oh");
+            ui.add(&mut widget);
+        })
+        .response
     }
 }

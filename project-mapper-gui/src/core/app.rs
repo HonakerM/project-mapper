@@ -1,6 +1,6 @@
 use eframe::{
-    self,
-    egui::{self, TextBuffer},
+    self, App,
+    egui::{self, TextBuffer, Widget},
 };
 use project_mapper_core::config::sink::Resolution;
 
@@ -13,8 +13,15 @@ use crate::{
 };
 use anyhow::{Error, Result};
 
+use super::simple_ui::{SimpleUiApp, SimpleUiCore};
+
+pub enum CoreViews {
+    SimpleUi(SimpleUiCore),
+}
+
 pub struct CoreApp {
     pub config: ParsedAvailableConfig,
+    pub app: CoreViews,
 }
 
 impl CoreApp {
@@ -23,13 +30,26 @@ impl CoreApp {
         let parsed_config = ParsedAvailableConfig::new(&available_config)?;
 
         Ok(CoreApp {
-            config: parsed_config,
+            config: parsed_config.clone(),
+            app: CoreViews::SimpleUi(SimpleUiCore::new(parsed_config)?),
         })
     }
 
     pub fn header(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
             ui.label("Hello World! From `TopBottomPanel`, that must be before `CentralPanel`!");
+        });
+    }
+}
+impl App for CoreApp {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.header(ctx, frame);
+
+        egui::CentralPanel::default().show(ctx, |ui| {
+            let mut ui_builder = egui::UiBuilder::new();
+            ui.scope_builder(ui_builder, |ui| match &mut self.app {
+                CoreViews::SimpleUi(app) => ui.add(SimpleUiApp::new(app)),
+            });
         });
     }
 }
