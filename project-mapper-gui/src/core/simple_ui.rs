@@ -13,6 +13,7 @@ use crate::{
     wigets::{
         elements::{
             ElementData, MonitorElementConfig, SinkElementConfig, SinkElementType, UiElementData,
+            UiElementWidget,
         },
         sink::MonitorElementWidget,
     },
@@ -82,12 +83,12 @@ impl<'a> SimpleUiApp<'a> {
 }
 impl<'a> Widget for SimpleUiApp<'a> {
     fn ui(mut self, ui: &mut egui::Ui) -> Response {
-        let mut sink_elements: Vec<&mut SinkElementConfig> = Vec::new();
+        let mut sink_elements: Vec<&mut UiElementData> = Vec::new();
 
         for element in &mut self.core.elements {
             match &mut element.data {
                 ElementData::Sink(sink_config) => {
-                    sink_elements.push(sink_config);
+                    sink_elements.push(element);
                 }
                 _ => {}
             }
@@ -107,16 +108,8 @@ impl<'a> Widget for SimpleUiApp<'a> {
                 });
 
             for sink_element in sink_elements {
-                let mut internal_ui_builder = egui::UiBuilder::new().id_salt(sink_element.id);
-                ui.scope_builder(internal_ui_builder, |ui| match &mut sink_element.sink {
-                    SinkElementType::Monitor(monitor_config) => {
-                        let widget =
-                            MonitorElementWidget::new(self.core.config.clone(), sink_element)
-                                .expect("uh oh");
-
-                        ui.add(widget);
-                    }
-                });
+                let mut widget = UiElementWidget::new(sink_element, self.core.config.clone());
+                ui.add(widget);
             }
         })
         .response

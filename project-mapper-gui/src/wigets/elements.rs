@@ -1,9 +1,14 @@
+use eframe::egui::{self, Response, Ui, Widget};
 use project_mapper_core::config::{
     options::{RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
     runtime::RegionConfig,
     sink::{MonitorInfo, SinkConfig},
     source::SourceConfig,
 };
+
+use crate::config::parser::ParsedAvailableConfig;
+
+use super::sink::MonitorElementWidget;
 
 #[derive(Clone)]
 pub struct MonitorElementConfig {
@@ -78,4 +83,48 @@ impl ElementData {
 
 pub struct UiElementData {
     pub data: ElementData,
+}
+
+pub struct UiElementWidget<'a> {
+    data: &'a mut UiElementData,
+    pub config: ParsedAvailableConfig,
+    pub frame: egui::Frame,
+}
+
+impl<'a> UiElementWidget<'a> {
+    pub fn new(data: &'a mut UiElementData, config: ParsedAvailableConfig) -> Self {
+        Self {
+            data: data,
+            config: config,
+            frame: egui::Frame::new()
+                .inner_margin(12)
+                .outer_margin(24)
+                .corner_radius(14)
+                .shadow(egui::Shadow {
+                    offset: [8, 12],
+                    blur: 16,
+                    spread: 0,
+                    color: egui::Color32::from_black_alpha(180),
+                })
+                .fill(egui::Color32::from_rgba_unmultiplied(97, 0, 255, 128))
+                .stroke(egui::Stroke::new(1.0, egui::Color32::GRAY)),
+        }
+    }
+}
+impl<'a> Widget for UiElementWidget<'a> {
+    fn ui(self, ui: &mut Ui) -> Response {
+        let mut ui_builder = egui::UiBuilder::new().id_salt(self.data.data.id());
+        ui.scope_builder(ui_builder, |ui| match &mut self.data.data {
+            ElementData::Sink(sink_element) => match &mut sink_element.sink {
+                SinkElementType::Monitor(monitor_config) => {
+                    let widget = MonitorElementWidget::new(self.config.clone(), sink_element)
+                        .expect("uh oh");
+
+                    ui.add(widget);
+                }
+            },
+            _ => {}
+        })
+        .response
+    }
 }
