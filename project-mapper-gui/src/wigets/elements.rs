@@ -85,6 +85,16 @@ pub struct UiElementData {
     pub data: ElementData,
 }
 
+impl UiElementData {
+    pub fn name(&self) -> String {
+        self.data.name()
+    }
+
+    pub fn id(&self) -> u32 {
+        self.data.id()
+    }
+}
+
 pub struct UiElementWidget<'a> {
     data: &'a mut UiElementData,
     pub config: ParsedAvailableConfig,
@@ -113,18 +123,23 @@ impl<'a> UiElementWidget<'a> {
 }
 impl<'a> Widget for UiElementWidget<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
-        let mut ui_builder = egui::UiBuilder::new().id_salt(self.data.data.id());
-        self.frame. show(ui, |ui| {match &mut self.data.data {
-            ElementData::Sink(sink_element) => match &mut sink_element.sink {
-                SinkElementType::Monitor(monitor_config) => {
-                    let widget = MonitorElementWidget::new(self.config.clone(), sink_element)
-                        .expect("uh oh");
+        let id = self.data.id();
+        let name = self.data.name();
+        let mut ui_builder = egui::UiBuilder::new().id_salt(id);
+        ui.scope_builder(ui_builder, |ui| {
+            self.frame.show(ui, |ui| match &mut self.data.data {
+                ElementData::Sink(sink_element) => match &mut sink_element.sink {
+                    SinkElementType::Monitor(monitor_config) => {
+                        ui.label(format!("Monitor Element {}:{}", id, name));
+                        let widget = MonitorElementWidget::new(self.config.clone(), sink_element)
+                            .expect("uh oh");
 
-                    ui.add(widget);
-                }
-            },
-            _ => ()
-        }})
+                        ui.add(widget);
+                    }
+                },
+                _ => (),
+            });
+        })
         .response
     }
 }

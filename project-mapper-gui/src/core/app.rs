@@ -9,15 +9,15 @@ use crate::{
         consts::{BORDERLESS_FULLSCREEN_MODE, EXCLUSIVE_FULLSCREEN_MODE, WINDOWED_FULLSCREEN_MODE},
         parser::ParsedAvailableConfig,
     },
-    runtime_api, wigets::elements::UiElementData,
+    runtime_api,
+    wigets::elements::UiElementData,
 };
 use anyhow::{Error, Result};
 
 use super::simple_ui::{SimpleUiApp, SimpleUiCore};
 
-
 pub trait CoreView {
-    fn elements(self)->Vec<UiElementData>;
+    fn elements(self) -> Vec<UiElementData>;
 }
 
 pub enum CoreViews {

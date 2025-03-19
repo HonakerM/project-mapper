@@ -73,7 +73,7 @@ impl SimpleUiCore {
 }
 
 impl CoreView for SimpleUiCore {
-    fn elements(self)->Vec<UiElementData>{
+    fn elements(self) -> Vec<UiElementData> {
         self.elements
     }
 }
