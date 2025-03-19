@@ -114,7 +114,7 @@ impl<'a> UiElementWidget<'a> {
 impl<'a> Widget for UiElementWidget<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         let mut ui_builder = egui::UiBuilder::new().id_salt(self.data.data.id());
-        ui.scope_builder(ui_builder, |ui| match &mut self.data.data {
+        self.frame. show(ui, |ui| {match &mut self.data.data {
             ElementData::Sink(sink_element) => match &mut sink_element.sink {
                 SinkElementType::Monitor(monitor_config) => {
                     let widget = MonitorElementWidget::new(self.config.clone(), sink_element)
@@ -123,8 +123,8 @@ impl<'a> Widget for UiElementWidget<'a> {
                     ui.add(widget);
                 }
             },
-            _ => {}
-        })
+            _ => ()
+        }})
         .response
     }
 }

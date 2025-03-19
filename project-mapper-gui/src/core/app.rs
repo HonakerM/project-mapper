@@ -9,11 +9,16 @@ use crate::{
         consts::{BORDERLESS_FULLSCREEN_MODE, EXCLUSIVE_FULLSCREEN_MODE, WINDOWED_FULLSCREEN_MODE},
         parser::ParsedAvailableConfig,
     },
-    runtime_api,
+    runtime_api, wigets::elements::UiElementData,
 };
 use anyhow::{Error, Result};
 
 use super::simple_ui::{SimpleUiApp, SimpleUiCore};
+
+
+pub trait CoreView {
+    fn elements(self)->Vec<UiElementData>;
+}
 
 pub enum CoreViews {
     SimpleUi(SimpleUiCore),
@@ -48,7 +53,7 @@ impl App for CoreApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             let mut ui_builder = egui::UiBuilder::new();
             ui.scope_builder(ui_builder, |ui| match &mut self.app {
-                CoreViews::SimpleUi(app) => ui.add(SimpleUiApp::new(app)),
+                CoreViews::SimpleUi(core) => ui.add(SimpleUiApp::new(core)),
             });
         });
     }

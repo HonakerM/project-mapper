@@ -20,7 +20,7 @@ use crate::{
 };
 use anyhow::{Error, Result};
 
-use super::app::CoreApp;
+use super::app::{CoreApp, CoreView};
 
 pub struct SimpleUiCore {
     config: ParsedAvailableConfig,
@@ -69,6 +69,12 @@ impl SimpleUiCore {
             uri: String::new(),
             elements: vec![elm, elm_2],
         })
+    }
+}
+
+impl CoreView for SimpleUiCore {
+    fn elements(self)->Vec<UiElementData>{
+        self.elements
     }
 }
 
