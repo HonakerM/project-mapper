@@ -12,8 +12,8 @@ use crate::{
     runtime_api,
     wigets::{
         elements::{
-            ElementData, MonitorElementConfig, SinkElementConfig, SinkElementType, UiElementData,
-            UiElementWidget,
+            ElementData, MonitorElementConfig, SinkElementConfig, SinkElementType,
+            SourceElementConfig, SourceElementType, UiElementData, UiElementWidget,
         },
         sink::MonitorElementWidget,
     },
@@ -30,6 +30,14 @@ pub struct SimpleUiCore {
 
 impl SimpleUiCore {
     pub fn new(config: ParsedAvailableConfig) -> Result<SimpleUiCore> {
+        let source_data = UiElementData {
+            data: ElementData::Source(SourceElementConfig {
+                name: "source".to_owned(),
+                id: 3,
+                source: SourceElementType::URI("".to_owned()),
+            }),
+        };
+
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
         // Restore app state using cc.storage (requires the "persistence" feature).
         // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
@@ -67,7 +75,7 @@ impl SimpleUiCore {
         Ok(Self {
             config: config,
             uri: String::new(),
-            elements: vec![elm, elm_2],
+            elements: vec![source_data, elm, elm_2],
         })
     }
 }
@@ -90,11 +98,15 @@ impl<'a> SimpleUiApp<'a> {
 impl<'a> Widget for SimpleUiApp<'a> {
     fn ui(mut self, ui: &mut egui::Ui) -> Response {
         let mut sink_elements: Vec<&mut UiElementData> = Vec::new();
+        let mut source_elements: Vec<&mut UiElementData> = Vec::new();
 
         for element in &mut self.core.elements {
             match &mut element.data {
                 ElementData::Sink(sink_config) => {
                     sink_elements.push(element);
+                }
+                ElementData::Source(source_config) => {
+                    source_elements.push(element);
                 }
                 _ => {}
             }
@@ -104,15 +116,10 @@ impl<'a> Widget for SimpleUiApp<'a> {
         ui.scope_builder(ui_builder, |ui| {
             ui.heading("Simple UI For Project Mapper");
 
-            egui::Grid::new("soure_grid")
-                .num_columns(2)
-                .striped(true)
-                .show(ui, |ui| {
-                    ui.label("Source");
-                    ui.add(egui::TextEdit::singleline(&mut self.core.uri).hint_text("URI"));
-                    ui.end_row();
-                });
-
+            for source_element in source_elements {
+                let mut widget = UiElementWidget::new(source_element, self.core.config.clone());
+                ui.add(widget);
+            }
             for sink_element in sink_elements {
                 let mut widget = UiElementWidget::new(sink_element, self.core.config.clone());
                 ui.add(widget);

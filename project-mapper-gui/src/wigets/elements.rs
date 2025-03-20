@@ -8,7 +8,7 @@ use project_mapper_core::config::{
 
 use crate::config::parser::ParsedAvailableConfig;
 
-use super::sink::MonitorElementWidget;
+use super::{sink::MonitorElementWidget, source::URIElementWidget};
 
 #[derive(Clone)]
 pub struct MonitorElementConfig {
@@ -136,6 +136,16 @@ impl<'a> Widget for UiElementWidget<'a> {
 
                         ui.add(widget);
                     }
+                },
+                ElementData::Source(source_element) => match &mut source_element.source {
+                    SourceElementType::URI(uri_config) => {
+                        ui.label(format!("Uri Source {}:{}", id, name));
+                        let widget = URIElementWidget::new(self.config.clone(), source_element)
+                            .expect("uh oh");
+
+                        ui.add(widget);
+                    }
+                    _ => {}
                 },
                 _ => (),
             });
