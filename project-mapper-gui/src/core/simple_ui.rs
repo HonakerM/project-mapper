@@ -116,14 +116,20 @@ impl<'a> Widget for SimpleUiApp<'a> {
         ui.scope_builder(ui_builder, |ui| {
             ui.heading("Simple UI For Project Mapper");
 
-            for source_element in source_elements {
-                let mut widget = UiElementWidget::new(source_element, self.core.config.clone());
-                ui.add(widget);
-            }
-            for sink_element in sink_elements {
-                let mut widget = UiElementWidget::new(sink_element, self.core.config.clone());
-                ui.add(widget);
-            }
+            ui.columns(3, |uis| {
+                let (first_inst, remaining) = uis.split_at_mut(1);
+                let source_ui = &mut first_inst[0];
+                let sink_ui = &mut remaining[1];
+
+                for source_element in source_elements {
+                    let mut widget = UiElementWidget::new(source_element, self.core.config.clone());
+                    source_ui.add(widget);
+                }
+                for sink_element in sink_elements {
+                    let mut widget = UiElementWidget::new(sink_element, self.core.config.clone());
+                    sink_ui.add(widget);
+                }
+            })
         })
         .response
     }

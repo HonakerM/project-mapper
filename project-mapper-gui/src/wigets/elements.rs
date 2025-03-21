@@ -130,7 +130,7 @@ impl<'a> Widget for UiElementWidget<'a> {
             self.frame.show(ui, |ui| match &mut self.data.data {
                 ElementData::Sink(sink_element) => match &mut sink_element.sink {
                     SinkElementType::Monitor(monitor_config) => {
-                        ui.label(format!("Monitor Element {}:{}", id, name));
+                        ui.label(format!("Monitor Element {}", name));
                         let widget = MonitorElementWidget::new(self.config.clone(), sink_element)
                             .expect("uh oh");
 
@@ -139,7 +139,7 @@ impl<'a> Widget for UiElementWidget<'a> {
                 },
                 ElementData::Source(source_element) => match &mut source_element.source {
                     SourceElementType::URI(uri_config) => {
-                        ui.label(format!("Uri Source {}:{}", id, name));
+                        ui.label(format!("Uri Source {}", name));
                         let widget = URIElementWidget::new(self.config.clone(), source_element)
                             .expect("uh oh");
 
