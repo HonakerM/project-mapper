@@ -7,7 +7,7 @@ use crate::config::{
 };
 
 use super::elements::{
-    ElementData, SinkElementConfig, SinkElementType, SourceElementConfig, SourceElementType,
+    ElementData, SinkElementConfig, SinkElementType, SourceElementType, UiElementData,
 };
 
 use anyhow::{Error, Result};
@@ -20,16 +20,19 @@ pub struct URIElementWidget<'a> {
 impl<'a> URIElementWidget<'a> {
     pub fn new(
         parsed_config: ParsedAvailableConfig,
-        source_data: &'a mut SourceElementConfig,
+        source_data: &'a mut UiElementData,
     ) -> Result<Self> {
-        match &mut source_data.source {
-            SourceElementType::URI(value) => {
-                let mut widget = Self {
-                    config: parsed_config,
-                    uri: value,
-                };
-                Ok(widget)
-            }
+        match &mut source_data.data {
+            ElementData::Source(sink_element) => match sink_element {
+                SourceElementType::URI(value) => {
+                    let mut widget = Self {
+                        config: parsed_config,
+                        uri: value,
+                    };
+                    Ok(widget)
+                }
+                _ => Err(Error::msg("Invalid Source Element Type")),
+            },
             _ => Err(Error::msg("Invalid Source Element Type")),
         }
     }

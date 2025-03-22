@@ -6,7 +6,7 @@ use crate::config::{
     parser::ParsedAvailableConfig,
 };
 
-use super::elements::{ElementData, SinkElementConfig, SinkElementType};
+use super::elements::{ElementData, SinkElementConfig, SinkElementType, UiElementData};
 
 use anyhow::{Error, Result};
 
@@ -19,18 +19,21 @@ pub struct MonitorElementWidget<'a> {
 impl<'a> MonitorElementWidget<'a> {
     pub fn new(
         parsed_config: ParsedAvailableConfig,
-        sink_data: &'a mut SinkElementConfig,
+        sink_data: &'a mut UiElementData,
     ) -> Result<Self> {
-        match &mut sink_data.sink {
-            SinkElementType::Monitor(monitor) => {
-                let mut widget = Self {
-                    config: parsed_config,
-                    mode: &mut monitor.mode,
-                    monitor: &mut monitor.monitor,
-                };
-                widget.ensure_good_selection();
-                Ok(widget)
-            }
+        match &mut sink_data.data {
+            ElementData::Sink(sink_element) => match sink_element {
+                SinkElementType::Monitor(monitor) => {
+                    let mut widget = Self {
+                        config: parsed_config,
+                        mode: &mut monitor.mode,
+                        monitor: &mut monitor.monitor,
+                    };
+                    widget.ensure_good_selection();
+                    Ok(widget)
+                }
+            },
+            _ => Err(Error::msg("Incorrect Element Data for Widget")),
         }
     }
 

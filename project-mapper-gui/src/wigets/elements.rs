@@ -23,8 +23,6 @@ pub enum SinkElementType {
 
 #[derive(Clone)]
 pub struct SinkElementConfig {
-    pub name: String,
-    pub id: u32,
     pub sink: SinkElementType,
 }
 
@@ -42,46 +40,16 @@ pub enum RegionElementType {
     },
 }
 
-#[derive(Clone)]
-pub struct SourceElementConfig {
-    pub name: String,
-    pub id: u32,
-    pub source: SourceElementType,
-}
-
-#[derive(Clone)]
-pub struct RegionElementConfig {
-    pub name: String,
-    pub id: u32,
-    pub region: RegionElementType,
-}
-
 #[derive(strum_macros::Display)]
 pub enum ElementData {
-    Sink(SinkElementConfig),
-    Source(SourceElementConfig),
-    Region(RegionElementConfig),
+    Sink(SinkElementType),
+    Source(SourceElementType),
+    Region(RegionElementType),
 }
 
 impl ElementData {
     pub fn element_type(&self) -> String {
         self.to_string()
-    }
-
-    pub fn name(&self) -> String {
-        match self {
-            ElementData::Sink(config) => config.name.clone(),
-            ElementData::Source(config) => config.name.clone(),
-            ElementData::Region(config) => config.name.clone(),
-        }
-    }
-
-    pub fn id(&self) -> u32 {
-        match self {
-            ElementData::Sink(config) => config.id.clone(),
-            ElementData::Source(config) => config.id.clone(),
-            ElementData::Region(config) => config.id.clone(),
-        }
     }
 }
 
@@ -110,16 +78,18 @@ impl UiElementInfo {
 }
 
 pub struct UiElementData {
+    pub name: String,
+    pub id: u32,
     pub data: ElementData,
 }
 
 impl UiElementData {
     pub fn name(&self) -> String {
-        self.data.name()
+        self.name.clone()
     }
 
     pub fn id(&self) -> u32 {
-        self.data.id()
+        self.id
     }
 
     pub fn info(&self) -> UiElementInfo {
@@ -173,33 +143,33 @@ impl<'a> Widget for UiElementWidget<'a> {
         let mut ui_builder = egui::UiBuilder::new().id_salt(id);
         ui.scope_builder(ui_builder, |ui| {
             self.frame.show(ui, |ui| match &mut self.data.data {
-                ElementData::Sink(sink_element) => match &mut sink_element.sink {
+                ElementData::Sink(sink_element) => match sink_element {
                     SinkElementType::Monitor(monitor_config) => {
                         ui.label(format!("Monitor Element {}", name));
-                        let widget = MonitorElementWidget::new(self.config.clone(), sink_element)
+                        let widget = MonitorElementWidget::new(self.config.clone(), self.data)
                             .expect("uh oh");
 
                         ui.add(widget);
                     }
                 },
-                ElementData::Source(source_element) => match &mut source_element.source {
+                ElementData::Source(source_element) => match source_element {
                     SourceElementType::URI(uri_config) => {
                         ui.label(format!("Uri Source {}", name));
-                        let widget = URIElementWidget::new(self.config.clone(), source_element)
-                            .expect("uh oh");
+                        let widget =
+                            URIElementWidget::new(self.config.clone(), self.data).expect("uh oh");
 
                         ui.add(widget);
                     }
                     _ => {}
                 },
-                ElementData::Region(region_element) => match &mut region_element.region {
+                ElementData::Region(region_element) => match region_element {
                     RegionElementType::Display {
                         source,
                         sink,
                         element_infos,
                     } => {
                         ui.label(format!("Display Region {}", name));
-                        let widget = DisplayElementWidget::new(self.config.clone(), region_element)
+                        let widget = DisplayElementWidget::new(self.config.clone(), self.data)
                             .expect("uh oh");
 
                         ui.add(widget);

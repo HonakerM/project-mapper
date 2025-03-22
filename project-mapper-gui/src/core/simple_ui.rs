@@ -12,9 +12,8 @@ use crate::{
     runtime_api,
     wigets::{
         elements::{
-            ElementData, MonitorElementConfig, RegionElementConfig, RegionElementType,
-            SinkElementConfig, SinkElementType, SourceElementConfig, SourceElementType,
-            UiElementData, UiElementInfo, UiElementWidget,
+            ElementData, MonitorElementConfig, RegionElementType, SinkElementConfig,
+            SinkElementType, SourceElementType, UiElementData, UiElementInfo, UiElementWidget,
         },
         sink::MonitorElementWidget,
     },
@@ -33,11 +32,9 @@ pub struct SimpleUiCore {
 impl SimpleUiCore {
     pub fn new(config: ParsedAvailableConfig) -> Result<SimpleUiCore> {
         let source_data = UiElementData {
-            data: ElementData::Source(SourceElementConfig {
-                name: "source".to_owned(),
-                id: 3,
-                source: SourceElementType::URI("".to_owned()),
-            }),
+            name: "source".to_owned(),
+            id: 3,
+            data: ElementData::Source(SourceElementType::URI("".to_owned())),
         };
 
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
@@ -46,42 +43,36 @@ impl SimpleUiCore {
         // for e.g. egui::PaintCallback.
 
         let elm = UiElementData {
-            data: ElementData::Sink(SinkElementConfig {
-                name: "sink1".to_owned(),
-                id: 1,
-                sink: SinkElementType::Monitor(MonitorElementConfig {
-                    mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
-                    monitor: MonitorInfo {
-                        name: "".to_owned(),
-                        resolution: "".to_owned(),
-                        refresh_rate_hz: 0,
-                    },
-                }),
-            }),
+            name: "sink1".to_owned(),
+            id: 1,
+            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig {
+                mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
+                monitor: MonitorInfo {
+                    name: "".to_owned(),
+                    resolution: "".to_owned(),
+                    refresh_rate_hz: 0,
+                },
+            })),
         };
         let elm_2 = UiElementData {
-            data: ElementData::Sink(SinkElementConfig {
-                name: "sink2".to_owned(),
-                id: 2,
-                sink: SinkElementType::Monitor(MonitorElementConfig {
-                    mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
-                    monitor: MonitorInfo {
-                        name: "".to_owned(),
-                        resolution: "".to_owned(),
-                        refresh_rate_hz: 0,
-                    },
-                }),
-            }),
+            name: "sink2".to_owned(),
+            id: 2,
+            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig {
+                mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
+                monitor: MonitorInfo {
+                    name: "".to_owned(),
+                    resolution: "".to_owned(),
+                    refresh_rate_hz: 0,
+                },
+            })),
         };
         let elm_3 = UiElementData {
-            data: ElementData::Region(RegionElementConfig {
-                name: "sink2".to_owned(),
-                id: 2,
-                region: RegionElementType::Display {
-                    source: None,
-                    sink: None,
-                    element_infos: None,
-                },
+            name: "sink2".to_owned(),
+            id: 2,
+            data: ElementData::Region(RegionElementType::Display {
+                source: None,
+                sink: None,
+                element_infos: None,
             }),
         };
 
@@ -131,7 +122,7 @@ impl<'a> Widget for SimpleUiApp<'a> {
                     source_elements.push(element);
                 }
                 ElementData::Region(region_config) => {
-                    match &mut region_config.region {
+                    match region_config {
                         RegionElementType::Display {
                             source,
                             sink,

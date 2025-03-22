@@ -7,8 +7,8 @@ use crate::config::{
 };
 
 use super::elements::{
-    ElementData, RegionElementConfig, RegionElementType, SinkElementConfig, SinkElementType,
-    SourceElementConfig, SourceElementType, UiElementInfo,
+    ElementData, RegionElementType, SinkElementConfig, SinkElementType, SourceElementType,
+    UiElementData, UiElementInfo,
 };
 
 use anyhow::{Error, Result};
@@ -24,40 +24,42 @@ pub struct DisplayElementWidget<'a> {
 impl<'a> DisplayElementWidget<'a> {
     pub fn new(
         parsed_config: ParsedAvailableConfig,
-        region_data: &'a mut RegionElementConfig,
+        region_data: &'a mut UiElementData,
     ) -> Result<Self> {
-        match &mut region_data.region {
-            RegionElementType::Display {
-                source,
-                sink,
-                element_infos,
-            } => {
-                let mut widget = Self {
-                    src_infos: vec![],
-                    sink_infos: vec![],
-                    config: parsed_config,
-                    src_info: source,
-                    sink_info: sink,
-                };
-                if let Some(element_infos) = element_infos {
-                    for info in element_infos {
-                        match info {
-                            UiElementInfo::Source { id, name } => {
-                                widget.src_infos.push(info.clone());
+        match &mut region_data.data {
+            ElementData::Region(sink_element) => match sink_element {
+                RegionElementType::Display {
+                    source,
+                    sink,
+                    element_infos,
+                } => {
+                    let mut widget = Self {
+                        src_infos: vec![],
+                        sink_infos: vec![],
+                        config: parsed_config,
+                        src_info: source,
+                        sink_info: sink,
+                    };
+                    if let Some(element_infos) = element_infos {
+                        for info in element_infos {
+                            match info {
+                                UiElementInfo::Source { id, name } => {
+                                    widget.src_infos.push(info.clone());
+                                }
+                                UiElementInfo::Sink { id, name } => {
+                                    widget.sink_infos.push(info.clone());
+                                }
+                                _ => {}
                             }
-                            UiElementInfo::Sink { id, name } => {
-                                widget.sink_infos.push(info.clone());
-                            }
-                            _ => {}
                         }
                     }
+
+                    widget.validate_config();
+
+                    Ok(widget)
                 }
-
-                widget.validate_config();
-
-                Ok(widget)
-            }
-            _ => Err(Error::msg("Invalid Source Element Type")),
+            },
+            _ => Err(Error::msg("Invalid Region Element Type")),
         }
     }
 
