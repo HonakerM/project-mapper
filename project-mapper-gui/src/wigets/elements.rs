@@ -1,17 +1,21 @@
 use std::sync::mpsc::{Receiver, Sender};
 
+use anyhow::{Error, Result};
 use eframe::egui::{self, Response, Ui, Widget};
 use project_mapper_core::config::{
     options::{RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
     runtime::RegionConfig,
-    sink::{MonitorInfo, SinkConfig},
+    sink::{FullScreenMode, MonitorInfo, SinkConfig},
     source::SourceConfig,
 };
 use rand::distr::Alphanumeric;
 
 use super::{region::DisplayElementWidget, sink::MonitorElementWidget, source::URIElementWidget};
 use crate::{
-    config::{consts::WINDOWED_FULLSCREEN_MODE, parser::ParsedAvailableConfig},
+    config::{
+        consts::{BORDERLESS_FULLSCREEN_MODE, EXCLUSIVE_FULLSCREEN_MODE, WINDOWED_FULLSCREEN_MODE},
+        parser::ParsedAvailableConfig,
+    },
     core::simple_ui::UiEvent,
 };
 use rand::prelude::*;
@@ -22,6 +26,23 @@ pub struct MonitorElementConfig {
     pub monitor: MonitorInfo,
 }
 
+impl MonitorElementConfig {
+    pub fn to_fullscreen_config(&self) -> Result<FullScreenMode> {
+        if self.mode == WINDOWED_FULLSCREEN_MODE {
+            Ok(FullScreenMode::Windowed {})
+        } else if self.mode == BORDERLESS_FULLSCREEN_MODE {
+            Ok(FullScreenMode::Borderless {
+                name: self.monitor.name.clone(),
+            })
+        } else if self.mode == EXCLUSIVE_FULLSCREEN_MODE {
+            Ok(FullScreenMode::Exclusive {
+                info: self.monitor.clone(),
+            })
+        } else {
+            Err(Error::msg(format!("Unknown mode {}", self.mode)))
+        }
+    }
+}
 impl Default for MonitorElementConfig {
     fn default() -> Self {
         MonitorElementConfig {

@@ -4,7 +4,11 @@ use eframe::{
     self, App,
     egui::{self, Response, TextBuffer, Widget},
 };
-use project_mapper_core::config::sink::{MonitorInfo, Resolution};
+use project_mapper_core::config::{
+    runtime::{RegionConfig, RegionType, RuntimeConfig},
+    sink::{MonitorInfo, Resolution, SinkConfig, SinkType},
+    source::{SourceConfig, SourceType, Test, URI},
+};
 
 use crate::{
     config::{
@@ -145,9 +149,94 @@ impl SimpleUiCore {
     }
 }
 
-impl CoreView for SimpleUiCore {
-    fn elements(self) -> Vec<UiElementData> {
-        self.elements
+impl CoreView for &SimpleUiCore {
+    fn config(self) -> Result<RuntimeConfig> {
+        let mut sinks: Vec<SinkConfig> = Vec::new();
+        let mut sources: Vec<SourceConfig> = Vec::new();
+        let mut regions: Vec<RegionConfig> = Vec::new();
+
+        let mut parse_error = None;
+        for element in &self.elements {
+            let name = element.name().clone();
+            let id = element.id();
+            match &element.data {
+                ElementData::Sink(sink_config) => match sink_config {
+                    SinkElementType::Monitor(monitor_config) => {
+                        sinks.push(SinkConfig {
+                            name: name,
+                            id: id,
+                            sink: SinkType::OpenGLWindow {
+                                full_screen: monitor_config.to_fullscreen_config()?,
+                            },
+                        });
+                    }
+                },
+                ElementData::Source(source_config) => match source_config {
+                    SourceElementType::URI(config) => {
+                        sources.push(SourceConfig {
+                            name: name,
+                            id: id,
+                            source: SourceType::URI(URI {
+                                uri: config.uri.clone(),
+                            }),
+                        });
+                    }
+                    SourceElementType::Test(config) => {
+                        sources.push(SourceConfig {
+                            name: name,
+                            id: id,
+                            source: SourceType::Test(Test {}),
+                        });
+                    }
+                },
+                ElementData::Region(region_config) => match region_config {
+                    RegionElementType::Display(display) => {
+                        let mut src = &UiElementInfo::Source {
+                            id: 0,
+                            name: "".to_owned(),
+                        };
+                        if let Some(element) = &display.source {
+                            src = element;
+                        } else {
+                            parse_error = Some(Error::msg("Must have source selected"));
+                            break;
+                        }
+
+                        let mut sink = &UiElementInfo::Sink {
+                            id: 0,
+                            name: "".to_owned(),
+                        };
+                        if let Some(element) = &display.sink {
+                            sink = element;
+                        } else {
+                            parse_error = Some(Error::msg("Must have sink selected"));
+                            break;
+                        }
+                        regions.push(RegionConfig {
+                            name: name,
+                            id: id,
+                            region: RegionType::Display {
+                                source: src.id(),
+                                sink: sink.id(),
+                            },
+                        });
+                    }
+                },
+            }
+        }
+
+        if let Some(error) = parse_error {
+            Err(error)
+        } else {
+            Ok(RuntimeConfig {
+                sinks: sinks,
+                sources: sources,
+                regions: regions,
+            })
+        }
+    }
+    fn load_config(&mut self, config: RuntimeConfig) -> Result<()> {
+        Ok(())
     }
 }
 
