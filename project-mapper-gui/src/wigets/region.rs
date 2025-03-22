@@ -72,6 +72,7 @@ impl<'a> DisplayElementWidget<'a> {
             }
             if let Some(current_src_info) = self.src_info {
                 if current_src_info.id() == src_info.id() {
+                    current_src_info.set_name(src_info.name());
                     valid_src = true;
                 }
             }
@@ -90,6 +91,7 @@ impl<'a> DisplayElementWidget<'a> {
             }
             if let Some(current_sink_info) = self.sink_info {
                 if current_sink_info.id() == sink_info.id() {
+                    current_sink_info.set_name(sink_info.name());
                     valid_sink = true;
                 }
             }
@@ -116,7 +118,7 @@ impl<'a> Widget for DisplayElementWidget<'a> {
                 }
 
                 egui::ComboBox::from_id_salt("Source")
-                    .selected_text(format!("{src_id_text:?}"))
+                    .selected_text(format!("{src_id_text}"))
                     .show_ui(ui, |ui| {
                         for info in self.src_infos {
                             let name = info.name().clone();
@@ -132,7 +134,7 @@ impl<'a> Widget for DisplayElementWidget<'a> {
 
                 ui.label("Sink");
                 egui::ComboBox::from_id_salt("Sink")
-                    .selected_text(format!("{sink_id_text:?}"))
+                    .selected_text(format!("{sink_id_text}"))
                     .show_ui(ui, |ui| {
                         for info in self.sink_infos {
                             let name = info.name().clone();

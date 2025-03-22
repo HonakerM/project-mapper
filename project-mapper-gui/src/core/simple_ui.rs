@@ -33,7 +33,7 @@ impl SimpleUiCore {
     pub fn new(config: ParsedAvailableConfig) -> Result<SimpleUiCore> {
         let source_data = UiElementData {
             name: "source".to_owned(),
-            id: 3,
+            id: 1,
             data: ElementData::Source(SourceElementType::URI("".to_owned())),
         };
 
@@ -44,7 +44,7 @@ impl SimpleUiCore {
 
         let elm = UiElementData {
             name: "sink1".to_owned(),
-            id: 1,
+            id: 2,
             data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig {
                 mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
                 monitor: MonitorInfo {
@@ -56,7 +56,7 @@ impl SimpleUiCore {
         };
         let elm_2 = UiElementData {
             name: "sink2".to_owned(),
-            id: 2,
+            id: 3,
             data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig {
                 mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
                 monitor: MonitorInfo {
@@ -67,8 +67,8 @@ impl SimpleUiCore {
             })),
         };
         let elm_3 = UiElementData {
-            name: "sink2".to_owned(),
-            id: 2,
+            name: "region_1".to_owned(),
+            id: 4,
             data: ElementData::Region(RegionElementType::Display {
                 source: None,
                 sink: None,
@@ -76,19 +76,26 @@ impl SimpleUiCore {
             }),
         };
 
-        let mut elements = vec![source_data, elm, elm_2, elm_3];
-        let mut element_infos = vec![];
-
-        for element in &mut elements {
-            element_infos.push(element.info());
-        }
 
         Ok(Self {
             config: config,
             uri: String::new(),
-            elements: elements,
-            element_infos: element_infos,
+            elements: vec![source_data, elm, elm_2, elm_3],
+            element_infos: vec![],
         })
+    }
+
+
+    pub fn refresh_infos(&mut self){
+        let mut element_infos = vec![];
+        for element in &mut self.elements {
+            element_infos.push(element.info());
+        }
+        self.element_infos = element_infos;
+    }
+
+    pub fn refresh(&mut self){
+        self.refresh_infos();
     }
 }
 
@@ -109,6 +116,8 @@ impl<'a> SimpleUiApp<'a> {
 }
 impl<'a> Widget for SimpleUiApp<'a> {
     fn ui(mut self, ui: &mut egui::Ui) -> Response {
+        self.core.refresh();
+
         let mut sink_elements: Vec<&mut UiElementData> = Vec::new();
         let mut source_elements: Vec<&mut UiElementData> = Vec::new();
         let mut region_elements: Vec<&mut UiElementData> = Vec::new();

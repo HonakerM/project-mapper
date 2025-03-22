@@ -53,7 +53,7 @@ impl ElementData {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Eq)]
 pub enum UiElementInfo {
     Source { id: u32, name: String },
     Sink { id: u32, name: String },
@@ -68,12 +68,26 @@ impl UiElementInfo {
             UiElementInfo::Source { id, name } => id.clone(),
         }
     }
+
+    pub fn set_name(&mut self, new_name: String){
+        match self {
+            UiElementInfo::Region { id, name } => name.replace_range(.., new_name.as_str()),
+            UiElementInfo::Sink { id, name } => name.replace_range(.., new_name.as_str()),
+            UiElementInfo::Source { id, name } => name.replace_range(.., new_name.as_str()),
+        }
+    }
     pub fn name(&self) -> String {
         match &self {
             UiElementInfo::Region { id, name } => name.clone(),
             UiElementInfo::Sink { id, name } => name.clone(),
             UiElementInfo::Source { id, name } => name.clone(),
         }
+    }
+}
+
+impl PartialEq for UiElementInfo {
+    fn eq(&self, other: &UiElementInfo) -> bool {
+        self.id() == other.id()
     }
 }
 
@@ -139,13 +153,21 @@ impl<'a> UiElementWidget<'a> {
 impl<'a> Widget for UiElementWidget<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         let id = self.data.id();
-        let name = self.data.name();
         let mut ui_builder = egui::UiBuilder::new().id_salt(id);
         ui.scope_builder(ui_builder, |ui| {
-            self.frame.show(ui, |ui| match &mut self.data.data {
+            self.frame.show(ui, |ui| {
+
+            egui::Grid::new(id)
+            .num_columns(2)
+            .striped(true)
+            .show(ui, |ui| {
+                ui.label(format!("{} Element", self.data.data.element_type()));
+                ui.add(egui::TextEdit::singleline(&mut self.data.name));
+            });
+
+            match &mut self.data.data {
                 ElementData::Sink(sink_element) => match sink_element {
                     SinkElementType::Monitor(monitor_config) => {
-                        ui.label(format!("Monitor Element {}", name));
                         let widget = MonitorElementWidget::new(self.config.clone(), self.data)
                             .expect("uh oh");
 
@@ -154,7 +176,6 @@ impl<'a> Widget for UiElementWidget<'a> {
                 },
                 ElementData::Source(source_element) => match source_element {
                     SourceElementType::URI(uri_config) => {
-                        ui.label(format!("Uri Source {}", name));
                         let widget =
                             URIElementWidget::new(self.config.clone(), self.data).expect("uh oh");
 
@@ -168,7 +189,6 @@ impl<'a> Widget for UiElementWidget<'a> {
                         sink,
                         element_infos,
                     } => {
-                        ui.label(format!("Display Region {}", name));
                         let widget = DisplayElementWidget::new(self.config.clone(), self.data)
                             .expect("uh oh");
 
@@ -176,7 +196,7 @@ impl<'a> Widget for UiElementWidget<'a> {
                     }
                     _ => {}
                 },
-            });
+            }});
         })
         .response
     }
