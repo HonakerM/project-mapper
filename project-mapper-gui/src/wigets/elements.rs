@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use eframe::egui::{self, Response, Ui, Widget};
 use project_mapper_core::config::{
     options::{RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
@@ -237,5 +239,33 @@ impl<'a> Widget for UiElementWidget<'a> {
             });
         })
         .response
+    }
+}
+
+
+
+
+
+pub struct AddElementWidget<'a> {
+    element_list: &'a mut Arc<Mutex<Vec<UiElementData>>>,
+    pub config: ParsedAvailableConfig,
+}
+
+impl<'a> AddElementWidget<'a> {
+    pub fn new(element_list: &'a mut Arc<Mutex<Vec<UiElementData>>>, config: ParsedAvailableConfig) -> Self {
+        Self {
+            element_list: element_list,
+            config: config,
+        }
+
+    }
+}
+impl<'a> Widget for AddElementWidget<'a> {
+    fn ui(self, ui: &mut Ui) -> Response {
+            let mut button = ui.button("start");
+            if button.clicked()  {
+
+            }
+            button
     }
 }

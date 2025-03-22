@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use eframe::{
     self, App,
     egui::{self, Response, TextBuffer, Widget},
@@ -26,7 +28,7 @@ use super::app::{CoreApp, CoreView};
 pub struct SimpleUiCore {
     config: ParsedAvailableConfig,
     uri: String,
-    elements: Vec<UiElementData>,
+    elements: Arc<Mutex<Vec<UiElementData>>>,
     element_infos: Vec<UiElementInfo>,
 }
 
@@ -77,15 +79,9 @@ impl SimpleUiCore {
         Ok(Self {
             config: config,
             uri: String::new(),
-            elements: elements,
+            elements: Arc::new(Mutex::new(elements)),
             element_infos: element_infos,
         })
-    }
-}
-
-impl CoreView for SimpleUiCore {
-    fn elements(self) -> Vec<UiElementData> {
-        self.elements
     }
 }
 
@@ -97,14 +93,17 @@ impl<'a> SimpleUiApp<'a> {
     pub fn new(core: &mut SimpleUiCore) -> SimpleUiApp {
         SimpleUiApp { core: core }
     }
+
+
 }
+
 impl<'a> Widget for SimpleUiApp<'a> {
     fn ui(mut self, ui: &mut egui::Ui) -> Response {
         let mut sink_elements: Vec<&mut UiElementData> = Vec::new();
         let mut source_elements: Vec<&mut UiElementData> = Vec::new();
         let mut region_elements: Vec<&mut UiElementData> = Vec::new();
 
-        for element in &mut self.core.elements {
+        for element in self.core.elements {
             match &mut element.data {
                 ElementData::Sink(sink_config) => {
                     sink_elements.push(element);
