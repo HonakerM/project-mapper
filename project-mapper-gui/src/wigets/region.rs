@@ -27,26 +27,22 @@ impl<'a> DisplayElementWidget<'a> {
         region_data: &'a mut RegionElementConfig,
     ) -> Result<Self> {
         match &mut region_data.region {
-            RegionElementType::Display {
-                source,
-                sink,
-                element_infos,
-            } => {
+            RegionElementType::Display(display) => {
                 let mut widget = Self {
                     src_infos: vec![],
                     sink_infos: vec![],
                     config: parsed_config,
-                    src_info: source,
-                    sink_info: sink,
+                    src_info: &mut display.source,
+                    sink_info: &mut display.sink,
                 };
-                if let Some(element_infos) = element_infos {
+                if let Some(element_infos) = display.element_infos.clone() {
                     for info in element_infos {
                         match info {
                             UiElementInfo::Source { id, name } => {
-                                widget.src_infos.push(info.clone());
+                                widget.src_infos.push(UiElementInfo::Source { id, name });
                             }
                             UiElementInfo::Sink { id, name } => {
-                                widget.sink_infos.push(info.clone());
+                                widget.sink_infos.push(UiElementInfo::Sink { id, name });
                             }
                             _ => {}
                         }

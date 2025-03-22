@@ -6,7 +6,7 @@ use project_mapper_core::config::{
     source::SourceConfig,
 };
 
-use crate::config::parser::ParsedAvailableConfig;
+use crate::config::{consts::WINDOWED_FULLSCREEN_MODE, parser::ParsedAvailableConfig};
 
 use super::{region::DisplayElementWidget, sink::MonitorElementWidget, source::URIElementWidget};
 
@@ -21,6 +21,19 @@ pub enum SinkElementType {
     Monitor(MonitorElementConfig),
 }
 
+impl Default for MonitorElementConfig {
+    fn default() -> Self {
+        MonitorElementConfig {
+            mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
+            monitor: MonitorInfo {
+                name: "".to_owned(),
+                resolution: "".to_owned(),
+                refresh_rate_hz: 0,
+            },
+        }
+    }
+}
+
 #[derive(Clone)]
 pub struct SinkElementConfig {
     pub name: String,
@@ -33,13 +46,32 @@ pub enum SourceElementType {
     URI(String),
     Test(),
 }
+
+#[derive(Clone)]
+pub struct DisplayElementConfig {
+    pub source: Option<UiElementInfo>,
+    pub sink: Option<UiElementInfo>,
+    pub element_infos: Option<Vec<UiElementInfo>>,
+}
+
+impl DisplayElementConfig {
+    pub fn update_elements(&mut self, new_elements: Option<Vec<UiElementInfo>>) {
+        self.element_infos = new_elements;
+    }
+}
+impl Default for DisplayElementConfig {
+    fn default() -> Self {
+        DisplayElementConfig {
+            source: None,
+            sink: None,
+            element_infos: None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum RegionElementType {
-    Display {
-        source: Option<UiElementInfo>,
-        sink: Option<UiElementInfo>,
-        element_infos: Option<Vec<UiElementInfo>>,
-    },
+    Display(DisplayElementConfig),
 }
 
 #[derive(Clone)]
@@ -193,11 +225,7 @@ impl<'a> Widget for UiElementWidget<'a> {
                     _ => {}
                 },
                 ElementData::Region(region_element) => match &mut region_element.region {
-                    RegionElementType::Display {
-                        source,
-                        sink,
-                        element_infos,
-                    } => {
+                    RegionElementType::Display(display) => {
                         ui.label(format!("Display Region {}", name));
                         let widget = DisplayElementWidget::new(self.config.clone(), region_element)
                             .expect("uh oh");

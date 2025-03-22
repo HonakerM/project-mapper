@@ -12,9 +12,9 @@ use crate::{
     runtime_api,
     wigets::{
         elements::{
-            ElementData, MonitorElementConfig, RegionElementConfig, RegionElementType,
-            SinkElementConfig, SinkElementType, SourceElementConfig, SourceElementType,
-            UiElementData, UiElementInfo, UiElementWidget,
+            DisplayElementConfig, ElementData, MonitorElementConfig, RegionElementConfig,
+            RegionElementType, SinkElementConfig, SinkElementType, SourceElementConfig,
+            SourceElementType, UiElementData, UiElementInfo, UiElementWidget,
         },
         sink::MonitorElementWidget,
     },
@@ -49,39 +49,21 @@ impl SimpleUiCore {
             data: ElementData::Sink(SinkElementConfig {
                 name: "sink1".to_owned(),
                 id: 1,
-                sink: SinkElementType::Monitor(MonitorElementConfig {
-                    mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
-                    monitor: MonitorInfo {
-                        name: "".to_owned(),
-                        resolution: "".to_owned(),
-                        refresh_rate_hz: 0,
-                    },
-                }),
+                sink: SinkElementType::Monitor(MonitorElementConfig::default()),
             }),
         };
         let elm_2 = UiElementData {
             data: ElementData::Sink(SinkElementConfig {
                 name: "sink2".to_owned(),
                 id: 2,
-                sink: SinkElementType::Monitor(MonitorElementConfig {
-                    mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
-                    monitor: MonitorInfo {
-                        name: "".to_owned(),
-                        resolution: "".to_owned(),
-                        refresh_rate_hz: 0,
-                    },
-                }),
+                sink: SinkElementType::Monitor(MonitorElementConfig::default()),
             }),
         };
         let elm_3 = UiElementData {
             data: ElementData::Region(RegionElementConfig {
                 name: "sink2".to_owned(),
                 id: 2,
-                region: RegionElementType::Display {
-                    source: None,
-                    sink: None,
-                    element_infos: None,
-                },
+                region: RegionElementType::Display(DisplayElementConfig::default()),
             }),
         };
 
@@ -132,12 +114,8 @@ impl<'a> Widget for SimpleUiApp<'a> {
                 }
                 ElementData::Region(region_config) => {
                     match &mut region_config.region {
-                        RegionElementType::Display {
-                            source,
-                            sink,
-                            element_infos,
-                        } => {
-                            *element_infos = Some(self.core.element_infos.clone());
+                        RegionElementType::Display(display) => {
+                            display.update_elements(Some(self.core.element_infos.clone()));
                         }
                     }
                     region_elements.push(element);
