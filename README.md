@@ -1,2 +1,2 @@
-# go-project-mapping
+# Project Mapper
 
