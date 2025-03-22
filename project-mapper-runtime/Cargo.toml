@@ -9,6 +9,8 @@ rust-version.workspace = true
 gst = { package = "gstreamer", version="0.23"  }
 gst_app = { package = "gstreamer-app", version="0.23"  }
 gst_video = { package = "gstreamer-video", version="0.23"  }
+gst_gl_x11 = {package = "gstreamer-gl-x11", version="0.23"}
+gst_gl_egl = {package = "gstreamer-gl-egl", version="0.23"}
 
 serde.workspace = true
 serde_json.workspace = true
@@ -18,7 +20,7 @@ anyhow = "1.0"
 derive_more = { version = "2", features = ["display", "error"] }
 
 gst_gl = { package = "gstreamer-gl", version="0.23"  }
-glutin = {  version="0.32" , default-features = false}
+glutin = {  version="0.32" , features = ["egl", "glx", "wayland", "wgl", "x11"]}
 glutin_winit = { package = "glutin-winit", version = "0.5", default-features = false   }
 winit = { version = "0.30" , default-features = false}
 raw_window_handle = { package = "raw-window-handle", version = "0.6" }
@@ -26,7 +28,7 @@ project-mapper-core = { workspace = true}
 clap = { version = "4.5.31", features = ["derive"] }
 
 
-[target.'cfg(windows)'.dependencies]
+[target.'cfg(target_os = "windows")'.dependencies]
 windows = { version = "0.60", features=["Win32_Graphics_Direct3D11",
     "Win32_Foundation", "Win32_Graphics_Direct3D", "Win32_Graphics_Dxgi",
     "Win32_Graphics_Dxgi_Common", "Win32_Graphics_Direct2D",
@@ -34,12 +36,21 @@ windows = { version = "0.60", features=["Win32_Graphics_Direct3D11",
     "Win32_Graphics_Imaging", "Win32_System_Com", "Foundation_Numerics"], optional = true }
 windows-numerics = "0.1"
 glutin = { version = "0.32", features = ["wgl"] }
-glutin-winit = { version = "0.5", features = ["wgl"] }
+glutin-winit = { version = "0.5", features = ["wgl", "glx", "egl"] }
 
 
+[target.'cfg(target_os = "macos")'.dependencies]
+cocoa = "0.26"
+objc = "0.2.7"
 
 [build-dependencies]
 gl_generator = { version = "0.14"}
+
+[target.'cfg(target_os = "macos")'.build-dependencies]
+system-deps = "7"
+
+[package.metadata.system-deps]
+"gstreamer-1.0" = "1.14"
 
 
 [[bin]]

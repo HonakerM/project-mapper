@@ -1,0 +1,80 @@
+{
+    "sinks": [
+        {
+            "name": "main monitor",
+            "id": 1,
+            "sink": {
+                "type": "OpenGLWindow",
+                "full_screen": {
+                    "type": "Windowed"
+                }
+            }
+        },
+        {
+            "name": "other monitor",
+            "id": 2,
+            "sink": {
+                "type": "OpenGLWindow",
+                "full_screen": {
+                    "type": "Windowed"
+                }
+            }
+        },
+        {
+            "name": "other monitor",
+            "id": 3,
+            "sink": {
+                "type": "OpenGLWindow",
+                "full_screen": {
+                    "type": "Windowed"
+                }
+            }
+        }
+    ],
+    "sources": [
+        {
+            "name": "test source",
+            "id": 1,
+            "source": {
+                "type": "Test"
+            }
+        },
+        {
+            "name": "uri source",
+            "id": 2,
+            "source": {
+                "type": "URI",
+                "uri": "https://gstreamer.freedesktop.org/data/media/sintel_trailer-480p.webm"
+            }
+        }
+    ],
+    "regions": [
+        {
+            "name": "main region",
+            "id": 1,
+            "region": {
+                "type": "Display",
+                "source": 1,
+                "sink": 1
+            }
+        },
+        {
+            "name": "secondary region",
+            "id": 2,
+            "region": {
+                "type": "Display",
+                "source": 2,
+                "sink": 2
+            }
+        },
+        {
+            "name": "secondary region",
+            "id": 3,
+            "region": {
+                "type": "Display",
+                "source": 1,
+                "sink": 3
+            }
+        }
+    ]
+}
