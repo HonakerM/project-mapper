@@ -117,13 +117,14 @@ impl<'a> Widget for DisplayElementWidget<'a> {
                     .selected_text(format!("{src_id_text:?}"))
                     .show_ui(ui, |ui| {
                         for info in self.src_infos {
-                            ui.selectable_value(self.src_info, Some(info), src_id_text.clone());
+                            let name = info.name().clone();
+                            ui.selectable_value(self.src_info, Some(info), name);
                         }
                     });
                 ui.end_row();
 
                 let mut sink_id_text = "".to_string();
-                if let Some(info) = self.src_info {
+                if let Some(info) = self.sink_info {
                     sink_id_text = info.name();
                 }
 
@@ -132,7 +133,8 @@ impl<'a> Widget for DisplayElementWidget<'a> {
                     .selected_text(format!("{sink_id_text:?}"))
                     .show_ui(ui, |ui| {
                         for info in self.sink_infos {
-                            ui.selectable_value(self.sink_info, Some(info), sink_id_text.clone());
+                            let name = info.name().clone();
+                            ui.selectable_value(self.sink_info, Some(info), name);
                         }
                     });
                 ui.end_row();
