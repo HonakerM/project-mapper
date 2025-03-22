@@ -6,9 +6,7 @@ use crate::config::{
     parser::ParsedAvailableConfig,
 };
 
-use super::elements::{
-    ElementData, SinkElementConfig, SinkElementType, SourceElementType, UiElementData,
-};
+use super::elements::{ElementData, SinkElementType, SourceElementType, UiElementData};
 
 use anyhow::{Error, Result};
 
@@ -24,10 +22,10 @@ impl<'a> URIElementWidget<'a> {
     ) -> Result<Self> {
         match &mut source_data.data {
             ElementData::Source(sink_element) => match sink_element {
-                SourceElementType::URI(value) => {
+                SourceElementType::URI(config) => {
                     let mut widget = Self {
                         config: parsed_config,
-                        uri: value,
+                        uri: &mut config.uri,
                     };
                     Ok(widget)
                 }

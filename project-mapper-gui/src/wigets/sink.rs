@@ -6,7 +6,7 @@ use crate::config::{
     parser::ParsedAvailableConfig,
 };
 
-use super::elements::{ElementData, SinkElementConfig, SinkElementType, UiElementData};
+use super::elements::{ElementData, SinkElementType, UiElementData};
 
 use anyhow::{Error, Result};
 

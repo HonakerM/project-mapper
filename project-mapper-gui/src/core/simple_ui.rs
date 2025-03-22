@@ -1,3 +1,5 @@
+use std::sync::mpsc::{Receiver, Sender};
+
 use eframe::{
     self, App,
     egui::{self, Response, TextBuffer, Widget},
@@ -12,8 +14,9 @@ use crate::{
     runtime_api,
     wigets::{
         elements::{
-            ElementData, MonitorElementConfig, RegionElementType, SinkElementConfig,
-            SinkElementType, SourceElementType, UiElementData, UiElementInfo, UiElementWidget,
+            AddElementWidget, DisplayElementConfig, ElementData, MonitorElementConfig,
+            RegionElementType, SinkElementType, SourceElementType, UiElementData, UiElementInfo,
+            UiElementWidget, UriElementConfig,
         },
         sink::MonitorElementWidget,
     },
@@ -22,9 +25,15 @@ use anyhow::{Error, Result};
 
 use super::app::{CoreApp, CoreView};
 
+pub enum UiEvent {
+    NewElement(UiElementInfo),
+    DeleteElement(UiElementInfo),
+}
+
 pub struct SimpleUiCore {
     config: ParsedAvailableConfig,
-    uri: String,
+    event_receiver: Receiver<UiEvent>,
+    event_sender: Sender<UiEvent>,
     elements: Vec<UiElementData>,
     element_infos: Vec<UiElementInfo>,
 }
@@ -34,7 +43,7 @@ impl SimpleUiCore {
         let source_data = UiElementData {
             name: "source".to_owned(),
             id: 1,
-            data: ElementData::Source(SourceElementType::URI("".to_owned())),
+            data: ElementData::Source(SourceElementType::URI(UriElementConfig::default())),
         };
 
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
@@ -45,48 +54,31 @@ impl SimpleUiCore {
         let elm = UiElementData {
             name: "sink1".to_owned(),
             id: 2,
-            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig {
-                mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
-                monitor: MonitorInfo {
-                    name: "".to_owned(),
-                    resolution: "".to_owned(),
-                    refresh_rate_hz: 0,
-                },
-            })),
+            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig::default())),
         };
         let elm_2 = UiElementData {
             name: "sink2".to_owned(),
             id: 3,
-            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig {
-                mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
-                monitor: MonitorInfo {
-                    name: "".to_owned(),
-                    resolution: "".to_owned(),
-                    refresh_rate_hz: 0,
-                },
-            })),
+            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig::default())),
         };
         let elm_3 = UiElementData {
             name: "region_1".to_owned(),
             id: 4,
-            data: ElementData::Region(RegionElementType::Display {
-                source: None,
-                sink: None,
-                element_infos: None,
-            }),
+            data: ElementData::Region(RegionElementType::Display(DisplayElementConfig::default())),
         };
 
+        let (tx, rx) = std::sync::mpsc::channel();
 
         Ok(Self {
             config: config,
-            uri: String::new(),
+            event_sender: tx,
+            event_receiver: rx,
             elements: vec![source_data, elm, elm_2, elm_3],
             element_infos: vec![],
         })
     }
 
-
-    pub fn refresh_infos(&mut self){
+    pub fn refresh_infos(&mut self) {
         let mut element_infos = vec![];
         for element in &mut self.elements {
             element_infos.push(element.info());
@@ -94,7 +86,61 @@ impl SimpleUiCore {
         self.element_infos = element_infos;
     }
 
-    pub fn refresh(&mut self){
+    pub fn refresh_events(&mut self) {
+        loop {
+            match self.event_receiver.try_recv() {
+                Ok(msg) => {
+                    // add to buffer/queue but process all when buffer.len() = 100
+                    match msg {
+                        UiEvent::NewElement(element_info) => match element_info {
+                            UiElementInfo::Source { id, name } => {
+                                self.elements.push(UiElementData {
+                                    id: id,
+                                    name: name,
+                                    data: ElementData::Source(SourceElementType::URI(
+                                        UriElementConfig::default(),
+                                    )),
+                                });
+                            }
+                            UiElementInfo::Region { id, name } => {
+                                self.elements.push(UiElementData {
+                                    id: id,
+                                    name: name,
+                                    data: ElementData::Region(RegionElementType::Display(
+                                        DisplayElementConfig::default(),
+                                    )),
+                                });
+                            }
+                            UiElementInfo::Sink { id, name } => {
+                                self.elements.push(UiElementData {
+                                    id: id,
+                                    name: name,
+                                    data: ElementData::Sink(SinkElementType::Monitor(
+                                        MonitorElementConfig::default(),
+                                    )),
+                                });
+                            }
+                        },
+                        UiEvent::DeleteElement(element) => {
+                            if let Some(del_id) = self
+                                .elements
+                                .iter()
+                                .position(|item| item.id() == element.id())
+                            {
+                                self.elements.remove(del_id);
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    break;
+                }
+            }
+        }
+    }
+
+    pub fn refresh(&mut self) {
+        self.refresh_events();
         self.refresh_infos();
     }
 }
@@ -132,12 +178,8 @@ impl<'a> Widget for SimpleUiApp<'a> {
                 }
                 ElementData::Region(region_config) => {
                     match region_config {
-                        RegionElementType::Display {
-                            source,
-                            sink,
-                            element_infos,
-                        } => {
-                            *element_infos = Some(self.core.element_infos.clone());
+                        RegionElementType::Display(display) => {
+                            display.element_infos = Some(self.core.element_infos.clone());
                         }
                     }
                     region_elements.push(element);
@@ -157,17 +199,58 @@ impl<'a> Widget for SimpleUiApp<'a> {
                 let sink_ui = &mut third_instance[0];
 
                 for source_element in source_elements {
-                    let mut widget = UiElementWidget::new(source_element, self.core.config.clone());
+                    let mut widget = UiElementWidget::new(
+                        source_element,
+                        self.core.event_sender.clone(),
+                        self.core.config.clone(),
+                    );
                     source_ui.add(widget);
                 }
+                let mut src_add_button_widget = AddElementWidget::new(
+                    self.core.event_sender.clone(),
+                    self.core.config.clone(),
+                    UiElementInfo::Source {
+                        id: 0,
+                        name: "".to_string(),
+                    },
+                );
+                source_ui.add(src_add_button_widget);
+
                 for region_element in region_elements {
-                    let mut widget = UiElementWidget::new(region_element, self.core.config.clone());
+                    let mut widget = UiElementWidget::new(
+                        region_element,
+                        self.core.event_sender.clone(),
+                        self.core.config.clone(),
+                    );
                     region_ui.add(widget);
                 }
+                let mut region_add_button_widget = AddElementWidget::new(
+                    self.core.event_sender.clone(),
+                    self.core.config.clone(),
+                    UiElementInfo::Region {
+                        id: 0,
+                        name: "".to_string(),
+                    },
+                );
+                region_ui.add(region_add_button_widget);
+
                 for sink_element in sink_elements {
-                    let mut widget = UiElementWidget::new(sink_element, self.core.config.clone());
+                    let mut widget = UiElementWidget::new(
+                        sink_element,
+                        self.core.event_sender.clone(),
+                        self.core.config.clone(),
+                    );
                     sink_ui.add(widget);
                 }
+                let mut sink_add_button_widget = AddElementWidget::new(
+                    self.core.event_sender.clone(),
+                    self.core.config.clone(),
+                    UiElementInfo::Sink {
+                        id: 0,
+                        name: "".to_string(),
+                    },
+                );
+                sink_ui.add(sink_add_button_widget);
             })
         })
         .response

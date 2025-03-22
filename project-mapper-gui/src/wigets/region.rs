@@ -7,8 +7,8 @@ use crate::config::{
 };
 
 use super::elements::{
-    ElementData, RegionElementType, SinkElementConfig, SinkElementType, SourceElementType,
-    UiElementData, UiElementInfo,
+    ElementData, RegionElementType, SinkElementType, SourceElementType, UiElementData,
+    UiElementInfo,
 };
 
 use anyhow::{Error, Result};
@@ -28,19 +28,15 @@ impl<'a> DisplayElementWidget<'a> {
     ) -> Result<Self> {
         match &mut region_data.data {
             ElementData::Region(sink_element) => match sink_element {
-                RegionElementType::Display {
-                    source,
-                    sink,
-                    element_infos,
-                } => {
+                RegionElementType::Display(display) => {
                     let mut widget = Self {
                         src_infos: vec![],
                         sink_infos: vec![],
                         config: parsed_config,
-                        src_info: source,
-                        sink_info: sink,
+                        src_info: &mut display.source,
+                        sink_info: &mut display.sink,
                     };
-                    if let Some(element_infos) = element_infos {
+                    if let Some(element_infos) = &mut display.element_infos {
                         for info in element_infos {
                             match info {
                                 UiElementInfo::Source { id, name } => {
