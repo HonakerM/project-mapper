@@ -8,7 +8,7 @@ use project_mapper_core::config::{
 
 use crate::config::parser::ParsedAvailableConfig;
 
-use super::{sink::MonitorElementWidget, source::URIElementWidget};
+use super::{region::DisplayElementWidget, sink::MonitorElementWidget, source::URIElementWidget};
 
 #[derive(Clone)]
 pub struct MonitorElementConfig {
@@ -35,7 +35,11 @@ pub enum SourceElementType {
 }
 #[derive(Clone)]
 pub enum RegionElementType {
-    Display { source: u32, sink: u32 },
+    Display {
+        source: Option<UiElementInfo>,
+        sink: Option<UiElementInfo>,
+        element_infos: Option<Vec<UiElementInfo>>,
+    },
 }
 
 #[derive(Clone)]
@@ -49,7 +53,7 @@ pub struct SourceElementConfig {
 pub struct RegionElementConfig {
     pub name: String,
     pub id: u32,
-    pub source: RegionElementType,
+    pub region: RegionElementType,
 }
 
 #[derive(strum_macros::Display)]
@@ -81,6 +85,30 @@ impl ElementData {
     }
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub enum UiElementInfo {
+    Source { id: u32, name: String },
+    Sink { id: u32, name: String },
+    Region { id: u32, name: String },
+}
+
+impl UiElementInfo {
+    pub fn id(&self) -> u32 {
+        match &self {
+            UiElementInfo::Region { id, name } => id.clone(),
+            UiElementInfo::Sink { id, name } => id.clone(),
+            UiElementInfo::Source { id, name } => id.clone(),
+        }
+    }
+    pub fn name(&self) -> String {
+        match &self {
+            UiElementInfo::Region { id, name } => name.clone(),
+            UiElementInfo::Sink { id, name } => name.clone(),
+            UiElementInfo::Source { id, name } => name.clone(),
+        }
+    }
+}
+
 pub struct UiElementData {
     pub data: ElementData,
 }
@@ -92,6 +120,23 @@ impl UiElementData {
 
     pub fn id(&self) -> u32 {
         self.data.id()
+    }
+
+    pub fn info(&self) -> UiElementInfo {
+        match &self.data {
+            ElementData::Region(region_config) => UiElementInfo::Region {
+                id: self.id(),
+                name: self.name(),
+            },
+            ElementData::Sink(sink_config) => UiElementInfo::Sink {
+                id: self.id(),
+                name: self.name(),
+            },
+            ElementData::Source(source_config) => UiElementInfo::Source {
+                id: self.id(),
+                name: self.name(),
+            },
+        }
     }
 }
 
@@ -147,7 +192,20 @@ impl<'a> Widget for UiElementWidget<'a> {
                     }
                     _ => {}
                 },
-                _ => (),
+                ElementData::Region(region_element) => match &mut region_element.region {
+                    RegionElementType::Display {
+                        source,
+                        sink,
+                        element_infos,
+                    } => {
+                        ui.label(format!("Display Region {}", name));
+                        let widget = DisplayElementWidget::new(self.config.clone(), region_element)
+                            .expect("uh oh");
+
+                        ui.add(widget);
+                    }
+                    _ => {}
+                },
             });
         })
         .response

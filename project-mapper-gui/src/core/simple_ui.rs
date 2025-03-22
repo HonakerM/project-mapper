@@ -12,8 +12,9 @@ use crate::{
     runtime_api,
     wigets::{
         elements::{
-            ElementData, MonitorElementConfig, SinkElementConfig, SinkElementType,
-            SourceElementConfig, SourceElementType, UiElementData, UiElementWidget,
+            ElementData, MonitorElementConfig, RegionElementConfig, RegionElementType,
+            SinkElementConfig, SinkElementType, SourceElementConfig, SourceElementType,
+            UiElementData, UiElementInfo, UiElementWidget,
         },
         sink::MonitorElementWidget,
     },
@@ -26,6 +27,7 @@ pub struct SimpleUiCore {
     config: ParsedAvailableConfig,
     uri: String,
     elements: Vec<UiElementData>,
+    element_infos: Vec<UiElementInfo>,
 }
 
 impl SimpleUiCore {
@@ -71,11 +73,30 @@ impl SimpleUiCore {
                 }),
             }),
         };
+        let elm_3 = UiElementData {
+            data: ElementData::Region(RegionElementConfig {
+                name: "sink2".to_owned(),
+                id: 2,
+                region: RegionElementType::Display {
+                    source: None,
+                    sink: None,
+                    element_infos: None,
+                },
+            }),
+        };
+
+        let mut elements = vec![source_data, elm, elm_2, elm_3];
+        let mut element_infos = vec![];
+
+        for element in &mut elements {
+            element_infos.push(element.info());
+        }
 
         Ok(Self {
             config: config,
             uri: String::new(),
-            elements: vec![source_data, elm, elm_2],
+            elements: elements,
+            element_infos: element_infos,
         })
     }
 }
@@ -99,6 +120,7 @@ impl<'a> Widget for SimpleUiApp<'a> {
     fn ui(mut self, ui: &mut egui::Ui) -> Response {
         let mut sink_elements: Vec<&mut UiElementData> = Vec::new();
         let mut source_elements: Vec<&mut UiElementData> = Vec::new();
+        let mut region_elements: Vec<&mut UiElementData> = Vec::new();
 
         for element in &mut self.core.elements {
             match &mut element.data {
@@ -108,7 +130,18 @@ impl<'a> Widget for SimpleUiApp<'a> {
                 ElementData::Source(source_config) => {
                     source_elements.push(element);
                 }
-                _ => {}
+                ElementData::Region(region_config) => {
+                    match &mut region_config.region {
+                        RegionElementType::Display {
+                            source,
+                            sink,
+                            element_infos,
+                        } => {
+                            *element_infos = Some(self.core.element_infos.clone());
+                        }
+                    }
+                    region_elements.push(element);
+                }
             }
         }
 
@@ -118,12 +151,18 @@ impl<'a> Widget for SimpleUiApp<'a> {
 
             ui.columns(3, |uis| {
                 let (first_inst, remaining) = uis.split_at_mut(1);
+                let (second_instance, third_instance) = remaining.split_at_mut(1);
                 let source_ui = &mut first_inst[0];
-                let sink_ui = &mut remaining[1];
+                let region_ui = &mut second_instance[0];
+                let sink_ui = &mut third_instance[0];
 
                 for source_element in source_elements {
                     let mut widget = UiElementWidget::new(source_element, self.core.config.clone());
                     source_ui.add(widget);
+                }
+                for region_element in region_elements {
+                    let mut widget = UiElementWidget::new(region_element, self.core.config.clone());
+                    region_ui.add(widget);
                 }
                 for sink_element in sink_elements {
                     let mut widget = UiElementWidget::new(sink_element, self.core.config.clone());
