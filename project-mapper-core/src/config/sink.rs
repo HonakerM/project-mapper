@@ -41,7 +41,7 @@ impl PartialOrd for Resolution {
         Some(self.cmp(other))
     }
 }
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MonitorInfo {
     pub name: String,
     pub resolution: ResolutionJson,

@@ -248,7 +248,7 @@ impl CoreView for &mut SimpleUiCore {
             let ui_data = UiElementData {
                 name: source.name,
                 id: source.id,
-                data_type: data.to_string(),
+                data_type: data.element_type(),
                 data: data,
             };
             new_elements.push(ui_data);
@@ -258,7 +258,7 @@ impl CoreView for &mut SimpleUiCore {
             let ui_data = UiElementData {
                 name: sink.name,
                 id: sink.id,
-                data_type: data.to_string(),
+                data_type: data.element_type(),
                 data: data,
             };
             new_elements.push(ui_data);
@@ -268,7 +268,7 @@ impl CoreView for &mut SimpleUiCore {
             let ui_data = UiElementData {
                 name: region.name,
                 id: region.id,
-                data_type: data.to_string(),
+                data_type: data.element_type(),
                 data: data,
             };
             new_elements.push(ui_data);

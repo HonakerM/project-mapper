@@ -10,6 +10,7 @@ use project_mapper_core::config::{
 };
 use rand::distr::Alphanumeric;
 use strum::IntoEnumIterator;
+use strum_macros::Display;
 
 use super::{region::DisplayElementWidget, sink::MonitorElementWidget, source::URIElementWidget};
 use crate::{
@@ -21,7 +22,7 @@ use crate::{
 };
 use rand::prelude::*;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct MonitorElementConfig {
     pub mode: String,
     pub monitor: MonitorInfo,
@@ -81,13 +82,13 @@ impl Default for MonitorElementConfig {
     }
 }
 
-#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
+#[derive(Clone,Debug, strum_macros::Display, strum_macros::EnumIter)]
 pub enum SinkElementType {
     Empty(),
     Monitor(MonitorElementConfig),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct TestElementConfig {}
 
 impl Default for TestElementConfig {
@@ -96,7 +97,7 @@ impl Default for TestElementConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct UriElementConfig {
     pub uri: String,
 }
@@ -107,14 +108,14 @@ impl Default for UriElementConfig {
     }
 }
 
-#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
+#[derive(Clone, strum_macros::Display, Debug, strum_macros::EnumIter)]
 pub enum SourceElementType {
     Empty(),
     URI(UriElementConfig),
     Test(TestElementConfig),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct DisplayElementConfig {
     pub source: Option<UiElementInfo>,
     pub sink: Option<UiElementInfo>,
@@ -135,13 +136,13 @@ impl Default for DisplayElementConfig {
         }
     }
 }
-#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
+#[derive(Clone, Debug, strum_macros::Display, strum_macros::EnumIter)]
 pub enum RegionElementType {
     Empty(),
     Display(DisplayElementConfig),
 }
 
-#[derive(strum_macros::Display)]
+#[derive(strum_macros::Display, Debug)]
 pub enum ElementData {
     Sink(SinkElementType),
     Source(SourceElementType),
@@ -250,7 +251,7 @@ impl ElementData {
     }
 }
 
-#[derive(Clone, Eq)]
+#[derive(Clone, Eq, Debug)]
 pub enum UiElementInfo {
     Source { id: u32, name: String },
     Sink { id: u32, name: String },
@@ -295,6 +296,7 @@ impl PartialEq for UiElementInfo {
     }
 }
 
+#[derive(Debug)]
 pub struct UiElementData {
     pub name: String,
     pub id: u32,
