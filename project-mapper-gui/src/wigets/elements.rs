@@ -123,9 +123,9 @@ pub enum ElementData {
 impl ElementData {
     pub fn element_type(&self) -> String {
         match self {
-            ElementData::Region (config) => config.to_string(),
-            ElementData::Sink (config) => config.to_string(),
-            ElementData::Source (config) => config.to_string(),
+            ElementData::Region(config) => config.to_string(),
+            ElementData::Sink(config) => config.to_string(),
+            ElementData::Source(config) => config.to_string(),
         }
     }
 }
@@ -247,16 +247,33 @@ impl<'a> Widget for UiElementWidget<'a> {
         let mut ui_builder = egui::UiBuilder::new().id_salt(id);
         ui.scope_builder(ui_builder, |ui| {
             self.frame.show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(format!("{}", self.data.data.element_type()));
-                    ui.add(egui::TextEdit::singleline(&mut self.data.name).desired_width(120.0));
-                    let mut button = ui.button("x");
-                    if button.clicked() {
-                        self.event_sender
-                            .send(UiEvent::DeleteElement(info.clone()))
-                            .unwrap();
-                    }
-                });
+                egui::Grid::new("element_grid")
+                    .num_columns(2)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("Name");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.data.name).desired_width(120.0),
+                        );
+                        let mut button = ui.button("x");
+                        if button.clicked() {
+                            self.event_sender
+                                .send(UiEvent::DeleteElement(info.clone()))
+                                .unwrap();
+                        }
+
+                        ui.end_row();
+
+                        ui.label("Type");
+                        let current_type = self.data.data.element_type();
+                        egui::ComboBox::from_id_salt("Type")
+                            .selected_text(format!("{current_type}"))
+                            .show_ui(ui, |ui| {
+                                // for ava_mode in config.full_screen_modes.clone() {
+                                // ui.selectable_value(self.mode, ava_mode.clone(), ava_mode.clone());
+                                // }
+                            });
+                    });
 
                 match &mut self.data.data {
                     ElementData::Sink(sink_element) => match sink_element {
