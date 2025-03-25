@@ -56,7 +56,7 @@ impl Default for MonitorElementConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, strum_macros::Display)]
 pub enum SinkElementType {
     Monitor(MonitorElementConfig),
 }
@@ -81,7 +81,7 @@ impl Default for UriElementConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, strum_macros::Display)]
 pub enum SourceElementType {
     URI(UriElementConfig),
     Test(TestElementConfig),
@@ -108,7 +108,7 @@ impl Default for DisplayElementConfig {
         }
     }
 }
-#[derive(Clone)]
+#[derive(Clone, strum_macros::Display)]
 pub enum RegionElementType {
     Display(DisplayElementConfig),
 }
@@ -122,7 +122,11 @@ pub enum ElementData {
 
 impl ElementData {
     pub fn element_type(&self) -> String {
-        self.to_string()
+        match self {
+            ElementData::Region (config) => config.to_string(),
+            ElementData::Sink (config) => config.to_string(),
+            ElementData::Source (config) => config.to_string(),
+        }
     }
 }
 
