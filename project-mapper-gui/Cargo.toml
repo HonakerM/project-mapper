@@ -14,6 +14,7 @@ eframe = "0.31"
 json ="0.12"
 strum_macros = "0.27"
 rand = "0.9"
+egui_material_icons = "0.3"
 
 project-mapper-core = { workspace = true}
 

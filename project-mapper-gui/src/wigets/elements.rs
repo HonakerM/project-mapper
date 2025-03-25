@@ -61,19 +61,6 @@ pub enum SinkElementType {
     Monitor(MonitorElementConfig),
 }
 
-impl Default for MonitorElementConfig {
-    fn default() -> Self {
-        MonitorElementConfig {
-            mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
-            monitor: MonitorInfo {
-                name: "".to_owned(),
-                resolution: "".to_owned(),
-                refresh_rate_hz: 0,
-            },
-        }
-    }
-}
-
 #[derive(Clone)]
 pub struct TestElementConfig {}
 
@@ -323,7 +310,7 @@ impl AddElementWidget {
 impl Widget for AddElementWidget {
     fn ui(self, ui: &mut Ui) -> Response {
         ui.vertical_centered(|ui| {
-            let mut button = ui.button("add");
+            let mut button = ui.button(egui_material_icons::icons::ICON_ADD);
             if button.clicked() {
                 let mut rng = rand::rng();
                 let id: u32 = rng.random();
