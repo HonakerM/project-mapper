@@ -1,3 +1,5 @@
+use std::sync::mpsc::{Receiver, Sender};
+
 use eframe::{
     self, App,
     egui::{self, TextBuffer, Widget},
@@ -14,7 +16,10 @@ use crate::{
 };
 use anyhow::{Error, Result};
 
-use super::simple_ui::{SimpleUiApp, SimpleUiCore};
+use super::{
+    header::HeaderWidget,
+    simple_ui::{SimpleUiApp, SimpleUiCore},
+};
 
 pub trait CoreView {
     fn config(self) -> Result<RuntimeConfig>;
@@ -25,37 +30,42 @@ pub enum CoreViews {
     SimpleUi(SimpleUiCore),
 }
 
+pub enum CoreEvent {
+    LoadConfig(String),
+    ExportConfig(String),
+    StartRuntime(),
+}
+
 pub struct CoreApp {
     pub config: ParsedAvailableConfig,
     pub app: CoreViews,
+    pub app_event_receiver: Receiver<CoreEvent>,
+    pub app_event_sender: Sender<CoreEvent>,
 }
 
 impl CoreApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Result<CoreApp> {
         // initialize fonts
-        egui_material_icons::initialize(&cc.egui_ctx);
+        //egui_material_icons::initialize(&cc.egui_ctx);
 
         let available_config: json::JsonValue = runtime_api::config::get_available_config()?;
         let parsed_config = ParsedAvailableConfig::new(&available_config)?;
+        let (tx, rx) = std::sync::mpsc::channel();
 
         Ok(CoreApp {
             config: parsed_config.clone(),
             app: CoreViews::SimpleUi(SimpleUiCore::new(parsed_config)?),
+            app_event_receiver: rx,
+            app_event_sender: tx,
         })
     }
 
     pub fn header(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                    let mut button = ui.button(egui_material_icons::icons::ICON_CHEVRON_RIGHT);
-                    if button.clicked() {
-                        let config = self.get_config().unwrap();
-                        let j = serde_json::to_string(&config).unwrap();
-                        println!("{}", j);
-                    }
-                })
-            })
+            ui.add(HeaderWidget::new(
+                self.app_event_sender.clone(),
+                self.config.clone(),
+            ))
         });
     }
 

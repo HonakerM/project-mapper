@@ -10,15 +10,20 @@ serde.workspace = true
 serde_json.workspace = true
 anyhow = "1.0"
 tempdir = "0.3"
-eframe = "0.31" 
+eframe = { git = "https://github.com/emilk/egui.git", rev = "884be3491d01a1c1963c4dd63d8d788e1245ce37" }
 json ="0.12"
 strum_macros = "0.27"
 rand = "0.9"
-egui_material_icons = "0.3"
+#egui_material_icons = "0.3"
 strum = "0.27"
+rfd = "0.15.3"
+
 
 project-mapper-core = { workspace = true}
 
+[patch.crates-io]
+egui = { git = "https://github.com/emilk/egui.git", rev = "884be3491d01a1c1963c4dd63d8d788e1245ce37" }
+eframe = { git = "https://github.com/emilk/egui.git", rev = "884be3491d01a1c1963c4dd63d8d788e1245ce37" }
 
 [[bin]]
 name = "project-mapper-gui"
