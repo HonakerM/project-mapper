@@ -6,9 +6,11 @@ pub struct EnvConfig {
 
 impl EnvConfig {
     pub fn get_config() -> EnvConfig {
-        #[cfg(windows)]
+        #[cfg(target_os = "windows")]
         let default_binary = "project-mapper-runtime.exe";
-        #[cfg(linux)]
+        #[cfg(target_os = "linux")]
+        let default_binary = "project-mapper-runtime";
+        #[cfg(target_os = "macos")]
         let default_binary = "project-mapper-runtime";
 
         let runtime_bin = env::var("RUNTIME_BIN").unwrap_or(String::from(default_binary));

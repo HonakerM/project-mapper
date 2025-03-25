@@ -12,8 +12,8 @@ use glutin::surface::GlSurface;
 use glutin_winit::GlWindow;
 use gst::prelude::{ElementExt, GstObjectExt, PadExt, PadExtManual};
 use gst::{PadProbeReturn, PadProbeType, QueryViewMut, element_error};
-use gst_gl::GLVideoFrameExt;
 use gst_gl::prelude::GLContextExt;
+use gst_gl::{GLPlatform, GLVideoFrameExt};
 use gst_video::VideoFrameExt;
 use project_mapper_core::config::events;
 use raw_window_handle::HasWindowHandle;
@@ -241,40 +241,44 @@ impl WindowHandler {
 
         let raw_gl_context = not_current_gl_context.raw_context();
 
-        #[cfg(not(any(target_os = "linux", windows)))]
-        compile_error!("This example only has Linux and Windows support");
+        #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+        compile_error!("This example only has Linux, Macos, and Windows support");
         let api = opengl::map_gl_api(gl_config.api());
-        let (raw_gl_context, gst_gl_display, platform) = match (raw_gl_display, raw_gl_context) {
-            #[cfg(feature = "gst-gl-egl")]
-            (
-                glutin::display::RawDisplay::Egl(egl_display),
-                glutin::context::RawContext::Egl(egl_context),
-            ) => {
-                let gl_display =
-                    unsafe { gst_gl_egl::GLDisplayEGL::with_egl_display(egl_display as usize) }
-                        .context("Failed to create GLDisplayEGL from raw `EGLDisplay`")?
-                        .upcast::<gst_gl::GLDisplay>();
-                (egl_context as usize, gl_display, gst_gl::GLPlatform::EGL)
-            }
-            #[cfg(feature = "gst-gl-x11")]
-            (
-                glutin::display::RawDisplay::Glx(glx_display),
-                glutin::context::RawContext::Glx(glx_context),
-            ) => {
-                let gl_display =
-                    unsafe { gst_gl_x11::GLDisplayX11::with_display(glx_display as usize) }
-                        .context("Failed to create GLDisplayX11 from raw X11 `Display`")?
-                        .upcast::<gst_gl::GLDisplay>();
-                (glx_context as usize, gl_display, gst_gl::GLPlatform::GLX)
-            }
-            #[cfg(windows)]
-            (glutin::display::RawDisplay::Wgl, glutin::context::RawContext::Wgl(wgl_context)) => {
-                let gl_display = gst_gl::GLDisplay::new();
-                (wgl_context as usize, gl_display, gst_gl::GLPlatform::WGL)
-            }
-            #[allow(unreachable_patterns)]
-            handler => anyhow::bail!("Unsupported platform: {handler:?}."),
-        };
+        let (raw_gl_context, gst_gl_display, platform): (usize, gst_gl::GLDisplay, GLPlatform) =
+            match (raw_gl_display, raw_gl_context) {
+                #[cfg(feature = "gst-gl-egl")]
+                (
+                    glutin::display::RawDisplay::Egl(egl_display),
+                    glutin::context::RawContext::Egl(egl_context),
+                ) => {
+                    let gl_display =
+                        unsafe { gst_gl_egl::GLDisplayEGL::with_egl_display(egl_display as usize) }
+                            .context("Failed to create GLDisplayEGL from raw `EGLDisplay`")?
+                            .upcast::<gst_gl::GLDisplay>();
+                    (egl_context as usize, gl_display, gst_gl::GLPlatform::EGL)
+                }
+                #[cfg(feature = "gst-gl-x11")]
+                (
+                    glutin::display::RawDisplay::Glx(glx_display),
+                    glutin::context::RawContext::Glx(glx_context),
+                ) => {
+                    let gl_display =
+                        unsafe { gst_gl_x11::GLDisplayX11::with_display(glx_display as usize) }
+                            .context("Failed to create GLDisplayX11 from raw X11 `Display`")?
+                            .upcast::<gst_gl::GLDisplay>();
+                    (glx_context as usize, gl_display, gst_gl::GLPlatform::GLX)
+                }
+                #[cfg(windows)]
+                (
+                    glutin::display::RawDisplay::Wgl,
+                    glutin::context::RawContext::Wgl(wgl_context),
+                ) => {
+                    let gl_display = gst_gl::GLDisplay::new();
+                    (wgl_context as usize, gl_display, gst_gl::GLPlatform::WGL)
+                }
+                #[allow(unreachable_patterns)]
+                handler => anyhow::bail!("Unsupported platform: {handler:?}."),
+            };
         let glutin_context = unsafe {
             gst_gl::GLContext::new_wrapped(&gst_gl_display, raw_gl_context, platform, api)
         }

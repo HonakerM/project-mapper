@@ -1,19 +1,59 @@
+use std::sync::mpsc::{Receiver, Sender};
+
+use anyhow::{Error, Result};
 use eframe::egui::{self, Response, Ui, Widget};
 use project_mapper_core::config::{
     options::{RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
     runtime::RegionConfig,
-    sink::{MonitorInfo, SinkConfig},
+    sink::{FullScreenMode, MonitorInfo, SinkConfig},
     source::SourceConfig,
 };
-
-use crate::config::{consts::WINDOWED_FULLSCREEN_MODE, parser::ParsedAvailableConfig};
+use rand::distr::Alphanumeric;
 
 use super::{region::DisplayElementWidget, sink::MonitorElementWidget, source::URIElementWidget};
+use crate::{
+    config::{
+        consts::{BORDERLESS_FULLSCREEN_MODE, EXCLUSIVE_FULLSCREEN_MODE, WINDOWED_FULLSCREEN_MODE},
+        parser::ParsedAvailableConfig,
+    },
+    core::simple_ui::UiEvent,
+};
+use rand::prelude::*;
 
 #[derive(Clone)]
 pub struct MonitorElementConfig {
     pub mode: String,
     pub monitor: MonitorInfo,
+}
+
+impl MonitorElementConfig {
+    pub fn to_fullscreen_config(&self) -> Result<FullScreenMode> {
+        if self.mode == WINDOWED_FULLSCREEN_MODE {
+            Ok(FullScreenMode::Windowed {})
+        } else if self.mode == BORDERLESS_FULLSCREEN_MODE {
+            Ok(FullScreenMode::Borderless {
+                name: self.monitor.name.clone(),
+            })
+        } else if self.mode == EXCLUSIVE_FULLSCREEN_MODE {
+            Ok(FullScreenMode::Exclusive {
+                info: self.monitor.clone(),
+            })
+        } else {
+            Err(Error::msg(format!("Unknown mode {}", self.mode)))
+        }
+    }
+}
+impl Default for MonitorElementConfig {
+    fn default() -> Self {
+        MonitorElementConfig {
+            mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
+            monitor: MonitorInfo {
+                name: "".to_owned(),
+                resolution: "".to_owned(),
+                refresh_rate_hz: 0,
+            },
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -35,16 +75,29 @@ impl Default for MonitorElementConfig {
 }
 
 #[derive(Clone)]
-pub struct SinkElementConfig {
-    pub name: String,
-    pub id: u32,
-    pub sink: SinkElementType,
+pub struct TestElementConfig {}
+
+impl Default for TestElementConfig {
+    fn default() -> Self {
+        Self {}
+    }
+}
+
+#[derive(Clone)]
+pub struct UriElementConfig {
+    pub uri: String,
+}
+
+impl Default for UriElementConfig {
+    fn default() -> Self {
+        Self { uri: "".to_owned() }
+    }
 }
 
 #[derive(Clone)]
 pub enum SourceElementType {
-    URI(String),
-    Test(),
+    URI(UriElementConfig),
+    Test(TestElementConfig),
 }
 
 #[derive(Clone)]
@@ -68,56 +121,25 @@ impl Default for DisplayElementConfig {
         }
     }
 }
-
 #[derive(Clone)]
 pub enum RegionElementType {
     Display(DisplayElementConfig),
 }
 
-#[derive(Clone)]
-pub struct SourceElementConfig {
-    pub name: String,
-    pub id: u32,
-    pub source: SourceElementType,
-}
-
-#[derive(Clone)]
-pub struct RegionElementConfig {
-    pub name: String,
-    pub id: u32,
-    pub region: RegionElementType,
-}
-
 #[derive(strum_macros::Display)]
 pub enum ElementData {
-    Sink(SinkElementConfig),
-    Source(SourceElementConfig),
-    Region(RegionElementConfig),
+    Sink(SinkElementType),
+    Source(SourceElementType),
+    Region(RegionElementType),
 }
 
 impl ElementData {
     pub fn element_type(&self) -> String {
         self.to_string()
     }
-
-    pub fn name(&self) -> String {
-        match self {
-            ElementData::Sink(config) => config.name.clone(),
-            ElementData::Source(config) => config.name.clone(),
-            ElementData::Region(config) => config.name.clone(),
-        }
-    }
-
-    pub fn id(&self) -> u32 {
-        match self {
-            ElementData::Sink(config) => config.id.clone(),
-            ElementData::Source(config) => config.id.clone(),
-            ElementData::Region(config) => config.id.clone(),
-        }
-    }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, Eq)]
 pub enum UiElementInfo {
     Source { id: u32, name: String },
     Sink { id: u32, name: String },
@@ -125,11 +147,26 @@ pub enum UiElementInfo {
 }
 
 impl UiElementInfo {
+    pub fn set_id(&mut self, new_id: u32) {
+        match self {
+            UiElementInfo::Region { id, name } => *id = new_id,
+            UiElementInfo::Sink { id, name } => *id = new_id,
+            UiElementInfo::Source { id, name } => *id = new_id,
+        }
+    }
     pub fn id(&self) -> u32 {
         match &self {
             UiElementInfo::Region { id, name } => id.clone(),
             UiElementInfo::Sink { id, name } => id.clone(),
             UiElementInfo::Source { id, name } => id.clone(),
+        }
+    }
+
+    pub fn set_name(&mut self, new_name: String) {
+        match self {
+            UiElementInfo::Region { id, name } => name.replace_range(.., new_name.as_str()),
+            UiElementInfo::Sink { id, name } => name.replace_range(.., new_name.as_str()),
+            UiElementInfo::Source { id, name } => name.replace_range(.., new_name.as_str()),
         }
     }
     pub fn name(&self) -> String {
@@ -141,17 +178,25 @@ impl UiElementInfo {
     }
 }
 
+impl PartialEq for UiElementInfo {
+    fn eq(&self, other: &UiElementInfo) -> bool {
+        self.id() == other.id()
+    }
+}
+
 pub struct UiElementData {
+    pub name: String,
+    pub id: u32,
     pub data: ElementData,
 }
 
 impl UiElementData {
     pub fn name(&self) -> String {
-        self.data.name()
+        self.name.clone()
     }
 
     pub fn id(&self) -> u32 {
-        self.data.id()
+        self.id
     }
 
     pub fn info(&self) -> UiElementInfo {
@@ -174,14 +219,20 @@ impl UiElementData {
 
 pub struct UiElementWidget<'a> {
     data: &'a mut UiElementData,
+    pub event_sender: Sender<UiEvent>,
     pub config: ParsedAvailableConfig,
     pub frame: egui::Frame,
 }
 
 impl<'a> UiElementWidget<'a> {
-    pub fn new(data: &'a mut UiElementData, config: ParsedAvailableConfig) -> Self {
+    pub fn new(
+        data: &'a mut UiElementData,
+        event_sender: Sender<UiEvent>,
+        config: ParsedAvailableConfig,
+    ) -> Self {
         Self {
             data: data,
+            event_sender: event_sender,
             config: config,
             frame: egui::Frame::new()
                 .inner_margin(12)
@@ -200,41 +251,96 @@ impl<'a> UiElementWidget<'a> {
 }
 impl<'a> Widget for UiElementWidget<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
+        let info = self.data.info();
         let id = self.data.id();
-        let name = self.data.name();
         let mut ui_builder = egui::UiBuilder::new().id_salt(id);
         ui.scope_builder(ui_builder, |ui| {
-            self.frame.show(ui, |ui| match &mut self.data.data {
-                ElementData::Sink(sink_element) => match &mut sink_element.sink {
-                    SinkElementType::Monitor(monitor_config) => {
-                        ui.label(format!("Monitor Element {}", name));
-                        let widget = MonitorElementWidget::new(self.config.clone(), sink_element)
-                            .expect("uh oh");
-
-                        ui.add(widget);
+            self.frame.show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{}", self.data.data.element_type()));
+                    ui.add(egui::TextEdit::singleline(&mut self.data.name).desired_width(120.0));
+                    let mut button = ui.button("x");
+                    if button.clicked() {
+                        self.event_sender
+                            .send(UiEvent::DeleteElement(info.clone()))
+                            .unwrap();
                     }
-                },
-                ElementData::Source(source_element) => match &mut source_element.source {
-                    SourceElementType::URI(uri_config) => {
-                        ui.label(format!("Uri Source {}", name));
-                        let widget = URIElementWidget::new(self.config.clone(), source_element)
-                            .expect("uh oh");
+                });
 
-                        ui.add(widget);
-                    }
-                    _ => {}
-                },
-                ElementData::Region(region_element) => match &mut region_element.region {
-                    RegionElementType::Display(display) => {
-                        ui.label(format!("Display Region {}", name));
-                        let widget = DisplayElementWidget::new(self.config.clone(), region_element)
-                            .expect("uh oh");
+                match &mut self.data.data {
+                    ElementData::Sink(sink_element) => match sink_element {
+                        SinkElementType::Monitor(monitor_config) => {
+                            let widget = MonitorElementWidget::new(self.config.clone(), self.data)
+                                .expect("uh oh");
 
-                        ui.add(widget);
-                    }
-                    _ => {}
-                },
+                            ui.add(widget);
+                        }
+                    },
+                    ElementData::Source(source_element) => match source_element {
+                        SourceElementType::URI(uri_config) => {
+                            let widget = URIElementWidget::new(self.config.clone(), self.data)
+                                .expect("uh oh");
+
+                            ui.add(widget);
+                        }
+                        _ => {}
+                    },
+                    ElementData::Region(region_element) => match region_element {
+                        RegionElementType::Display(display) => {
+                            let widget = DisplayElementWidget::new(self.config.clone(), self.data)
+                                .expect("uh oh");
+
+                            ui.add(widget);
+                        }
+                        _ => {}
+                    },
+                }
             });
+        })
+        .response
+    }
+}
+
+pub struct AddElementWidget {
+    event_sender: Sender<UiEvent>,
+    default: UiElementInfo,
+    pub config: ParsedAvailableConfig,
+}
+
+impl AddElementWidget {
+    pub fn new(
+        event_sender: Sender<UiEvent>,
+        config: ParsedAvailableConfig,
+        default: UiElementInfo,
+    ) -> Self {
+        Self {
+            event_sender: event_sender,
+            config: config,
+            default: default,
+        }
+    }
+}
+impl Widget for AddElementWidget {
+    fn ui(self, ui: &mut Ui) -> Response {
+        ui.vertical_centered(|ui| {
+            let mut button = ui.button("add");
+            if button.clicked() {
+                let mut rng = rand::rng();
+                let id: u32 = rng.random();
+                let name: String = rng
+                    .sample_iter(&Alphanumeric)
+                    .take(5)
+                    .map(char::from)
+                    .collect();
+
+                let mut current_info = self.default.clone();
+                current_info.set_id(id);
+                current_info.set_name(name);
+
+                self.event_sender
+                    .send(UiEvent::NewElement(current_info))
+                    .unwrap();
+            }
         })
         .response
     }

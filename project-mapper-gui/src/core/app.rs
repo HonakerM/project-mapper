@@ -2,7 +2,7 @@ use eframe::{
     self, App,
     egui::{self, TextBuffer, Widget},
 };
-use project_mapper_core::config::sink::Resolution;
+use project_mapper_core::config::{runtime::RuntimeConfig, sink::Resolution};
 
 use crate::{
     config::{
@@ -17,7 +17,8 @@ use anyhow::{Error, Result};
 use super::simple_ui::{SimpleUiApp, SimpleUiCore};
 
 pub trait CoreView {
-    fn elements(self) -> Vec<UiElementData>;
+    fn config(self) -> Result<RuntimeConfig>;
+    fn load_config(&mut self, config: RuntimeConfig) -> Result<()>;
 }
 
 pub enum CoreViews {
@@ -43,7 +44,20 @@ impl CoreApp {
     pub fn header(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
             ui.label("Hello World! From `TopBottomPanel`, that must be before `CentralPanel`!");
+
+            let mut button = ui.button("v");
+            if button.clicked() {
+                let config = self.get_config().unwrap();
+                let j = serde_json::to_string(&config).unwrap();
+                println!("{}", j);
+            }
         });
+    }
+
+    pub fn get_config(&self) -> Result<RuntimeConfig> {
+        match &self.app {
+            CoreViews::SimpleUi(ui) => ui.config(),
+        }
     }
 }
 impl App for CoreApp {

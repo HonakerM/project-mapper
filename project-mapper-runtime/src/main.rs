@@ -43,5 +43,6 @@ fn entrypoint() -> Result<()> {
 fn main() -> Result<()> {
     // examples_common::run is only required to set up the application environment on macOS
     // (but not necessary in normal Cocoa applications where this is set up automatically)
-    main_wrapper::run(entrypoint)
+    //main_wrapper::run(entrypoint)
+    entrypoint()
 }

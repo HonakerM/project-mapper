@@ -7,8 +7,8 @@ use crate::config::{
 };
 
 use super::elements::{
-    ElementData, RegionElementConfig, RegionElementType, SinkElementConfig, SinkElementType,
-    SourceElementConfig, SourceElementType, UiElementInfo,
+    ElementData, RegionElementType, SinkElementType, SourceElementType, UiElementData,
+    UiElementInfo,
 };
 
 use anyhow::{Error, Result};
@@ -24,36 +24,38 @@ pub struct DisplayElementWidget<'a> {
 impl<'a> DisplayElementWidget<'a> {
     pub fn new(
         parsed_config: ParsedAvailableConfig,
-        region_data: &'a mut RegionElementConfig,
+        region_data: &'a mut UiElementData,
     ) -> Result<Self> {
-        match &mut region_data.region {
-            RegionElementType::Display(display) => {
-                let mut widget = Self {
-                    src_infos: vec![],
-                    sink_infos: vec![],
-                    config: parsed_config,
-                    src_info: &mut display.source,
-                    sink_info: &mut display.sink,
-                };
-                if let Some(element_infos) = display.element_infos.clone() {
-                    for info in element_infos {
-                        match info {
-                            UiElementInfo::Source { id, name } => {
-                                widget.src_infos.push(UiElementInfo::Source { id, name });
+        match &mut region_data.data {
+            ElementData::Region(sink_element) => match sink_element {
+                RegionElementType::Display(display) => {
+                    let mut widget = Self {
+                        src_infos: vec![],
+                        sink_infos: vec![],
+                        config: parsed_config,
+                        src_info: &mut display.source,
+                        sink_info: &mut display.sink,
+                    };
+                    if let Some(element_infos) = &mut display.element_infos {
+                        for info in element_infos {
+                            match info {
+                                UiElementInfo::Source { id, name } => {
+                                    widget.src_infos.push(info.clone());
+                                }
+                                UiElementInfo::Sink { id, name } => {
+                                    widget.sink_infos.push(info.clone());
+                                }
+                                _ => {}
                             }
-                            UiElementInfo::Sink { id, name } => {
-                                widget.sink_infos.push(UiElementInfo::Sink { id, name });
-                            }
-                            _ => {}
                         }
                     }
+
+                    widget.validate_config();
+
+                    Ok(widget)
                 }
-
-                widget.validate_config();
-
-                Ok(widget)
-            }
-            _ => Err(Error::msg("Invalid Source Element Type")),
+            },
+            _ => Err(Error::msg("Invalid Region Element Type")),
         }
     }
 
@@ -66,6 +68,7 @@ impl<'a> DisplayElementWidget<'a> {
             }
             if let Some(current_src_info) = self.src_info {
                 if current_src_info.id() == src_info.id() {
+                    current_src_info.set_name(src_info.name());
                     valid_src = true;
                 }
             }
@@ -84,6 +87,7 @@ impl<'a> DisplayElementWidget<'a> {
             }
             if let Some(current_sink_info) = self.sink_info {
                 if current_sink_info.id() == sink_info.id() {
+                    current_sink_info.set_name(sink_info.name());
                     valid_sink = true;
                 }
             }
@@ -110,7 +114,7 @@ impl<'a> Widget for DisplayElementWidget<'a> {
                 }
 
                 egui::ComboBox::from_id_salt("Source")
-                    .selected_text(format!("{src_id_text:?}"))
+                    .selected_text(format!("{src_id_text}"))
                     .show_ui(ui, |ui| {
                         for info in self.src_infos {
                             let name = info.name().clone();
@@ -126,7 +130,7 @@ impl<'a> Widget for DisplayElementWidget<'a> {
 
                 ui.label("Sink");
                 egui::ComboBox::from_id_salt("Sink")
-                    .selected_text(format!("{sink_id_text:?}"))
+                    .selected_text(format!("{sink_id_text}"))
                     .show_ui(ui, |ui| {
                         for info in self.sink_infos {
                             let name = info.name().clone();

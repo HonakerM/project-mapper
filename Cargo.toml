@@ -16,7 +16,7 @@ members = [
 version = "0.1.0"
 categories = ["multimedia"]
 edition = "2024"
-rust-version = "1.87"
+rust-version = "1.85"
 
 [workspace.dependencies]
 project-mapper-runtime = { path = "project-mapper-runtime" }

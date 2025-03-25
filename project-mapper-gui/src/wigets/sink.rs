@@ -6,7 +6,7 @@ use crate::config::{
     parser::ParsedAvailableConfig,
 };
 
-use super::elements::{ElementData, SinkElementConfig, SinkElementType};
+use super::elements::{ElementData, SinkElementType, UiElementData};
 
 use anyhow::{Error, Result};
 
@@ -19,18 +19,21 @@ pub struct MonitorElementWidget<'a> {
 impl<'a> MonitorElementWidget<'a> {
     pub fn new(
         parsed_config: ParsedAvailableConfig,
-        sink_data: &'a mut SinkElementConfig,
+        sink_data: &'a mut UiElementData,
     ) -> Result<Self> {
-        match &mut sink_data.sink {
-            SinkElementType::Monitor(monitor) => {
-                let mut widget = Self {
-                    config: parsed_config,
-                    mode: &mut monitor.mode,
-                    monitor: &mut monitor.monitor,
-                };
-                widget.ensure_good_selection();
-                Ok(widget)
-            }
+        match &mut sink_data.data {
+            ElementData::Sink(sink_element) => match sink_element {
+                SinkElementType::Monitor(monitor) => {
+                    let mut widget = Self {
+                        config: parsed_config,
+                        mode: &mut monitor.mode,
+                        monitor: &mut monitor.monitor,
+                    };
+                    widget.ensure_good_selection();
+                    Ok(widget)
+                }
+            },
+            _ => Err(Error::msg("Incorrect Element Data for Widget")),
         }
     }
 
@@ -96,7 +99,7 @@ impl<'a> Widget for MonitorElementWidget<'a> {
 
                 let current_text = self.mode.clone();
                 egui::ComboBox::from_id_salt("Fullscreen Mode")
-                    .selected_text(format!("{current_text:?}"))
+                    .selected_text(format!("{current_text}"))
                     .show_ui(ui, |ui| {
                         for ava_mode in config.full_screen_modes.clone() {
                             ui.selectable_value(self.mode, ava_mode.clone(), ava_mode.clone());
@@ -108,7 +111,7 @@ impl<'a> Widget for MonitorElementWidget<'a> {
                 {
                     ui.label("Monitor");
                     egui::ComboBox::from_id_salt("Monitor")
-                        .selected_text(format!("{monitor:?}"))
+                        .selected_text(format!("{monitor}"))
                         .show_ui(ui, |ui| {
                             for ava_monitors in config.monitors.keys() {
                                 ui.selectable_value(
@@ -124,7 +127,7 @@ impl<'a> Widget for MonitorElementWidget<'a> {
                         if let Some(monitor_config) = config.monitors.get(monitor) {
                             ui.label("Resolution");
                             egui::ComboBox::from_id_salt("Resolution")
-                                .selected_text(format!("{resolution:?}"))
+                                .selected_text(format!("{resolution}"))
                                 .show_ui(ui, |ui| {
                                     let mut resolutions: Vec<Resolution> = monitor_config
                                         .keys()
