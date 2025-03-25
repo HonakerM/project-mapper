@@ -241,7 +241,7 @@ impl CoreView for &SimpleUiCore {
             })
         }
     }
-    fn load_config(&mut self, config: RuntimeConfig) -> Result<()> {
+    fn load_config(mut self, config: RuntimeConfig) -> Result<()> {
         Ok(())
     }
 }

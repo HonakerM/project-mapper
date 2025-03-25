@@ -1,4 +1,7 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::{
+    fs,
+    sync::mpsc::{Receiver, Sender},
+};
 
 use eframe::{
     self, App,
@@ -23,7 +26,7 @@ use super::{
 
 pub trait CoreView {
     fn config(self) -> Result<RuntimeConfig>;
-    fn load_config(&mut self, config: RuntimeConfig) -> Result<()>;
+    fn load_config(self, config: RuntimeConfig) -> Result<()>;
 }
 
 pub enum CoreViews {
@@ -74,9 +77,42 @@ impl CoreApp {
             CoreViews::SimpleUi(ui) => ui.config(),
         }
     }
+    pub fn update_config(&mut self, config: RuntimeConfig) -> Result<()> {
+        match &mut self.app {
+            CoreViews::SimpleUi(ui) => ui.load_config(config),
+        }
+    }
+
+    pub fn refresh_events(&mut self) {
+        loop {
+            match self.app_event_receiver.try_recv() {
+                Ok(msg) => {
+                    // add to buffer/queue but process all when buffer.len() = 100
+                    match msg {
+                        CoreEvent::ExportConfig(path) => {
+                            let config = self.get_config().unwrap();
+                            let config = serde_json::to_string(&config).unwrap();
+                            fs::write(path, config);
+                        }
+                        CoreEvent::LoadConfig(path) => {
+                            let config = fs::read(path).unwrap();
+                            let config: RuntimeConfig = serde_json::from_slice(&config).unwrap();
+                            self.update_config(config);
+                        }
+                        CoreEvent::StartRuntime() => {}
+                    }
+                }
+                Err(e) => {
+                    break;
+                }
+            }
+        }
+    }
 }
 impl App for CoreApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        self.refresh_events();
+
         self.header(ctx, frame);
 
         egui::CentralPanel::default().show(ctx, |ui| {

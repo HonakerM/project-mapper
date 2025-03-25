@@ -73,7 +73,7 @@ impl Widget for FileHeaderWidget {
                     }
                 }
                 if ui.button("Export").clicked() {
-                    if let Some(path) = rfd::FileDialog::new().pick_file() {
+                    if let Some(path) = rfd::FileDialog::new().save_file() {
                         if let Some(str_path) = path.as_os_str().to_str() {
                             self.event_sender
                                 .send(CoreEvent::ExportConfig(str_path.to_owned()));
