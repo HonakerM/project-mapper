@@ -54,6 +54,7 @@ impl<'a> DisplayElementWidget<'a> {
 
                     Ok(widget)
                 }
+                _ => Err(Error::msg("Invalid Region Element Type")),
             },
             _ => Err(Error::msg("Invalid Region Element Type")),
         }
@@ -76,6 +77,8 @@ impl<'a> DisplayElementWidget<'a> {
         if !valid_src {
             if let Some(first_src) = first_src_info {
                 *self.src_info = Some(first_src);
+            } else {
+                *self.src_info = None
             }
         }
 
@@ -95,6 +98,8 @@ impl<'a> DisplayElementWidget<'a> {
         if !valid_sink {
             if let Some(first_sink) = first_sink_info {
                 *self.sink_info = Some(first_sink);
+            } else {
+                *self.sink_info = None
             }
         }
     }
@@ -114,7 +119,7 @@ impl<'a> Widget for DisplayElementWidget<'a> {
                 }
 
                 egui::ComboBox::from_id_salt("Source")
-                    .selected_text(format!("{src_id_text}"))
+                    .selected_text(src_id_text)
                     .show_ui(ui, |ui| {
                         for info in self.src_infos {
                             let name = info.name().clone();
@@ -130,7 +135,7 @@ impl<'a> Widget for DisplayElementWidget<'a> {
 
                 ui.label("Sink");
                 egui::ComboBox::from_id_salt("Sink")
-                    .selected_text(format!("{sink_id_text}"))
+                    .selected_text(sink_id_text)
                     .show_ui(ui, |ui| {
                         for info in self.sink_infos {
                             let name = info.name().clone();

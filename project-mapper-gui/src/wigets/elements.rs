@@ -9,6 +9,7 @@ use project_mapper_core::config::{
     source::SourceConfig,
 };
 use rand::distr::Alphanumeric;
+use strum::IntoEnumIterator;
 
 use super::{region::DisplayElementWidget, sink::MonitorElementWidget, source::URIElementWidget};
 use crate::{
@@ -56,8 +57,9 @@ impl Default for MonitorElementConfig {
     }
 }
 
-#[derive(Clone, strum_macros::Display)]
+#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
 pub enum SinkElementType {
+    Empty(),
     Monitor(MonitorElementConfig),
 }
 
@@ -81,8 +83,9 @@ impl Default for UriElementConfig {
     }
 }
 
-#[derive(Clone, strum_macros::Display)]
+#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
 pub enum SourceElementType {
+    Empty(),
     URI(UriElementConfig),
     Test(TestElementConfig),
 }
@@ -108,8 +111,9 @@ impl Default for DisplayElementConfig {
         }
     }
 }
-#[derive(Clone, strum_macros::Display)]
+#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
 pub enum RegionElementType {
+    Empty(),
     Display(DisplayElementConfig),
 }
 
@@ -126,6 +130,55 @@ impl ElementData {
             ElementData::Region(config) => config.to_string(),
             ElementData::Sink(config) => config.to_string(),
             ElementData::Source(config) => config.to_string(),
+        }
+    }
+    pub fn possible_element_types(&self) -> Vec<String> {
+        match self {
+            ElementData::Region(config) => {
+                RegionElementType::iter().map(|x| x.to_string()).collect()
+            }
+            ElementData::Sink(config) => SinkElementType::iter().map(|x| x.to_string()).collect(),
+            ElementData::Source(config) => {
+                SourceElementType::iter().map(|x| x.to_string()).collect()
+            }
+        }
+    }
+
+    pub fn switch_element_type(&mut self, type_name: String) {
+        // if we're already the right type do nothing
+        if type_name == self.element_type() {
+            return;
+        }
+        match self {
+            ElementData::Region(config) => {
+                if type_name == "Display" {
+                    *self = ElementData::Region(RegionElementType::Display(
+                        DisplayElementConfig::default(),
+                    ));
+                } else {
+                    *self = ElementData::Region(RegionElementType::Empty());
+                }
+            }
+            ElementData::Sink(config) => {
+                if type_name == "Monitor" {
+                    *self = ElementData::Sink(SinkElementType::Monitor(
+                        MonitorElementConfig::default(),
+                    ));
+                } else {
+                    *self = ElementData::Sink(SinkElementType::Empty());
+                }
+            }
+            ElementData::Source(config) => {
+                if type_name == "Test" {
+                    *self =
+                        ElementData::Source(SourceElementType::Test(TestElementConfig::default()));
+                } else if type_name == "URI" {
+                    *self =
+                        ElementData::Source(SourceElementType::URI(UriElementConfig::default()));
+                } else {
+                    *self = ElementData::Source(SourceElementType::Empty());
+                }
+            }
         }
     }
 }
@@ -178,6 +231,7 @@ impl PartialEq for UiElementInfo {
 pub struct UiElementData {
     pub name: String,
     pub id: u32,
+    pub data_type: String,
     pub data: ElementData,
 }
 
@@ -221,6 +275,7 @@ impl<'a> UiElementWidget<'a> {
         event_sender: Sender<UiEvent>,
         config: ParsedAvailableConfig,
     ) -> Self {
+        data.data.switch_element_type(data.data_type.clone());
         Self {
             data: data,
             event_sender: event_sender,
@@ -269,9 +324,13 @@ impl<'a> Widget for UiElementWidget<'a> {
                         egui::ComboBox::from_id_salt("Type")
                             .selected_text(format!("{current_type}"))
                             .show_ui(ui, |ui| {
-                                // for ava_mode in config.full_screen_modes.clone() {
-                                // ui.selectable_value(self.mode, ava_mode.clone(), ava_mode.clone());
-                                // }
+                                for element_modes in self.data.data.possible_element_types() {
+                                    ui.selectable_value(
+                                        &mut self.data.data_type,
+                                        element_modes.clone(),
+                                        element_modes.clone(),
+                                    );
+                                }
                             });
                     });
 
@@ -283,6 +342,7 @@ impl<'a> Widget for UiElementWidget<'a> {
 
                             ui.add(widget);
                         }
+                        _ => {}
                     },
                     ElementData::Source(source_element) => match source_element {
                         SourceElementType::URI(uri_config) => {
