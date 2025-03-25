@@ -3,10 +3,10 @@ use std::sync::mpsc::{Receiver, Sender};
 use anyhow::{Error, Result};
 use eframe::egui::{self, Response, Ui, Widget};
 use project_mapper_core::config::{
-    options::{RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
+    options::{RegionType, RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
     runtime::RegionConfig,
-    sink::{FullScreenMode, MonitorInfo, SinkConfig},
-    source::SourceConfig,
+    sink::{FullScreenMode, MonitorInfo, SinkConfig, SinkType},
+    source::{SourceConfig, SourceType},
 };
 use rand::distr::Alphanumeric;
 use strum::IntoEnumIterator;
@@ -41,6 +41,30 @@ impl MonitorElementConfig {
             })
         } else {
             Err(Error::msg(format!("Unknown mode {}", self.mode)))
+        }
+    }
+    pub fn from_fullscreen_config(mode: &FullScreenMode) -> Self {
+        match mode {
+            FullScreenMode::Windowed {} => MonitorElementConfig {
+                mode: WINDOWED_FULLSCREEN_MODE.to_owned(),
+                monitor: MonitorInfo {
+                    name: "".to_owned(),
+                    resolution: "".to_owned(),
+                    refresh_rate_hz: 0,
+                },
+            },
+            FullScreenMode::Borderless { name } => MonitorElementConfig {
+                mode: BORDERLESS_FULLSCREEN_MODE.to_owned(),
+                monitor: MonitorInfo {
+                    name: name.clone(),
+                    resolution: "".to_owned(),
+                    refresh_rate_hz: 0,
+                },
+            },
+            FullScreenMode::Exclusive { info } => MonitorElementConfig {
+                mode: EXCLUSIVE_FULLSCREEN_MODE.to_owned(),
+                monitor: info.clone(),
+            },
         }
     }
 }
@@ -125,6 +149,49 @@ pub enum ElementData {
 }
 
 impl ElementData {
+    pub fn from_source_config(config: &SourceConfig) -> Self {
+        let element_default: SourceElementType = match &config.source {
+            SourceType::Test(config) => {
+                let config = TestElementConfig {};
+                SourceElementType::Test(TestElementConfig::from(config))
+            }
+            SourceType::URI(uri) => {
+                let config = UriElementConfig {
+                    uri: uri.uri.clone(),
+                };
+                SourceElementType::URI(config)
+            }
+        };
+        Self::Source(element_default)
+    }
+    pub fn from_region_config(config: &RegionConfig) -> Self {
+        let element_default: RegionElementType = match &config.region {
+            project_mapper_core::config::runtime::RegionType::Display { source, sink } => {
+                RegionElementType::Display(DisplayElementConfig {
+                    source: Some(UiElementInfo::Source {
+                        id: *source,
+                        name: "".to_owned(),
+                    }),
+                    sink: Some(UiElementInfo::Sink {
+                        id: *sink,
+                        name: "".to_owned(),
+                    }),
+                    element_infos: None,
+                })
+            }
+        };
+        Self::Region(element_default)
+    }
+    pub fn from_sink_config(config: &SinkConfig) -> Self {
+        let element_default: SinkElementType = match &config.sink {
+            SinkType::OpenGLWindow { full_screen } => {
+                let config = MonitorElementConfig::from_fullscreen_config(full_screen);
+                SinkElementType::Monitor(config)
+            }
+        };
+        Self::Sink(element_default)
+    }
+
     pub fn element_type(&self) -> String {
         match self {
             ElementData::Region(config) => config.to_string(),

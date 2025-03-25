@@ -72,8 +72,8 @@ impl CoreApp {
         });
     }
 
-    pub fn get_config(&self) -> Result<RuntimeConfig> {
-        match &self.app {
+    pub fn get_config(&mut self) -> Result<RuntimeConfig> {
+        match &mut self.app {
             CoreViews::SimpleUi(ui) => ui.config(),
         }
     }

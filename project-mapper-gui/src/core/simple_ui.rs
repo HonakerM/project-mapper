@@ -152,7 +152,7 @@ impl SimpleUiCore {
     }
 }
 
-impl CoreView for &SimpleUiCore {
+impl CoreView for &mut SimpleUiCore {
     fn config(self) -> Result<RuntimeConfig> {
         let mut sinks: Vec<SinkConfig> = Vec::new();
         let mut sources: Vec<SourceConfig> = Vec::new();
@@ -241,7 +241,41 @@ impl CoreView for &SimpleUiCore {
             })
         }
     }
-    fn load_config(mut self, config: RuntimeConfig) -> Result<()> {
+    fn load_config(self, config: RuntimeConfig) -> Result<()> {
+        let mut new_elements: Vec<UiElementData> = vec![];
+        for source in config.sources {
+            let data = ElementData::from_source_config(&source);
+            let ui_data = UiElementData {
+                name: source.name,
+                id: source.id,
+                data_type: data.to_string(),
+                data: data,
+            };
+            new_elements.push(ui_data);
+        }
+        for sink in config.sinks {
+            let data = ElementData::from_sink_config(&sink);
+            let ui_data = UiElementData {
+                name: sink.name,
+                id: sink.id,
+                data_type: data.to_string(),
+                data: data,
+            };
+            new_elements.push(ui_data);
+        }
+        for region in config.regions {
+            let data = ElementData::from_region_config(&region);
+            let ui_data = UiElementData {
+                name: region.name,
+                id: region.id,
+                data_type: data.to_string(),
+                data: data,
+            };
+            new_elements.push(ui_data);
+        }
+
+        self.elements.clear();
+        self.elements.append(&mut new_elements);
         Ok(())
     }
 }
