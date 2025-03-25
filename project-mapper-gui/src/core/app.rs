@@ -31,7 +31,10 @@ pub struct CoreApp {
 }
 
 impl CoreApp {
-    pub fn new() -> Result<CoreApp> {
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Result<CoreApp> {
+        // initialize fonts
+        egui_material_icons::initialize(&cc.egui_ctx);
+
         let available_config: json::JsonValue = runtime_api::config::get_available_config()?;
         let parsed_config = ParsedAvailableConfig::new(&available_config)?;
 
@@ -43,14 +46,16 @@ impl CoreApp {
 
     pub fn header(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("my_panel").show(ctx, |ui| {
-            ui.label("Hello World! From `TopBottomPanel`, that must be before `CentralPanel`!");
-
-            let mut button = ui.button("v");
-            if button.clicked() {
-                let config = self.get_config().unwrap();
-                let j = serde_json::to_string(&config).unwrap();
-                println!("{}", j);
-            }
+            ui.horizontal(|ui| {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
+                    let mut button = ui.button(egui_material_icons::icons::ICON_CHEVRON_RIGHT);
+                    if button.clicked() {
+                        let config = self.get_config().unwrap();
+                        let j = serde_json::to_string(&config).unwrap();
+                        println!("{}", j);
+                    }
+                })
+            })
         });
     }
 

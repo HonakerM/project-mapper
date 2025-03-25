@@ -9,6 +9,7 @@ use project_mapper_core::config::{
     source::SourceConfig,
 };
 use rand::distr::Alphanumeric;
+use strum::IntoEnumIterator;
 
 use super::{region::DisplayElementWidget, sink::MonitorElementWidget, source::URIElementWidget};
 use crate::{
@@ -56,8 +57,9 @@ impl Default for MonitorElementConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
 pub enum SinkElementType {
+    Empty(),
     Monitor(MonitorElementConfig),
 }
 
@@ -81,8 +83,9 @@ impl Default for UriElementConfig {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
 pub enum SourceElementType {
+    Empty(),
     URI(UriElementConfig),
     Test(TestElementConfig),
 }
@@ -108,8 +111,9 @@ impl Default for DisplayElementConfig {
         }
     }
 }
-#[derive(Clone)]
+#[derive(Clone, strum_macros::Display, strum_macros::EnumIter)]
 pub enum RegionElementType {
+    Empty(),
     Display(DisplayElementConfig),
 }
 
@@ -122,7 +126,60 @@ pub enum ElementData {
 
 impl ElementData {
     pub fn element_type(&self) -> String {
-        self.to_string()
+        match self {
+            ElementData::Region(config) => config.to_string(),
+            ElementData::Sink(config) => config.to_string(),
+            ElementData::Source(config) => config.to_string(),
+        }
+    }
+    pub fn possible_element_types(&self) -> Vec<String> {
+        match self {
+            ElementData::Region(config) => {
+                RegionElementType::iter().map(|x| x.to_string()).collect()
+            }
+            ElementData::Sink(config) => SinkElementType::iter().map(|x| x.to_string()).collect(),
+            ElementData::Source(config) => {
+                SourceElementType::iter().map(|x| x.to_string()).collect()
+            }
+        }
+    }
+
+    pub fn switch_element_type(&mut self, type_name: String) {
+        // if we're already the right type do nothing
+        if type_name == self.element_type() {
+            return;
+        }
+        match self {
+            ElementData::Region(config) => {
+                if type_name == "Display" {
+                    *self = ElementData::Region(RegionElementType::Display(
+                        DisplayElementConfig::default(),
+                    ));
+                } else {
+                    *self = ElementData::Region(RegionElementType::Empty());
+                }
+            }
+            ElementData::Sink(config) => {
+                if type_name == "Monitor" {
+                    *self = ElementData::Sink(SinkElementType::Monitor(
+                        MonitorElementConfig::default(),
+                    ));
+                } else {
+                    *self = ElementData::Sink(SinkElementType::Empty());
+                }
+            }
+            ElementData::Source(config) => {
+                if type_name == "Test" {
+                    *self =
+                        ElementData::Source(SourceElementType::Test(TestElementConfig::default()));
+                } else if type_name == "URI" {
+                    *self =
+                        ElementData::Source(SourceElementType::URI(UriElementConfig::default()));
+                } else {
+                    *self = ElementData::Source(SourceElementType::Empty());
+                }
+            }
+        }
     }
 }
 
@@ -174,6 +231,7 @@ impl PartialEq for UiElementInfo {
 pub struct UiElementData {
     pub name: String,
     pub id: u32,
+    pub data_type: String,
     pub data: ElementData,
 }
 
@@ -217,6 +275,7 @@ impl<'a> UiElementWidget<'a> {
         event_sender: Sender<UiEvent>,
         config: ParsedAvailableConfig,
     ) -> Self {
+        data.data.switch_element_type(data.data_type.clone());
         Self {
             data: data,
             event_sender: event_sender,
@@ -243,16 +302,37 @@ impl<'a> Widget for UiElementWidget<'a> {
         let mut ui_builder = egui::UiBuilder::new().id_salt(id);
         ui.scope_builder(ui_builder, |ui| {
             self.frame.show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(format!("{}", self.data.data.element_type()));
-                    ui.add(egui::TextEdit::singleline(&mut self.data.name).desired_width(120.0));
-                    let mut button = ui.button("x");
-                    if button.clicked() {
-                        self.event_sender
-                            .send(UiEvent::DeleteElement(info.clone()))
-                            .unwrap();
-                    }
-                });
+                egui::Grid::new("element_grid")
+                    .num_columns(2)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.label("Name");
+                        ui.add(
+                            egui::TextEdit::singleline(&mut self.data.name).desired_width(120.0),
+                        );
+                        let mut button = ui.button("x");
+                        if button.clicked() {
+                            self.event_sender
+                                .send(UiEvent::DeleteElement(info.clone()))
+                                .unwrap();
+                        }
+
+                        ui.end_row();
+
+                        ui.label("Type");
+                        let current_type = self.data.data.element_type();
+                        egui::ComboBox::from_id_salt("Type")
+                            .selected_text(format!("{current_type}"))
+                            .show_ui(ui, |ui| {
+                                for element_modes in self.data.data.possible_element_types() {
+                                    ui.selectable_value(
+                                        &mut self.data.data_type,
+                                        element_modes.clone(),
+                                        element_modes.clone(),
+                                    );
+                                }
+                            });
+                    });
 
                 match &mut self.data.data {
                     ElementData::Sink(sink_element) => match sink_element {
@@ -262,6 +342,7 @@ impl<'a> Widget for UiElementWidget<'a> {
 
                             ui.add(widget);
                         }
+                        _ => {}
                     },
                     ElementData::Source(source_element) => match source_element {
                         SourceElementType::URI(uri_config) => {
@@ -310,7 +391,7 @@ impl AddElementWidget {
 impl Widget for AddElementWidget {
     fn ui(self, ui: &mut Ui) -> Response {
         ui.vertical_centered(|ui| {
-            let mut button = ui.button("add");
+            let mut button = ui.button(egui_material_icons::icons::ICON_ADD);
             if button.clicked() {
                 let mut rng = rand::rng();
                 let id: u32 = rng.random();

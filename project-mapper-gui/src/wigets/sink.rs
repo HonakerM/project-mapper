@@ -32,6 +32,7 @@ impl<'a> MonitorElementWidget<'a> {
                     widget.ensure_good_selection();
                     Ok(widget)
                 }
+                _ => Err(Error::msg("Invalid Region Element Type")),
             },
             _ => Err(Error::msg("Incorrect Element Data for Widget")),
         }

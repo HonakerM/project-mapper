@@ -9,6 +9,7 @@ use project_mapper_core::config::{
     sink::{MonitorInfo, Resolution, SinkConfig, SinkType},
     source::{SourceConfig, SourceType, Test, URI},
 };
+use rand::distr::slice::Empty;
 
 use crate::{
     config::{
@@ -48,6 +49,7 @@ impl SimpleUiCore {
             name: "source".to_owned(),
             id: 1,
             data: ElementData::Source(SourceElementType::URI(UriElementConfig::default())),
+            data_type: SourceElementType::URI(UriElementConfig::default()).to_string(),
         };
 
         // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
@@ -59,16 +61,19 @@ impl SimpleUiCore {
             name: "sink1".to_owned(),
             id: 2,
             data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig::default())),
+            data_type: SinkElementType::Monitor(MonitorElementConfig::default()).to_string(),
         };
         let elm_2 = UiElementData {
             name: "sink2".to_owned(),
             id: 3,
             data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig::default())),
+            data_type: SinkElementType::Monitor(MonitorElementConfig::default()).to_string(),
         };
         let elm_3 = UiElementData {
             name: "region_1".to_owned(),
             id: 4,
             data: ElementData::Region(RegionElementType::Display(DisplayElementConfig::default())),
+            data_type: RegionElementType::Display(DisplayElementConfig::default()).to_string(),
         };
 
         let (tx, rx) = std::sync::mpsc::channel();
@@ -101,27 +106,25 @@ impl SimpleUiCore {
                                 self.elements.push(UiElementData {
                                     id: id,
                                     name: name,
-                                    data: ElementData::Source(SourceElementType::URI(
-                                        UriElementConfig::default(),
-                                    )),
+                                    data: ElementData::Source(SourceElementType::Empty()),
+                                    data_type: SourceElementType::Empty().to_string(),
                                 });
                             }
                             UiElementInfo::Region { id, name } => {
                                 self.elements.push(UiElementData {
                                     id: id,
                                     name: name,
-                                    data: ElementData::Region(RegionElementType::Display(
-                                        DisplayElementConfig::default(),
-                                    )),
+
+                                    data: ElementData::Region(RegionElementType::Empty()),
+                                    data_type: RegionElementType::Empty().to_string(),
                                 });
                             }
                             UiElementInfo::Sink { id, name } => {
                                 self.elements.push(UiElementData {
                                     id: id,
                                     name: name,
-                                    data: ElementData::Sink(SinkElementType::Monitor(
-                                        MonitorElementConfig::default(),
-                                    )),
+                                    data: ElementData::Sink(SinkElementType::Empty()),
+                                    data_type: SinkElementType::Empty().to_string(),
                                 });
                             }
                         },
@@ -170,6 +173,7 @@ impl CoreView for &SimpleUiCore {
                             },
                         });
                     }
+                    _ => {}
                 },
                 ElementData::Source(source_config) => match source_config {
                     SourceElementType::URI(config) => {
@@ -188,6 +192,7 @@ impl CoreView for &SimpleUiCore {
                             source: SourceType::Test(Test {}),
                         });
                     }
+                    _ => {}
                 },
                 ElementData::Region(region_config) => match region_config {
                     RegionElementType::Display(display) => {
@@ -221,6 +226,7 @@ impl CoreView for &SimpleUiCore {
                             },
                         });
                     }
+                    _ => {}
                 },
             }
         }
@@ -270,6 +276,7 @@ impl<'a> Widget for SimpleUiApp<'a> {
                         RegionElementType::Display(display) => {
                             display.element_infos = Some(self.core.element_infos.clone());
                         }
+                        _ => {}
                     }
                     region_elements.push(element);
                 }
