@@ -460,8 +460,7 @@ impl AddElementWidget {
 impl Widget for AddElementWidget {
     fn ui(self, ui: &mut Ui) -> Response {
         ui.vertical_centered(|ui| {
-            //let mut button = ui.button(egui_material_icons::icons::ICON_ADD);
-            let mut button = ui.button("X");
+            let mut button = ui.button(egui_material_icons::icons::ICON_ADD);
             if button.clicked() {
                 let mut rng = rand::rng();
                 let id: u32 = rng.random();

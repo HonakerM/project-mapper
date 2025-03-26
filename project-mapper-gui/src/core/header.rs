@@ -53,11 +53,13 @@ impl<'a> Widget for HeaderWidget<'a> {
             });
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
-                // let mut button = ui.button(egui_material_icons::icons::ICON_CHEVRON_RIGHT);
-                if ui.button(">").clicked() {
+                if ui
+                    .button(egui_material_icons::icons::ICON_CHEVRON_RIGHT)
+                    .clicked()
+                {
                     let config = self.event_sender.send(CoreEvent::StartRuntime());
                 }
-                if ui.button("[]").clicked() {
+                if ui.button(egui_material_icons::icons::ICON_CANCEL).clicked() {
                     let config = self.event_sender.send(CoreEvent::StopRuntime());
                 }
             });

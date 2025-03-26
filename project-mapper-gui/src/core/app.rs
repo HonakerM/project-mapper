@@ -52,7 +52,7 @@ pub struct CoreApp {
 impl CoreApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Result<CoreApp> {
         // initialize fonts
-        //egui_material_icons::initialize(&cc.egui_ctx);
+        egui_material_icons::initialize(&cc.egui_ctx);
 
         let available_config: json::JsonValue = runtime_api::config::get_available_config()?;
         let parsed_config = ParsedAvailableConfig::new(&available_config)?;
