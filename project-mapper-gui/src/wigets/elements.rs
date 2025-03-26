@@ -82,7 +82,7 @@ impl Default for MonitorElementConfig {
     }
 }
 
-#[derive(Clone,Debug, strum_macros::Display, strum_macros::EnumIter)]
+#[derive(Clone, Debug, strum_macros::Display, strum_macros::EnumIter)]
 pub enum SinkElementType {
     Empty(),
     Monitor(MonitorElementConfig),

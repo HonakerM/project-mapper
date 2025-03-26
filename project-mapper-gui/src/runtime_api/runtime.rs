@@ -1,7 +1,7 @@
 use std::{
     fs::{self, File},
     io::Write,
-    process::{Child, Command},
+    process::{Child, Command, Stdio},
     thread::sleep,
     time::Duration,
 };
@@ -12,27 +12,29 @@ use tempdir::TempDir;
 
 pub struct RunApi {
     pub runtime_process: Child,
-    pub temp_dir: TempDir,
+    pub killed: bool,
 }
 
 impl RunApi {
     pub fn construct_and_start_runtime(config: &String) -> Result<RunApi> {
         let env_config = EnvConfig::get_config();
 
-        let temp_dir = TempDir::new("temp_config")?;
-
-        let file_path = temp_dir.path().join("config.yml");
-        fs::write(&file_path, config)?;
-        let file_path = file_path.to_str().ok_or(Error::msg("no temp file path"))?;
-
         let mut command_output = Command::new(env_config.runtime_bin)
             .arg("run")
-            .arg(file_path)
+            .arg("-")
+            .stdin(Stdio::piped())
             .spawn()?;
+
+        let mut child_stdin = command_output.stdin.take().expect("Failed to open stdin");
+
+        println!("{}", config);
+        child_stdin.write_all(config.as_bytes())?;
+        child_stdin.write(b"\n")?;
+        child_stdin.flush()?;
 
         Ok(RunApi {
             runtime_process: command_output,
-            temp_dir: temp_dir,
+            killed: false,
         })
     }
 }

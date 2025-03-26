@@ -14,7 +14,7 @@ use crate::{
         consts::{BORDERLESS_FULLSCREEN_MODE, EXCLUSIVE_FULLSCREEN_MODE, WINDOWED_FULLSCREEN_MODE},
         parser::ParsedAvailableConfig,
     },
-    runtime_api,
+    runtime_api::{self, runtime::RunApi},
     wigets::elements::UiElementData,
 };
 use anyhow::{Error, Result};
@@ -37,6 +37,7 @@ pub enum CoreEvent {
     LoadConfig(String),
     ExportConfig(String),
     StartRuntime(),
+    StopRuntime(),
 }
 
 pub struct CoreApp {
@@ -44,6 +45,7 @@ pub struct CoreApp {
     pub app: CoreViews,
     pub app_event_receiver: Receiver<CoreEvent>,
     pub app_event_sender: Sender<CoreEvent>,
+    pub current_run_api: Option<RunApi>,
 }
 
 impl CoreApp {
@@ -60,6 +62,7 @@ impl CoreApp {
             app: CoreViews::SimpleUi(SimpleUiCore::new(parsed_config)?),
             app_event_receiver: rx,
             app_event_sender: tx,
+            current_run_api: None,
         })
     }
 
@@ -83,6 +86,21 @@ impl CoreApp {
         }
     }
 
+    pub fn refresh(&mut self) {
+        self.refresh_events();
+        self.refresh_process();
+    }
+    pub fn refresh_process(&mut self) {
+        if let Some(run_api) = &mut self.current_run_api {
+            if let Some(exit_status) = run_api.runtime_process.try_wait().unwrap() {
+                if !run_api.killed && !exit_status.success() {
+                    panic!("Runtime exited with bad status")
+                }
+                self.current_run_api = None;
+                println!("Cleared runtime");
+            }
+        }
+    }
     pub fn refresh_events(&mut self) {
         loop {
             match self.app_event_receiver.try_recv() {
@@ -99,7 +117,19 @@ impl CoreApp {
                             let config: RuntimeConfig = serde_json::from_slice(&config).unwrap();
                             self.update_config(config);
                         }
-                        CoreEvent::StartRuntime() => {}
+                        CoreEvent::StartRuntime() => {
+                            let config = self.get_config().unwrap();
+                            let config = serde_json::to_string(&config).unwrap();
+                            self.current_run_api =
+                                Some(RunApi::construct_and_start_runtime(&config).unwrap());
+                        }
+                        CoreEvent::StopRuntime() => {
+                            if let Some(run_api) = &mut self.current_run_api {
+                                println!("Attempting to kill runtime process");
+                                run_api.killed = true;
+                                run_api.runtime_process.kill();
+                            }
+                        }
                     }
                 }
                 Err(e) => {
@@ -111,7 +141,7 @@ impl CoreApp {
 }
 impl App for CoreApp {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
-        self.refresh_events();
+        self.refresh();
 
         self.header(ctx, frame);
 

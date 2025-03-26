@@ -6,7 +6,10 @@ use crate::config::runtime::RuntimeConfig;
 pub fn load_config(path: &String) -> Result<RuntimeConfig> {
     let data = fs::read_to_string(path)?;
 
-    let deserialized: RuntimeConfig = serde_json::from_str(&data).unwrap();
+    load_config_data(&data)
+}
+pub fn load_config_data(data: &String) -> Result<RuntimeConfig> {
+    let deserialized: RuntimeConfig = serde_json::from_str(data).unwrap();
     Ok(deserialized)
 }
 

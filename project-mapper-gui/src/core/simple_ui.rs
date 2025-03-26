@@ -45,44 +45,13 @@ pub struct SimpleUiCore {
 
 impl SimpleUiCore {
     pub fn new(config: ParsedAvailableConfig) -> Result<SimpleUiCore> {
-        let source_data = UiElementData {
-            name: "source".to_owned(),
-            id: 1,
-            data: ElementData::Source(SourceElementType::URI(UriElementConfig::default())),
-            data_type: SourceElementType::URI(UriElementConfig::default()).to_string(),
-        };
-
-        // Customize egui here with cc.egui_ctx.set_fonts and cc.egui_ctx.set_visuals.
-        // Restore app state using cc.storage (requires the "persistence" feature).
-        // Use the cc.gl (a glow::Context) to create graphics shaders and buffers that you can use
-        // for e.g. egui::PaintCallback.
-
-        let elm = UiElementData {
-            name: "sink1".to_owned(),
-            id: 2,
-            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig::default())),
-            data_type: SinkElementType::Monitor(MonitorElementConfig::default()).to_string(),
-        };
-        let elm_2 = UiElementData {
-            name: "sink2".to_owned(),
-            id: 3,
-            data: ElementData::Sink(SinkElementType::Monitor(MonitorElementConfig::default())),
-            data_type: SinkElementType::Monitor(MonitorElementConfig::default()).to_string(),
-        };
-        let elm_3 = UiElementData {
-            name: "region_1".to_owned(),
-            id: 4,
-            data: ElementData::Region(RegionElementType::Display(DisplayElementConfig::default())),
-            data_type: RegionElementType::Display(DisplayElementConfig::default()).to_string(),
-        };
-
         let (tx, rx) = std::sync::mpsc::channel();
 
         Ok(Self {
             config: config,
             event_sender: tx,
             event_receiver: rx,
-            elements: vec![source_data, elm, elm_2, elm_3],
+            elements: vec![],
             element_infos: vec![],
         })
     }

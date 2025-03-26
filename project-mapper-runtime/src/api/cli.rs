@@ -16,13 +16,15 @@ pub struct Run {
 
 impl Run {
     pub fn run(&self) -> Result<()> {
-        println!("attempting to load config from '{}'", self.config_path);
         let config = if self.config_path == "-" {
+            println!("attempting to load config from stdin");
             let mut stdin = io::stdin();
             let mut config = String::new();
             stdin.read_to_string(&mut config);
             project_mapper_core::loader::load_config_data(&config)?
         } else {
+            println!("attempting to load config from '{}'", self.config_path);
+
             project_mapper_core::loader::load_config(&self.config_path)?
         };
         let mut app = runtime::Runtime::new(config)?;

@@ -33,9 +33,11 @@ impl Widget for HeaderWidget {
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::TOP), |ui| {
                 // let mut button = ui.button(egui_material_icons::icons::ICON_CHEVRON_RIGHT);
-                let mut button = ui.button(">");
-                if button.clicked() {
+                if ui.button(">").clicked() {
                     let config = self.event_sender.send(CoreEvent::StartRuntime());
+                }
+                if ui.button("[]").clicked() {
+                    let config = self.event_sender.send(CoreEvent::StopRuntime());
                 }
             });
         })
