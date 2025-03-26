@@ -1,4 +1,7 @@
-use std::fs;
+use std::{
+    fs,
+    io::{self, Read},
+};
 
 use clap::Parser;
 
@@ -14,7 +17,14 @@ pub struct Run {
 impl Run {
     pub fn run(&self) -> Result<()> {
         println!("attempting to load config from '{}'", self.config_path);
-        let config = project_mapper_core::loader::load_config(&self.config_path)?;
+        let config = if self.config_path == "-" {
+            let mut stdin = io::stdin();
+            let mut config = String::new();
+            stdin.read_to_string(&mut config);
+            project_mapper_core::loader::load_config_data(&config)?
+        } else {
+            project_mapper_core::loader::load_config(&self.config_path)?
+        };
         let mut app = runtime::Runtime::new(config)?;
         app.run()
     }
