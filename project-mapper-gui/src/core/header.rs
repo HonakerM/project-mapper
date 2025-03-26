@@ -8,26 +8,47 @@ use crate::config::parser::ParsedAvailableConfig;
 use eframe::egui::{self, Frame, Popup, Response, Ui, UiKind, Widget};
 use egui::Id;
 
-pub struct HeaderWidget {
+pub struct HeaderCore {
+    pub settings_window: bool,
+}
+impl HeaderCore {
+    pub fn default() -> Self {
+        Self {
+            settings_window: false,
+        }
+    }
+}
+pub struct HeaderWidget<'a> {
+    pub core: &'a mut HeaderCore,
     pub event_sender: Sender<CoreEvent>,
     pub config: ParsedAvailableConfig,
 }
 
-impl HeaderWidget {
-    pub fn new(event_sender: Sender<CoreEvent>, config: ParsedAvailableConfig) -> Self {
+impl<'a> HeaderWidget<'a> {
+    pub fn new(
+        event_sender: Sender<CoreEvent>,
+        config: ParsedAvailableConfig,
+        core: &'a mut HeaderCore,
+    ) -> Self {
         Self {
+            core: core,
             event_sender: event_sender,
             config: config,
         }
     }
 }
-impl Widget for HeaderWidget {
+impl<'a> Widget for HeaderWidget<'a> {
     fn ui(self, ui: &mut Ui) -> Response {
         ui.horizontal(|ui| {
             ui.with_layout(egui::Layout::left_to_right(egui::Align::TOP), |ui| {
                 ui.add(FileHeaderWidget::new(
                     self.event_sender.clone(),
+                    self.config.clone(),
+                ));
+                ui.add(ViewHeaderWidget::new(
+                    self.event_sender.clone(),
                     self.config,
+                    &mut self.core.settings_window,
                 ));
             });
 
@@ -84,6 +105,42 @@ impl Widget for FileHeaderWidget {
                 }
             });
 
+        main_response
+    }
+}
+pub struct ViewHeaderWidget<'a> {
+    pub event_sender: Sender<CoreEvent>,
+    pub config: ParsedAvailableConfig,
+    pub settings: &'a mut bool,
+}
+
+impl<'a> ViewHeaderWidget<'a> {
+    pub fn new(
+        event_sender: Sender<CoreEvent>,
+        config: ParsedAvailableConfig,
+        settings_window: &'a mut bool,
+    ) -> Self {
+        Self {
+            event_sender: event_sender,
+            config: config,
+            settings: settings_window,
+        }
+    }
+}
+
+impl<'a> Widget for ViewHeaderWidget<'a> {
+    fn ui(mut self, ui: &mut Ui) -> Response {
+        let main_response = Frame::new().show(ui, |ui| ui.button("View")).inner;
+
+        Popup::menu(&main_response)
+            .id(Id::new("viewmenu"))
+            .show(|ui| {
+                egui::widgets::global_theme_preference_switch(ui);
+                ui.separator();
+                if ui.button("🔧 Settings").clicked() {
+                    *self.settings = !*self.settings;
+                }
+            });
         main_response
     }
 }

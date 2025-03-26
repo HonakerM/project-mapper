@@ -23,6 +23,7 @@ project-mapper-core = { workspace = true}
 
 [patch.crates-io]
 egui = { git = "https://github.com/emilk/egui.git", rev = "884be3491d01a1c1963c4dd63d8d788e1245ce37" }
+egui_demo_app = { git = "https://github.com/emilk/egui.git", rev = "884be3491d01a1c1963c4dd63d8d788e1245ce37" }
 eframe = { git = "https://github.com/emilk/egui.git", rev = "884be3491d01a1c1963c4dd63d8d788e1245ce37" }
 
 [[bin]]

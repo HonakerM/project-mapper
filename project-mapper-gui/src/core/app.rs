@@ -20,7 +20,7 @@ use crate::{
 use anyhow::{Error, Result};
 
 use super::{
-    header::HeaderWidget,
+    header::{HeaderCore, HeaderWidget},
     simple_ui::{SimpleUiApp, SimpleUiCore},
 };
 
@@ -46,6 +46,7 @@ pub struct CoreApp {
     pub app_event_receiver: Receiver<CoreEvent>,
     pub app_event_sender: Sender<CoreEvent>,
     pub current_run_api: Option<RunApi>,
+    pub header_core: HeaderCore,
 }
 
 impl CoreApp {
@@ -63,6 +64,7 @@ impl CoreApp {
             app_event_receiver: rx,
             app_event_sender: tx,
             current_run_api: None,
+            header_core: HeaderCore::default(),
         })
     }
 
@@ -71,6 +73,7 @@ impl CoreApp {
             ui.add(HeaderWidget::new(
                 self.app_event_sender.clone(),
                 self.config.clone(),
+                &mut self.header_core,
             ))
         });
     }
@@ -151,5 +154,12 @@ impl App for CoreApp {
                 CoreViews::SimpleUi(core) => ui.add(SimpleUiApp::new(core)),
             });
         });
+
+        egui::Window::new("🔧 Settings")
+            .open(&mut self.header_core.settings_window)
+            .vscroll(true)
+            .show(ctx, |ui| {
+                ctx.settings_ui(ui);
+            });
     }
 }
