@@ -7,6 +7,8 @@ pub mod events;
 pub mod runtime;
 #[path = "./sink.rs"]
 pub mod sink;
+#[path = "./region.rs"]
+pub mod region;
 
 #[path = "./options.rs"]
 pub mod options;

@@ -3,8 +3,8 @@ use std::sync::mpsc::{Receiver, Sender};
 use anyhow::{Error, Result};
 use eframe::egui::{self, Response, Ui, Widget};
 use project_mapper_core::config::{
-    options::{RegionType, RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
-    runtime::RegionConfig,
+    options::{RegionTypeOptions, SinkTypeOptions, SourceTypeOptions},
+    region::{RegionConfig, RegionType},
     sink::{FullScreenMode, MonitorInfo, SinkConfig, SinkType},
     source::{SourceConfig, SourceType},
 };
@@ -167,7 +167,7 @@ impl ElementData {
     }
     pub fn from_region_config(config: &RegionConfig) -> Self {
         let element_default: RegionElementType = match &config.region {
-            project_mapper_core::config::runtime::RegionType::Display { source, sink } => {
+            project_mapper_core::config::region::RegionType::Display { source, sink } => {
                 RegionElementType::Display(DisplayElementConfig {
                     source: Some(UiElementInfo::Source {
                         id: *source,

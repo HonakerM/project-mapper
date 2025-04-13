@@ -5,7 +5,8 @@ use eframe::{
     egui::{self, Response, TextBuffer, Widget},
 };
 use project_mapper_core::config::{
-    runtime::{RegionConfig, RegionType, RuntimeConfig},
+    region::{RegionConfig, RegionType},
+    runtime::RuntimeConfig,
     sink::{MonitorInfo, Resolution, SinkConfig, SinkType},
     source::{SourceConfig, SourceType, Test, URI},
 };
