@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 
 use super::{
+    region::RegionConfig,
     sink::{MonitorInfo, Resolution, SinkConfig, SinkType},
     source::{SourceConfig, SourceType},
-    region::{RegionConfig},
 };
-
 
 #[derive(Serialize, Deserialize)]
 pub struct RuntimeConfig {

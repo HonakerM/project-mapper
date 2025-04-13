@@ -167,14 +167,14 @@ impl ElementData {
     }
     pub fn from_region_config(config: &RegionConfig) -> Self {
         let element_default: RegionElementType = match &config.region {
-            project_mapper_core::config::region::RegionType::Display { source, sink } => {
+            project_mapper_core::config::region::RegionType::Display(region) => {
                 RegionElementType::Display(DisplayElementConfig {
                     source: Some(UiElementInfo::Source {
-                        id: *source,
+                        id: region.source,
                         name: "".to_owned(),
                     }),
                     sink: Some(UiElementInfo::Sink {
-                        id: *sink,
+                        id: region.sink,
                         name: "".to_owned(),
                     }),
                     element_infos: None,

@@ -184,10 +184,10 @@ impl MediaPipeline {
 
         // tie the regions together
         for region in &config.regions {
-            match region.region {
-                config::runtime::RegionType::Display { source, sink } => {
-                    let src: &Element = src_elements[&source].as_ref();
-                    let sink: &Element = sink_elements[&sink].as_ref();
+            match &region.region {
+                config::region::RegionType::Display(display_region) => {
+                    let src: &Element = src_elements[&display_region.source].as_ref();
+                    let sink: &Element = sink_elements[&display_region.sink].as_ref();
 
                     src.link(sink)?;
                 }

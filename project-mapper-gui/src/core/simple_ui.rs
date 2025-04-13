@@ -1,11 +1,14 @@
-use std::sync::mpsc::{Receiver, Sender};
+use std::{
+    path::Display,
+    sync::mpsc::{Receiver, Sender},
+};
 
 use eframe::{
     self, App,
     egui::{self, Response, TextBuffer, Widget},
 };
 use project_mapper_core::config::{
-    region::{RegionConfig, RegionType},
+    region::{DisplayRegion, RegionConfig, RegionType},
     runtime::RuntimeConfig,
     sink::{MonitorInfo, Resolution, SinkConfig, SinkType},
     source::{SourceConfig, SourceType, Test, URI},
@@ -190,10 +193,10 @@ impl CoreView for &mut SimpleUiCore {
                         regions.push(RegionConfig {
                             name: name,
                             id: id,
-                            region: RegionType::Display {
+                            region: RegionType::Display(DisplayRegion {
                                 source: src.id(),
                                 sink: sink.id(),
-                            },
+                            }),
                         });
                     }
                     _ => {}

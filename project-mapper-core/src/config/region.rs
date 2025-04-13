@@ -5,12 +5,16 @@ use super::{
     source::{SourceConfig, SourceType},
 };
 
-
+#[derive(Serialize, Deserialize)]
+pub struct DisplayRegion {
+    pub source: u32,
+    pub sink: u32,
+}
 
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum RegionType {
-    Display { source: u32, sink: u32 },
+    Display(DisplayRegion),
 }
 
 #[derive(Serialize, Deserialize)]
