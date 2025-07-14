@@ -1,17 +1,11 @@
-use anyhow::{Error, Result};
+use anyhow::Result;
 use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::cmp::Ordering;
 use std::fmt;
 
-// type for refresh rates
-pub type RefreshRate = u32;
-
-// type for serialized resolutions
-pub type SerialiedResolution = String;
-
 // type for parsed and usable resolution
-#[derive(Clone, Hash, PartialEq)]
+#[derive(Clone, Hash, PartialEq, Debug)]
 pub struct Resolution {
     pub width: u32,
     pub height: u32,
