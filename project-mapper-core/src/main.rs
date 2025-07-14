@@ -1,7 +1,7 @@
-use project_mapper_core::config::Config;
-use project_mapper_core::config::output::OutputComponentConfig;
-use project_mapper_core::config::output::common::OutputConfig;
-use project_mapper_core::config::output::window::{MonitorConfig, WindowConfig, WindowMode};
+use project_mapper_core::runtime_config::Config;
+use project_mapper_core::runtime_config::output::OutputComponentConfig;
+use project_mapper_core::runtime_config::output::common::OutputConfig;
+use project_mapper_core::runtime_config::output::window::{MonitorConfig, WindowConfig, WindowMode};
 use project_mapper_core::types::video::Resolution;
 
 pub fn main() {

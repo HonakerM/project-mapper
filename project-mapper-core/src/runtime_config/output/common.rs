@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::config::output::window::WindowConfig;
-use crate::config::shared::Component;
+use crate::runtime_config::output::window::WindowConfig;
+use crate::runtime_config::shared::Component;
 
 // OutputConfig contains
 #[derive(Serialize, Deserialize, Debug)]

@@ -1,8 +1,10 @@
+// core types used by both the configs and available_configs
 #[path = "./types/mod.rs"]
 pub mod types;
 
-#[path = "./config/mod.rs"]
-pub mod config;
+// Types for the runtime config
+#[path = "./runtime_config/mod.rs"]
+pub mod runtime_config;
 
 #[path = "./loader/mod.rs"]
 pub mod loader;
