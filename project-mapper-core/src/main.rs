@@ -21,6 +21,7 @@ pub fn main() {
             name: "in_comp".to_string(),
             config: InputConfig::Test(TestConfig {}),
         }],
+        effects: vec![],
         outputs: vec![OutputComponentConfig {
             uid: 1,
             name: "comp_1".to_string(),
