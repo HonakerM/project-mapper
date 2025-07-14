@@ -1,12 +1,14 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 
 use crate::runtime_config::{
     input::{test::TestConfig, uri::UriConfig},
-    shared::{Component, Uid},
+    shared::{ComponentConfig, Uid},
 };
 
 // InputConfig contains
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum InputConfig {
     Test(TestConfig),
@@ -15,7 +17,7 @@ pub enum InputConfig {
 
 // InputComponent is the generic component for
 // all Input types
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InputComponentConfig {
     // core component uid
     pub uid: Uid,
@@ -26,12 +28,16 @@ pub struct InputComponentConfig {
 }
 
 // Implmement the Shared component trait to allow name/id fetching
-impl Component for InputComponentConfig {
-    fn name(self) -> String {
+impl ComponentConfig for InputComponentConfig {
+    fn name(&self) -> String {
         self.name.clone()
     }
 
-    fn uid(self) -> Uid {
+    fn uid(&self) -> Uid {
         self.uid
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self
     }
 }

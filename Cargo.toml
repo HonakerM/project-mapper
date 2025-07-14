@@ -3,12 +3,21 @@ resolver = "3"
 
 default-members = [
     "project-mapper-core",
+    "project-mapper-runtime",
 ]
 
-members = ["project-mapper-core"]
+members = ["project-mapper-core", "project-mapper-runtime"]
 
 [workspace.package]
 version = "0.1.0"
 categories = ["multimedia"]
 edition = "2024"
 rust-version = "1.85"
+
+[workspace.dependencies]
+# Core workspace dependencies
+project-mapper-runtime = { path = "project-mapper-runtime" }
+project-mapper-core = { path = "project-mapper-core" }
+
+# Shared dependencies for all projects
+anyhow = "1.0.98"

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use crate::types::video::{RefreshRate, Resolution};
 
 // struct that identifies a specific monitor and it's desired config.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct MonitorConfig {
     pub name: String,
     pub resolution: Resolution,
@@ -11,7 +11,7 @@ pub struct MonitorConfig {
 }
 
 // struct that determines what type of window we should be using
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
 pub enum WindowMode {
     Windowed {},
@@ -20,7 +20,7 @@ pub enum WindowMode {
 }
 
 // Struct that controls the config for a window output
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WindowConfig {
     pub mode: WindowMode,
 }
