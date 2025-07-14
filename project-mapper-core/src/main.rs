@@ -1,7 +1,12 @@
 use project_mapper_core::runtime_config::Config;
+use project_mapper_core::runtime_config::input::InputComponentConfig;
+use project_mapper_core::runtime_config::input::common::InputConfig;
+use project_mapper_core::runtime_config::input::test::TestConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::output::common::OutputConfig;
-use project_mapper_core::runtime_config::output::window::{MonitorConfig, WindowConfig, WindowMode};
+use project_mapper_core::runtime_config::output::window::{
+    MonitorConfig, WindowConfig, WindowMode,
+};
 use project_mapper_core::types::video::Resolution;
 
 pub fn main() {
@@ -11,8 +16,13 @@ pub fn main() {
     };
 
     let config = Config {
-        outputs: vec![OutputComponentConfig {
+        inputs: vec![InputComponentConfig {
             uid: 0,
+            name: "in_comp".to_string(),
+            config: InputConfig::Test(TestConfig {}),
+        }],
+        outputs: vec![OutputComponentConfig {
+            uid: 1,
             name: "comp_1".to_string(),
             config: OutputConfig::Window(WindowConfig {
                 mode: WindowMode::Exclusive {
@@ -23,6 +33,7 @@ pub fn main() {
                     },
                 },
             }),
+            src_uid: 0,
         }],
     };
 
