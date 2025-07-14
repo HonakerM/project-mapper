@@ -1,4 +1,4 @@
-use project_mapper_core::runtime_config::Config;
+use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::common::InputConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
@@ -15,7 +15,7 @@ pub fn main() {
         height: 100,
     };
 
-    let config = Config {
+    let config = RuntimeConfig {
         inputs: vec![InputComponentConfig {
             uid: 0,
             name: "in_comp".to_string(),
@@ -40,6 +40,6 @@ pub fn main() {
 
     let serialized_result = serde_json::to_string(&config).expect("no");
     println!("{}", serialized_result);
-    let round_trip_res: Config = serde_json::from_str(&serialized_result).unwrap();
+    let round_trip_res: RuntimeConfig = serde_json::from_str(&serialized_result).unwrap();
     println!("{:?}", round_trip_res);
 }

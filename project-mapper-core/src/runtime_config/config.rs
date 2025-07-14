@@ -4,7 +4,7 @@ use crate::runtime_config::{effect::EffectComponentConfig, input::InputComponent
 
 // Top-Level Config object for the runtime
 #[derive(Serialize, Deserialize, Debug)]
-pub struct Config {
+pub struct RuntimeConfig {
     pub inputs: Vec<InputComponentConfig>,
     pub effects: Vec<EffectComponentConfig>,
     pub outputs: Vec<OutputComponentConfig>,

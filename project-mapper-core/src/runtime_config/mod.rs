@@ -9,4 +9,4 @@ pub mod output;
 #[path = "./shared.rs"]
 pub mod shared;
 
-pub use config::Config;
+pub use config::RuntimeConfig;
