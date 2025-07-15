@@ -5,7 +5,13 @@ use gst::Element;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 pub trait ComponentLookupHelper {
-    fn lookup(&self, uid: Uid) -> dyn Component;
+    fn has_uid(&self, uid: Uid) -> bool;
+    fn lookup_and_setup(
+        &self,
+        uid: Uid,
+        pipeline: &gst::Pipeline,
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> &mut dyn Component;
 }
 
 pub trait Component {
@@ -26,12 +32,13 @@ pub trait Component {
 
     // accessor functions
     fn element(&self) -> &Element;
+    fn uid(&self) -> Uid;
 }
 
-pub trait RunableCompnent {
-    // Start this component
-    fn start(&self) -> Result<()>;
+pub trait StartableCompnent {
+    // Start this component.
+    fn start(&mut self) -> Result<()>;
 
-    // Stop this component
-    fn stop(&self) -> Result<()>;
+    // Completely stop and destroy this component
+    fn destroy(&mut self) -> Result<()>;
 }

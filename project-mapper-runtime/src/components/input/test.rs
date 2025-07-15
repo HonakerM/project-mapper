@@ -3,12 +3,13 @@ use anyhow::{Error, Result};
 use gst::Element;
 use project_mapper_core::runtime_config::{
     input::{InputComponentConfig, common::InputConfig},
-    shared::ComponentConfig,
+    shared::{ComponentConfig, Uid},
 };
 
 struct TestComponent {
     config: InputComponentConfig,
     element: Element,
+    has_setup: bool,
 }
 
 impl Component for TestComponent {
@@ -37,6 +38,7 @@ impl Component for TestComponent {
         Ok(Self {
             config: config,
             element: element,
+            has_setup: false,
         })
     }
 
@@ -47,11 +49,15 @@ impl Component for TestComponent {
         pipeline: &gst::Pipeline,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
+        self.has_setup = true;
         Ok(())
     }
 
     // accessor functions
     fn element(&self) -> &Element {
         &self.element
+    }
+    fn uid(&self) -> Uid {
+        return self.config.uid();
     }
 }
