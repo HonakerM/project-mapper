@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::io::pipe;
 use std::iter::Map;
 use std::sync::Arc;
 use std::sync::LazyLock;
@@ -15,12 +16,15 @@ use anyhow::Ok;
 use anyhow::{Error, Result};
 use gst::Element;
 use gst::prelude::*;
+use gst_video::prelude::*;
 use project_mapper_core::runtime_config::shared::Uid;
 use project_mapper_core::runtime_config::{
     input::{InputComponentConfig, common::InputConfig},
     output::{OutputComponentConfig, common::OutputConfig, window::WindowConfig},
     shared::ComponentConfig,
 };
+use raw_window_handle::HasWindowHandle;
+use raw_window_handle::RawWindowHandle;
 use winit::event::Event;
 use winit::event::WindowEvent;
 use winit::event_loop::EventLoop;
@@ -28,13 +32,19 @@ use winit::event_loop::EventLoopBuilder;
 use winit::event_loop::EventLoopProxy;
 use winit::window::WindowBuilder;
 
+#[derive(Clone)]
+struct WindowRequest {
+    pub element_name: String,
+    pub config: WindowConfig,
+}
+
 // setup global state. While this could be done without the Option
 // keep it to allow us to determine which component is the "main" one
 // and will start threads/etc
 #[derive(Clone)]
 struct GlobalWindowState {
     pub event_loop_proxy: Option<EventLoopProxy<()>>,
-    pub window_configs: HashMap<String, WindowConfig>,
+    pub window_configs: HashMap<String, WindowRequest>,
 }
 static WINDOW_PROXY: LazyLock<Mutex<Option<GlobalWindowState>>> =
     LazyLock::new(|| Mutex::new(None));
@@ -78,15 +88,19 @@ impl WindowComponent {
 
         // make sure the global state has our window config
         if let Some(state) = global_state.as_mut() {
-            state
-                .window_configs
-                .insert(self.config.name(), self.window_config.clone());
+            state.window_configs.insert(
+                self.config.name(),
+                WindowRequest {
+                    element_name: self.config.name(),
+                    config: self.window_config.clone(),
+                },
+            );
         }
 
         Ok(())
     }
 
-    fn run_event_loop() -> Result<()> {
+    fn run_event_loop(pipeline: gst::Pipeline) -> Result<()> {
         // construct the event loop and update the global proxy state
         let event_loop = EventLoopBuilder::new().build()?;
 
@@ -103,10 +117,48 @@ impl WindowComponent {
             )))?;
             if let Some(state) = global_state.as_mut() {
                 state.event_loop_proxy = Some(event_loop.create_proxy());
+
+                // while we have the lock setup all windows
+                for window_request in state.window_configs.values() {
+                    // start by building the window
+                    // ! TODO actually use the window config
+                    let window = WindowBuilder::new()
+                        .with_title(window_request.element_name.clone())
+                        .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0))
+                        .build(&event_loop)?;
+
+                    // get the gst element as a video overlay
+                    let element = pipeline
+                        .by_name(&window_request.element_name)
+                        .with_context(|| {
+                            format!(
+                                "Element with name '{}' not found in pipeline",
+                                window_request.element_name
+                            )
+                        })?;
+                    let overlay = element
+                        .dynamic_cast::<gst_video::VideoOverlay>()
+                        .map_err(|_| anyhow::anyhow!("Failed to cast element to VideoOverlay"))?;
+
+                    // Obtain the raw window handle from winit
+                    let raw_handle = window.window_handle().unwrap().as_raw();
+
+                    // Extract platform-specific handle ID
+                    let handle_id = match raw_handle {
+                        RawWindowHandle::Xlib(h) => h.window as usize,
+                        RawWindowHandle::Wayland(h) => h.surface.as_ptr() as usize,
+                        RawWindowHandle::Win32(h) => h.hwnd.get() as usize,
+                        RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
+                        _ => panic!("Unsupported platform: cannot get raw window handle"),
+                    };
+
+                    // set the gstreamer element to output to this handle!
+                    unsafe {
+                        overlay.set_window_handle(handle_id);
+                    }
+                }
             }
         }
-
-        // next handle windows.... todo
 
         event_loop.run(move |event, event_loop_target| {
             match event {
@@ -190,6 +242,7 @@ impl Component for WindowComponent {
         if self.has_setup {
             return Ok(());
         }
+
         // start by setting up the correct proxy values and ensuring the global state is correct
         self.initialize_global_state()?;
 
@@ -227,13 +280,14 @@ impl Component for WindowComponent {
 
 impl StartableCompnent for WindowComponent {
     // Start this component
-    fn start(&mut self) -> Result<()> {
+    fn start(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         // if we're not main then do nothing
         if !self.is_main {
             return Ok(());
         }
 
-        let window_thread = thread::spawn(WindowComponent::run_event_loop);
+        let dup_pipeline = pipeline.clone();
+        let window_thread = thread::spawn(|| WindowComponent::run_event_loop(dup_pipeline));
         self.event_thread = Some(window_thread);
 
         Ok(())

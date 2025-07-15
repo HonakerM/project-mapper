@@ -37,7 +37,7 @@ pub trait Component {
 
 pub trait StartableCompnent {
     // Start this component.
-    fn start(&mut self) -> Result<()>;
+    fn start(&mut self, pipeline: &gst::Pipeline) -> Result<()>;
 
     // Completely stop and destroy this component
     fn destroy(&mut self) -> Result<()>;
