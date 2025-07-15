@@ -43,7 +43,7 @@ impl Component for TestComponent {
     // Run any post init setup functions
     // ! Will probably be removed or edited to have more params
     fn setup(
-        &self,
+        &mut self,
         pipeline: &gst::Pipeline,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {

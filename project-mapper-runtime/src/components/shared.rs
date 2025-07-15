@@ -16,9 +16,10 @@ pub trait Component {
         Self: Sized;
 
     // Run any post init setup functions after all components have been initialized
-    // in the pipeline
+    // in the pipeline. We can garuntee these functions will all be ran in the same thread
+    // and one after another. There is no garuntee on the order
     fn setup(
-        &self,
+        &mut self,
         pipeline: &gst::Pipeline,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()>;
