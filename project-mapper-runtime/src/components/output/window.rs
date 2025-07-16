@@ -200,7 +200,7 @@ impl WindowComponent {
                             event_loop_target.exit();
                         }
                         (msg) => {
-                            println!("other message {:?}", msg)
+                            //println!("other message {:?}", msg)
                         }
                     },
                     _ => (),

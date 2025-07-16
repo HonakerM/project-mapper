@@ -24,20 +24,36 @@ fn run_main() -> Result<()> {
             config: InputConfig::Test(TestConfig {}),
         }],
         effects: vec![],
-        outputs: vec![OutputComponentConfig {
-            uid: 1,
-            name: "comp_1".to_string(),
-            config: OutputConfig::Window(WindowConfig {
-                mode: WindowMode::Exclusive {
-                    config: MonitorConfig {
-                        name: "monitor_1".to_string(),
-                        resolution: resolution,
-                        refresh_rate: 10,
+        outputs: vec![
+            OutputComponentConfig {
+                uid: 1,
+                name: "comp_1".to_string(),
+                config: OutputConfig::Window(WindowConfig {
+                    mode: WindowMode::Exclusive {
+                        config: MonitorConfig {
+                            name: "monitor_1".to_string(),
+                            resolution: resolution.clone(),
+                            refresh_rate: 10,
+                        },
                     },
-                },
-            }),
-            src_uid: 0,
-        }],
+                }),
+                src_uid: 0,
+            },
+            OutputComponentConfig {
+                uid: 2,
+                name: "comp_2".to_string(),
+                config: OutputConfig::Window(WindowConfig {
+                    mode: WindowMode::Exclusive {
+                        config: MonitorConfig {
+                            name: "monitor_1".to_string(),
+                            resolution: resolution.clone(),
+                            refresh_rate: 10,
+                        },
+                    },
+                }),
+                src_uid: 0,
+            },
+        ],
     };
 
     let runtime = Runtime::new(config)?;

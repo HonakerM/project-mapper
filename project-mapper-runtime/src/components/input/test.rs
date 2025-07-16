@@ -9,6 +9,7 @@ use project_mapper_core::runtime_config::{
 pub struct TestComponent {
     config: InputComponentConfig,
     element: Element,
+    tee_element: Element,
     has_setup: bool,
 }
 
@@ -35,9 +36,14 @@ impl Component for TestComponent {
             .name(config.name())
             .build()?;
 
+        // Add tee to src element to allow multiple linkages
+        let tee_name: String = format!("tee-{}", config.name());
+        let src_tee = gst::ElementFactory::make("tee").name(tee_name).build()?;
+
         Ok(Self {
             config: config,
             element: element,
+            tee_element: src_tee,
             has_setup: false,
         })
     }
@@ -51,18 +57,28 @@ impl Component for TestComponent {
     ) -> Result<()> {
         self.has_setup = true;
 
-        // Add both elements to the pipelines and sync status
+        // Add elements to the pipelines and sync status
         pipeline.add(&self.element)?;
+        pipeline.add(&self.tee_element)?;
+
+        self.tee_element.sync_state_with_parent()?;
         self.element.sync_state_with_parent()?;
+
+        self.element.link(&self.tee_element)?;
 
         Ok(())
     }
 
     // accessor functions
     fn element(&self) -> &Element {
-        &self.element
+        // return the tee element since that's what people should
+        // be linking against
+        &self.tee_element
     }
     fn uid(&self) -> Uid {
         return self.config.uid();
+    }
+    fn has_setup(&self) -> bool {
+        return self.has_setup;
     }
 }
