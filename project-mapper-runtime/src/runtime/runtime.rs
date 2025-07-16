@@ -53,9 +53,6 @@ impl Runtime {
                 .lookup_and_setup(output_uid, &pipeline)?;
         }
 
-        // start the pipeline
-        pipeline.set_state(gst::State::Playing)?;
-
         // Next tell the component helper to start all components
         self.component_helper.start(&pipeline)?;
 

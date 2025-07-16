@@ -55,7 +55,6 @@ pub struct WindowComponent {
     window_config: WindowConfig,
 
     // gst elements
-    queue_element: Element,
     output_element: Element,
 
     // winit state
@@ -160,10 +159,14 @@ impl WindowComponent {
                         overlay.set_window_handle(handle_id);
                     }
 
+                    // hold onto window ref
                     windows.insert(window_request.element_uid, window);
                 }
             }
         }
+
+        // start the pipeline
+        pipeline.set_state(gst::State::Playing)?;
 
         event_loop.run(move |event, event_loop_target| {
             match event {
@@ -174,12 +177,8 @@ impl WindowComponent {
                         // ! Todo send event to parent
                         event_loop_target.exit();
                     }
-                    WindowEvent::Resized(_new_size) => {
-                        // Optionally handle resize
-                        println!("resize")
-                    }
-                    (thing) => {
-                        println!("other message {:?}", thing)
+                    (msg) => {
+                        println!("other message {:?}", msg)
                     }
                 },
                 _ => (),
@@ -210,12 +209,6 @@ impl Component for WindowComponent {
             // get the current window config
             let window_config = window_config.clone();
 
-            // construct the queue element which stops us from blocking this output
-            let queue_name = format!("queue-{}", local_config.name());
-            let queue_element = gst::ElementFactory::make("queue")
-                .name(queue_name)
-                .build()?;
-
             // construct the opengl image sink and ensure it's configured properly
             let output_element = gst::ElementFactory::make("glimagesink")
                 .name(local_config.name())
@@ -228,7 +221,6 @@ impl Component for WindowComponent {
                 window_config: window_config,
 
                 output_element: output_element,
-                queue_element: queue_element,
                 has_setup: false,
 
                 // create empty state later setup during setup
@@ -256,19 +248,14 @@ impl Component for WindowComponent {
         self.initialize_global_state()?;
 
         // Add both elements to the pipelines and sync status
-        pipeline.add(&self.queue_element)?;
         pipeline.add(&self.output_element)?;
-        self.queue_element.sync_state_with_parent()?;
         self.output_element.sync_state_with_parent()?;
-
-        // Link elements
-        self.queue_element.link(&self.output_element)?;
 
         // Fetch the compoennt that should be pointing to us
         let src_comp = lookup_func.lookup_and_setup(self.config.src_uid, pipeline)?;
 
         // link the desired source with the queue
-        src_comp.borrow().element().link(&self.queue_element)?;
+        src_comp.borrow().element().link(&self.output_element)?;
 
         // mark setup as complete so as to not rerun
         self.has_setup = true;
@@ -277,7 +264,7 @@ impl Component for WindowComponent {
 
     // accessor functions
     fn element(&self) -> &Element {
-        &self.queue_element
+        &self.output_element
     }
     fn uid(&self) -> Uid {
         self.config.uid()
