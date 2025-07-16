@@ -9,7 +9,7 @@ use crate::components::{
 };
 use anyhow::{Error, Result};
 
-pub fn create_component(config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
+pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
     if let Some(output_cfg) = config.as_any().downcast_ref::<OutputComponentConfig>() {
         match &output_cfg.config {
             OutputConfig::Window(_) => {

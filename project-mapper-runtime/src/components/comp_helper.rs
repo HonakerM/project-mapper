@@ -3,7 +3,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 use crate::components::{
-    factory::create_component,
+    factory::create_default_component,
     shared::{Component, ComponentLookupHelper},
 };
 use anyhow::{Error, Result};
@@ -20,10 +20,12 @@ impl ComponentHelper {
             component_map: HashMap::new(),
         }
     }
+}
 
-    pub fn create_and_insert_comp(&mut self, config: &dyn ComponentConfig) -> Result<()> {
+impl ComponentLookupHelper for ComponentHelper {
+    fn create_and_insert_comp(&mut self, config: &dyn ComponentConfig) -> Result<()> {
         // create the component
-        let comp = create_component(config)?;
+        let comp = create_default_component(config)?;
 
         // if this component requires main then update the main_id
         if comp.requires_main() {
@@ -42,7 +44,26 @@ impl ComponentHelper {
         Ok(())
     }
 
-    pub fn start_and_run(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn lookup_and_setup(
+        &self,
+        uid: Uid,
+        pipeline: &gst::Pipeline,
+    ) -> Result<Rc<RefCell<Box<dyn Component>>>> {
+        let comp_rc = {
+            self.component_map
+                .get(&uid)
+                .cloned()
+                .ok_or_else(|| Error::msg(format!("Unknown UID: {}", uid)))?
+        };
+
+        let has_setup = comp_rc.borrow().has_setup();
+        if !has_setup {
+            comp_rc.borrow_mut().setup(pipeline, self)?;
+        }
+        Ok(comp_rc)
+    }
+
+    fn start_and_run(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         for comp in self.component_map.values() {
             let mut mutable_comp = comp.borrow_mut();
             // if we don't require main then start. Else mark the component
@@ -64,31 +85,6 @@ impl ComponentHelper {
             }
         }
         Ok(())
-    }
-
-    pub fn requires_main(&self) -> bool {
-        return self.main_comp_id.is_none();
-    }
-}
-
-impl ComponentLookupHelper for ComponentHelper {
-    fn lookup_and_setup(
-        &self,
-        uid: Uid,
-        pipeline: &gst::Pipeline,
-    ) -> Result<Rc<RefCell<Box<dyn Component>>>> {
-        let comp_rc = {
-            self.component_map
-                .get(&uid)
-                .cloned()
-                .ok_or_else(|| Error::msg(format!("Unknown UID: {}", uid)))?
-        };
-
-        let has_setup = comp_rc.borrow().has_setup();
-        if !has_setup {
-            comp_rc.borrow_mut().setup(pipeline, self)?;
-        }
-        Ok(comp_rc)
     }
 
     fn has_main_requirement(&self) -> bool {

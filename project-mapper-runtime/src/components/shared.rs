@@ -5,12 +5,18 @@ use gst::Element;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 pub trait ComponentLookupHelper {
+    // factory function to create a component and register it with the helper
+    fn create_and_insert_comp(&mut self, config: &dyn ComponentConfig) -> Result<()>;
+    // helper function to return a desired component and run setup if it hasn't already
     fn lookup_and_setup(
         &self,
         uid: Uid,
         pipeline: &gst::Pipeline,
     ) -> Result<Rc<RefCell<Box<dyn Component>>>>;
-
+    // start and run all pipelines. If has_main_requirement is true then this will
+    // block
+    fn start_and_run(&mut self, pipeline: &gst::Pipeline) -> Result<()>;
+    // if this helper has a component that requires the main thread to run
     fn has_main_requirement(&self) -> bool;
 }
 

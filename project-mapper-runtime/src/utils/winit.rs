@@ -5,7 +5,6 @@ use winit::{event_loop::EventLoop, monitor::MonitorHandle, monitor::VideoMode};
 pub fn get_monitor_by_name(event_loop: &EventLoop<()>, name: String) -> Result<MonitorHandle> {
     for monitor in event_loop.available_monitors() {
         if let Some(monitor_name) = monitor.name() {
-            println!("{}", monitor_name);
             if monitor_name == name {
                 return Ok(monitor);
             }

@@ -9,6 +9,7 @@ use project_mapper_core::runtime_config::output::window::{
     MonitorConfig, WindowConfig, WindowMode,
 };
 use project_mapper_core::types::video::Resolution;
+use project_mapper_runtime::components::comp_helper::ComponentHelper;
 use project_mapper_runtime::runtime::runtime::Runtime;
 
 fn run_main() -> Result<()> {
@@ -52,7 +53,7 @@ fn run_main() -> Result<()> {
         ],
     };
 
-    let runtime = Runtime::new(config)?;
+    let runtime = Runtime::new(config, Box::new(ComponentHelper::new()))?;
     runtime.run()
 }
 

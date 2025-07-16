@@ -8,14 +8,17 @@ use crate::components::shared::ComponentLookupHelper;
 
 pub struct Runtime {
     pub config: RuntimeConfig,
-    pub component_helper: ComponentHelper,
+    pub component_helper: Box<dyn ComponentLookupHelper>,
 }
 
 impl Runtime {
-    pub fn new(config: RuntimeConfig) -> Result<Self> {
+    pub fn new(
+        config: RuntimeConfig,
+        component_helper: Box<dyn ComponentLookupHelper>,
+    ) -> Result<Self> {
         Ok(Self {
             config: config,
-            component_helper: ComponentHelper::new(),
+            component_helper: component_helper,
         })
     }
 
