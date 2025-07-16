@@ -1,12 +1,12 @@
-use crate::components::shares::{Component, ComponentLookupHelper};
+use crate::components::shared::{Component, ComponentLookupHelper};
 use anyhow::{Error, Result};
-use gst::Element;
+use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::{
     input::{InputComponentConfig, common::InputConfig},
     shared::{ComponentConfig, Uid},
 };
 
-struct TestComponent {
+pub struct TestComponent {
     config: InputComponentConfig,
     element: Element,
     has_setup: bool,
@@ -50,6 +50,11 @@ impl Component for TestComponent {
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         self.has_setup = true;
+
+        // Add both elements to the pipelines and sync status
+        pipeline.add(&self.element)?;
+        self.element.sync_state_with_parent()?;
+
         Ok(())
     }
 

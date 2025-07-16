@@ -9,8 +9,7 @@ use std::thread;
 use std::thread::JoinHandle;
 use std::thread::current;
 
-use crate::components::shares::StartableCompnent;
-use crate::components::shares::{Component, ComponentLookupHelper};
+use crate::components::shared::{Component, ComponentLookupHelper};
 use anyhow::Context;
 use anyhow::Ok;
 use anyhow::{Error, Result};
@@ -49,7 +48,7 @@ struct GlobalWindowState {
 static WINDOW_PROXY: LazyLock<Mutex<Option<GlobalWindowState>>> =
     LazyLock::new(|| Mutex::new(None));
 
-struct WindowComponent {
+pub struct WindowComponent {
     config: OutputComponentConfig,
     window_config: WindowConfig,
 
@@ -256,13 +255,10 @@ impl Component for WindowComponent {
         self.queue_element.link(&self.output_element)?;
 
         // Fetch the compoennt that should be pointing to us
-        if !lookup_func.has_uid(self.config.src_uid) {
-            return Err(Error::msg(format!("Unknown Uid: {}", self.config.src_uid)));
-        }
-        let src_comp = lookup_func.lookup_and_setup(self.config.src_uid, pipeline, lookup_func);
+        let src_comp = lookup_func.lookup_and_setup(self.config.src_uid, pipeline)?;
 
         // link the desired source with the queue
-        src_comp.element().link(&self.queue_element)?;
+        src_comp.borrow().element().link(&self.queue_element)?;
 
         // mark setup as complete so as to not rerun
         self.has_setup = true;
@@ -276,9 +272,7 @@ impl Component for WindowComponent {
     fn uid(&self) -> Uid {
         self.config.uid()
     }
-}
 
-impl StartableCompnent for WindowComponent {
     // Start this component
     fn start(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         // if we're not main then do nothing
