@@ -29,6 +29,9 @@ pub trait Component {
         pipeline: &gst::Pipeline,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()>;
+    fn has_setup(&self) -> bool {
+        return false;
+    }
 
     // accessor functions
     fn element(&self) -> &Element;

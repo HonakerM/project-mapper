@@ -32,8 +32,7 @@ use winit::event_loop::EventLoopProxy;
 use winit::window::Window;
 use winit::window::WindowBuilder;
 
-
-// helper struct to store information about winit. This 
+// helper struct to store information about winit. This
 // will only be held by the main component
 struct WinitState {
     event_loop: EventLoop<()>,
@@ -111,16 +110,10 @@ impl WindowComponent {
     }
 
     fn initialize_window_elements(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
-        // only initialize window elements if we're the main component
-        if !self.is_main {
-            return Ok(());
-        }
-
         // construct the event loop and window mapping
         let event_loop = EventLoopBuilder::new().build()?;
         let mut windows: HashMap<Uid, Window> = HashMap::new();
 
-        
         // ControlFlow::Wait pauses the event loop if no events are available to process.
         // This is ideal for non-game applications that only update in response to user
         // input, and uses significantly less power/CPU time than ControlFlow::Poll.
@@ -131,6 +124,7 @@ impl WindowComponent {
             "Unable to aquire window proxy lock. Should not happen in normal operation",
         )))?;
         if let Some(state) = global_state.as_mut() {
+            // update state with proxy
             state.event_loop_proxy = Some(event_loop.create_proxy());
 
             // while we have the lock setup all windows
@@ -177,37 +171,41 @@ impl WindowComponent {
             }
         }
 
-        self.window_state = Some(
-            WinitState { 
-                event_loop: event_loop, 
-                windows: windows 
-            }
-        );
+        self.window_state = Some(WinitState {
+            event_loop: event_loop,
+            windows: windows,
+        });
 
         Ok(())
     }
 
     fn run_event_loop(&mut self) -> Result<()> {
         if !self.is_main {
-            return Err(Error::msg("Unable to run event loop since this is not main"))
+            return Err(Error::msg(
+                "Unable to run event loop since this is not main",
+            ));
         }
-        let winit_state =         std::mem::replace(&mut self.window_state, None).ok_or(Error::msg("Unable to run event loop since this is not main. We should have a window state"))?;
-        winit_state.event_loop.run(move |event, event_loop_target| {
-            match event {
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => {
-                        println!("close requestted");
-                        // Stop the event loop
-                        // ! Todo send event to parent
-                        event_loop_target.exit();
-                    }
-                    (msg) => {
-                        println!("other message {:?}", msg)
-                    }
-                },
-                _ => (),
-            }
-        })?;
+        let winit_state = std::mem::replace(&mut self.window_state, None).ok_or(Error::msg(
+            "Unable to run event loop since this is not main. We should have a window state",
+        ))?;
+        winit_state
+            .event_loop
+            .run(move |event, event_loop_target| {
+                match event {
+                    Event::WindowEvent { event, .. } => match event {
+                        WindowEvent::CloseRequested => {
+                            println!("close requestted");
+                            // Stop the event loop
+                            // ! Todo send event to parent
+                            event_loop_target.exit();
+                        }
+                        (msg) => {
+                            println!("other message {:?}", msg)
+                        }
+                    },
+                    _ => (),
+                }
+            })?;
         return Ok(());
     }
 }
@@ -253,7 +251,7 @@ impl Component for WindowComponent {
                 queue_element: queue_element,
                 output_element: output_element,
                 has_setup: false,
-                
+
                 // default to not main. This will be configured during initialize_global_state
                 is_main: false,
                 window_state: None,
@@ -276,16 +274,41 @@ impl Component for WindowComponent {
         if self.has_setup {
             return Ok(());
         }
-        
+
         // Add both elements to the pipelines and sync status
         pipeline.add(&self.queue_element)?;
         pipeline.add(&self.output_element)?;
         self.queue_element.sync_state_with_parent()?;
         self.output_element.sync_state_with_parent()?;
 
-        // setup the window after adding to the pipeline. 
+        // If we're the main function than recursively call setup on all available window references
+        // this ensures all pipeline elements that require a window have been added to the pipeline
         // ! Note this must come after adding the components to the pipeline:
-        self.initialize_window_elements(pipeline);
+
+        if self.is_main {
+            // only lock global state while gathering components to initialize
+            let mut comp_ids_to_init: Vec<Uid> = vec![];
+            {
+                let mut global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
+                    "Unable to aquire window proxy lock. Should not happen in normal operation",
+                )))?;
+                if let Some(state) = global_state.as_ref() {
+                    for request in state.window_configs.values() {
+                        // we don't want to re-init this component as that can cause issues
+                        if request.element_uid != self.uid() {
+                            comp_ids_to_init.push(request.element_uid);
+                        }
+                    }
+                }
+            }
+            // initialize components outside of locked loop
+            for id in comp_ids_to_init {
+                lookup_func.lookup_and_setup(id, pipeline)?;
+            }
+
+            // initialize all the window elements
+            self.initialize_window_elements(pipeline)?;
+        }
 
         // Fetch the compoennt that should be pointing to us
         let src_comp = lookup_func.lookup_and_setup(self.config.src_uid, pipeline)?;
@@ -297,6 +320,10 @@ impl Component for WindowComponent {
         // mark setup as complete so as to not rerun
         self.has_setup = true;
         Ok(())
+    }
+
+    fn has_setup(&self) -> bool {
+        self.has_setup
     }
 
     // accessor functions

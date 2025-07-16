@@ -84,8 +84,10 @@ impl ComponentLookupHelper for ComponentHelper {
                 .ok_or_else(|| Error::msg(format!("Unknown UID: {}", uid)))?
         };
 
-        comp_rc.borrow_mut().setup(pipeline, self)?;
-
+        let has_setup = comp_rc.borrow().has_setup();
+        if !has_setup {
+            comp_rc.borrow_mut().setup(pipeline, self)?;
+        }
         Ok(comp_rc)
     }
 
