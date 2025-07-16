@@ -54,7 +54,7 @@ impl Runtime {
         }
 
         // Next tell the component helper to start all components
-        self.component_helper.start(&pipeline)?;
+        self.component_helper.start_and_run(&pipeline)?;
 
         // wait for events to exit I guess?
         // let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =

@@ -204,6 +204,7 @@ impl Component for WindowComponent {
             )),
         }?;
 
+        // load the config
         let local_config = config.clone();
         if let OutputConfig::Window(window_config) = config.config {
             // get the current window config
@@ -216,7 +217,7 @@ impl Component for WindowComponent {
             // Disable sync to avoid blocking on display
             output_element.set_property("sync", &false);
 
-            Ok(Self {
+            let mut window_component = Self {
                 config: local_config,
                 window_config: window_config,
 
@@ -226,7 +227,9 @@ impl Component for WindowComponent {
                 // create empty state later setup during setup
                 event_thread: None,
                 is_main: false,
-            })
+            };
+            window_component.initialize_global_state()?;
+            Ok(window_component)
         } else {
             Err(Error::msg(
                 "OutputConfig is not correct type for this component",
@@ -243,9 +246,6 @@ impl Component for WindowComponent {
         if self.has_setup {
             return Ok(());
         }
-
-        // start by setting up the correct proxy values and ensuring the global state is correct
-        self.initialize_global_state()?;
 
         // Add both elements to the pipelines and sync status
         pipeline.add(&self.output_element)?;
@@ -271,7 +271,7 @@ impl Component for WindowComponent {
     }
 
     // Start this component
-    fn start(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn start_or_run(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         // if we're not main then do nothing
         if !self.is_main {
             return Ok(());
@@ -293,5 +293,9 @@ impl Component for WindowComponent {
             return Ok(());
         }
         Ok(())
+    }
+    // only the main window requires the main thread
+    fn requires_main(&self) -> bool {
+        return self.is_main;
     }
 }

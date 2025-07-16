@@ -10,6 +10,8 @@ pub trait ComponentLookupHelper {
         uid: Uid,
         pipeline: &gst::Pipeline,
     ) -> Result<Rc<RefCell<Box<dyn Component>>>>;
+
+    fn has_main_requirement(&self) -> bool;
 }
 
 pub trait Component {
@@ -32,13 +34,22 @@ pub trait Component {
     fn element(&self) -> &Element;
     fn uid(&self) -> Uid;
 
-    // Start this component.
-    fn start(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    /* Runtime Functions */
+    // Start this component. Should only hold/run if requires_main
+    // is true
+    fn start_or_run(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         Ok(())
     }
 
     // Completely stop and destroy this component
     fn destroy(&mut self) -> Result<()> {
         Ok(())
+    }
+    // if this component requires running on the main thread.
+    // ! Warning: only one component can mark this as true. If multiple
+    // components require main then we will raise an error.
+    // ! Note: This needs to be correctly set after new()
+    fn requires_main(&self) -> bool {
+        false
     }
 }
