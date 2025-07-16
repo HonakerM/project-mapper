@@ -3,12 +3,15 @@ use std::sync::LazyLock;
 use std::sync::Mutex;
 
 use crate::components::shared::{Component, ComponentLookupHelper};
+use crate::utils::winit::get_monitor_by_name;
+use crate::utils::winit::get_video_mode_for_config;
 use anyhow::Context;
 use anyhow::Ok;
 use anyhow::{Error, Result};
 use gst::Element;
 use gst::prelude::*;
 use gst_video::prelude::*;
+use project_mapper_core::runtime_config::output::window::WindowMode;
 use project_mapper_core::runtime_config::shared::Uid;
 use project_mapper_core::runtime_config::{
     output::{OutputComponentConfig, common::OutputConfig, window::WindowConfig},
@@ -159,6 +162,13 @@ impl WindowComponent {
                     overlay.set_window_handle(handle_id);
                 }
 
+                // configure the window based on the config
+                WindowComponent::configure_window(
+                    &event_loop,
+                    &window,
+                    window_request.config.clone(),
+                )?;
+
                 // hold onto window ref
                 windows.insert(window_request.element_uid, window);
             }
@@ -168,6 +178,28 @@ impl WindowComponent {
             event_loop: event_loop,
             _windows: windows,
         });
+
+        Ok(())
+    }
+
+    fn configure_window(
+        event_loop: &EventLoop<()>,
+        window: &Window,
+        config: WindowConfig,
+    ) -> Result<()> {
+        match &config.mode {
+            WindowMode::Windowed {} => {}
+            WindowMode::Borderless { name } => {
+                let monitor_handle = get_monitor_by_name(event_loop, name.clone())?;
+                window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(Some(
+                    monitor_handle,
+                ))));
+            }
+            WindowMode::Exclusive { config } => {
+                let video_mode = get_video_mode_for_config(event_loop, config)?;
+                window.set_fullscreen(Some(winit::window::Fullscreen::Exclusive(video_mode)));
+            }
+        }
 
         Ok(())
     }

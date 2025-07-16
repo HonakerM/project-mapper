@@ -13,8 +13,8 @@ use project_mapper_runtime::runtime::runtime::Runtime;
 
 fn run_main() -> Result<()> {
     let resolution = Resolution {
-        width: 190,
-        height: 100,
+        width: 1920,
+        height: 1080,
     };
 
     let config = RuntimeConfig {
@@ -29,30 +29,26 @@ fn run_main() -> Result<()> {
                 uid: 1,
                 name: "comp_1".to_string(),
                 config: OutputConfig::Window(WindowConfig {
-                    mode: WindowMode::Exclusive {
-                        config: MonitorConfig {
-                            name: "monitor_1".to_string(),
-                            resolution: resolution.clone(),
-                            refresh_rate: 10,
-                        },
+                    mode: WindowMode::Borderless {
+                        name: "\\\\.\\DISPLAY1".to_string(),
                     },
                 }),
                 src_uid: 0,
-            },
-            OutputComponentConfig {
-                uid: 2,
-                name: "comp_2".to_string(),
-                config: OutputConfig::Window(WindowConfig {
-                    mode: WindowMode::Exclusive {
-                        config: MonitorConfig {
-                            name: "monitor_1".to_string(),
-                            resolution: resolution.clone(),
-                            refresh_rate: 10,
-                        },
-                    },
-                }),
-                src_uid: 0,
-            },
+            }, /*,
+               OutputComponentConfig {
+                   uid: 2,
+                   name: "comp_2".to_string(),
+                   config: OutputConfig::Window(WindowConfig {
+                       mode: WindowMode::Exclusive {
+                           config: MonitorConfig {
+                               name: ".DISPLAY1".to_string(),
+                               resolution: resolution.clone(),
+                               refresh_rate: 60000,
+                           },
+                       },
+                   }),
+                   src_uid: 0,
+               },*/
         ],
     };
 
