@@ -29,11 +29,13 @@ use winit::event::WindowEvent;
 use winit::event_loop::EventLoop;
 use winit::event_loop::EventLoopBuilder;
 use winit::event_loop::EventLoopProxy;
+use winit::window::Window;
 use winit::window::WindowBuilder;
 
 #[derive(Clone)]
 struct WindowRequest {
     pub element_name: String,
+    pub element_uid: Uid,
     pub config: WindowConfig,
 }
 
@@ -90,6 +92,7 @@ impl WindowComponent {
             state.window_configs.insert(
                 self.config.name(),
                 WindowRequest {
+                    element_uid: self.config.uid(),
                     element_name: self.config.name(),
                     config: self.window_config.clone(),
                 },
@@ -102,6 +105,7 @@ impl WindowComponent {
     fn run_event_loop(pipeline: gst::Pipeline) -> Result<()> {
         // construct the event loop and update the global proxy state
         let event_loop = EventLoopBuilder::new().build()?;
+        let mut windows: HashMap<Uid, Window> = HashMap::new();
 
         // ControlFlow::Wait pauses the event loop if no events are available to process.
         // This is ideal for non-game applications that only update in response to user
@@ -155,6 +159,8 @@ impl WindowComponent {
                     unsafe {
                         overlay.set_window_handle(handle_id);
                     }
+
+                    windows.insert(window_request.element_uid, window);
                 }
             }
         }
@@ -163,14 +169,18 @@ impl WindowComponent {
             match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => {
+                        println!("close requestted");
                         // Stop the event loop
                         // ! Todo send event to parent
                         event_loop_target.exit();
                     }
                     WindowEvent::Resized(_new_size) => {
                         // Optionally handle resize
+                        println!("resize")
                     }
-                    _ => (),
+                    (thing) => {
+                        println!("other message {:?}", thing)
+                    }
                 },
                 _ => (),
             }
@@ -280,9 +290,11 @@ impl Component for WindowComponent {
             return Ok(());
         }
 
-        let dup_pipeline = pipeline.clone();
-        let window_thread = thread::spawn(|| WindowComponent::run_event_loop(dup_pipeline));
-        self.event_thread = Some(window_thread);
+        WindowComponent::run_event_loop(pipeline.clone())?;
+
+        // let dup_pipeline = pipeline.clone();
+        // let window_thread = thread::spawn(|| WindowComponent::run_event_loop(dup_pipeline));
+        // self.event_thread = Some(window_thread);
 
         Ok(())
     }

@@ -53,15 +53,18 @@ impl Runtime {
                 .lookup_and_setup(output_uid, &pipeline)?;
         }
 
+        // start the pipeline
+        pipeline.set_state(gst::State::Playing)?;
+
         // Next tell the component helper to start all components
         self.component_helper.start(&pipeline)?;
 
         // wait for events to exit I guess?
-        let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =
-            mpsc::channel();
-        for event in recv.iter() {
-            // do nothing for ever
-        }
+        // let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =
+        //     mpsc::channel();
+        // for event in recv.iter() {
+        //     // do nothing for ever
+        // }
 
         Ok(())
     }
