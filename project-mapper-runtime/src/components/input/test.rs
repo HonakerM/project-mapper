@@ -53,7 +53,7 @@ impl Component for TestComponent {
     fn setup(
         &mut self,
         pipeline: &gst::Pipeline,
-        lookup_func: &dyn ComponentLookupHelper,
+        _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         self.has_setup = true;
 

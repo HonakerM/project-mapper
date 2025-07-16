@@ -1,4 +1,4 @@
-use std::{cell::RefCell, iter::Map, rc::Rc};
+use std::{cell::RefCell, rc::Rc};
 
 use anyhow::Result;
 use gst::Element;
@@ -40,7 +40,7 @@ pub trait Component {
     /* Runtime Functions */
     // Start this component. Should only hold/run if requires_main
     // is true
-    fn start_or_run(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn start_or_run(&mut self, _pipeline: &gst::Pipeline) -> Result<()> {
         Ok(())
     }
 

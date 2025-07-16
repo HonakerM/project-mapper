@@ -1,13 +1,6 @@
 use std::collections::HashMap;
-use std::io::pipe;
-use std::iter::Map;
-use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
-use std::sync::OnceLock;
-use std::thread;
-use std::thread::JoinHandle;
-use std::thread::current;
 
 use crate::components::shared::{Component, ComponentLookupHelper};
 use anyhow::Context;
@@ -18,7 +11,6 @@ use gst::prelude::*;
 use gst_video::prelude::*;
 use project_mapper_core::runtime_config::shared::Uid;
 use project_mapper_core::runtime_config::{
-    input::{InputComponentConfig, common::InputConfig},
     output::{OutputComponentConfig, common::OutputConfig, window::WindowConfig},
     shared::ComponentConfig,
 };
@@ -36,7 +28,8 @@ use winit::window::WindowBuilder;
 // will only be held by the main component
 struct WinitState {
     event_loop: EventLoop<()>,
-    windows: HashMap<Uid, Window>,
+    // needed to keep reference to a window
+    _windows: HashMap<Uid, Window>,
 }
 
 #[derive(Clone)]
@@ -173,7 +166,7 @@ impl WindowComponent {
 
         self.window_state = Some(WinitState {
             event_loop: event_loop,
-            windows: windows,
+            _windows: windows,
         });
 
         Ok(())
@@ -199,7 +192,7 @@ impl WindowComponent {
                             // ! Todo send event to parent
                             event_loop_target.exit();
                         }
-                        (msg) => {
+                        _msg => {
                             //println!("other message {:?}", msg)
                         }
                     },
@@ -289,7 +282,7 @@ impl Component for WindowComponent {
             // only lock global state while gathering components to initialize
             let mut comp_ids_to_init: Vec<Uid> = vec![];
             {
-                let mut global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
+                let global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
                     "Unable to aquire window proxy lock. Should not happen in normal operation",
                 )))?;
                 if let Some(state) = global_state.as_ref() {
@@ -335,7 +328,7 @@ impl Component for WindowComponent {
     }
 
     // Start this component
-    fn start_or_run(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn start_or_run(&mut self, _pipeline: &gst::Pipeline) -> Result<()> {
         // if we're not main then do nothing
         if !self.is_main {
             return Ok(());
