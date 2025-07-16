@@ -32,6 +32,14 @@ use winit::event_loop::EventLoopProxy;
 use winit::window::Window;
 use winit::window::WindowBuilder;
 
+
+// helper struct to store information about winit. This 
+// will only be held by the main component
+struct WinitState {
+    event_loop: EventLoop<()>,
+    windows: HashMap<Uid, Window>,
+}
+
 #[derive(Clone)]
 struct WindowRequest {
     pub element_name: String,
@@ -55,11 +63,12 @@ pub struct WindowComponent {
     window_config: WindowConfig,
 
     // gst elements
+    queue_element: Element,
     output_element: Element,
 
     // winit state
     is_main: bool,
-    event_thread: Option<JoinHandle<Result<()>>>,
+    window_state: Option<WinitState>,
 
     // helpers
     has_setup: bool,
@@ -101,74 +110,89 @@ impl WindowComponent {
         Ok(())
     }
 
-    fn run_event_loop(pipeline: gst::Pipeline) -> Result<()> {
-        // construct the event loop and update the global proxy state
+    fn initialize_window_elements(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+        // only initialize window elements if we're the main component
+        if !self.is_main {
+            return Ok(());
+        }
+
+        // construct the event loop and window mapping
         let event_loop = EventLoopBuilder::new().build()?;
         let mut windows: HashMap<Uid, Window> = HashMap::new();
 
+        
         // ControlFlow::Wait pauses the event loop if no events are available to process.
         // This is ideal for non-game applications that only update in response to user
         // input, and uses significantly less power/CPU time than ControlFlow::Poll.
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
-        // Update the global state with a proxy reference. This allows other threads/components to send
-        // us messages
-        {
-            let mut global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
-                "Unable to aquire window proxy lock. Should not happen in normal operation",
-            )))?;
-            if let Some(state) = global_state.as_mut() {
-                state.event_loop_proxy = Some(event_loop.create_proxy());
+        // create all the required windows and update the global state
+        let mut global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
+            "Unable to aquire window proxy lock. Should not happen in normal operation",
+        )))?;
+        if let Some(state) = global_state.as_mut() {
+            state.event_loop_proxy = Some(event_loop.create_proxy());
 
-                // while we have the lock setup all windows
-                for window_request in state.window_configs.values() {
-                    // start by building the window
-                    // ! TODO actually use the window config
-                    let window = WindowBuilder::new()
-                        .with_title(window_request.element_name.clone())
-                        .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0))
-                        .build(&event_loop)?;
+            // while we have the lock setup all windows
+            for window_request in state.window_configs.values() {
+                // start by building the window
+                // ! TODO actually use the window config
+                let window = WindowBuilder::new()
+                    .with_title(window_request.element_name.clone())
+                    .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0))
+                    .build(&event_loop)?;
 
-                    // get the gst element as a video overlay
-                    let element = pipeline
-                        .by_name(&window_request.element_name)
-                        .with_context(|| {
-                            format!(
-                                "Element with name '{}' not found in pipeline",
-                                window_request.element_name
-                            )
-                        })?;
-                    let overlay = element
-                        .dynamic_cast::<gst_video::VideoOverlay>()
-                        .map_err(|_| anyhow::anyhow!("Failed to cast element to VideoOverlay"))?;
+                // get the gst element as a video overlay
+                let element = pipeline
+                    .by_name(&window_request.element_name)
+                    .with_context(|| {
+                        format!(
+                            "Element with name '{}' not found in pipeline",
+                            window_request.element_name
+                        )
+                    })?;
+                let overlay = element
+                    .dynamic_cast::<gst_video::VideoOverlay>()
+                    .map_err(|_| anyhow::anyhow!("Failed to cast element to VideoOverlay"))?;
 
-                    // Obtain the raw window handle from winit
-                    let raw_handle = window.window_handle().unwrap().as_raw();
+                // Obtain the raw window handle from winit
+                let raw_handle = window.window_handle().unwrap().as_raw();
 
-                    // Extract platform-specific handle ID
-                    let handle_id = match raw_handle {
-                        RawWindowHandle::Xlib(h) => h.window as usize,
-                        RawWindowHandle::Wayland(h) => h.surface.as_ptr() as usize,
-                        RawWindowHandle::Win32(h) => h.hwnd.get() as usize,
-                        RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
-                        _ => panic!("Unsupported platform: cannot get raw window handle"),
-                    };
+                // Extract platform-specific handle ID
+                let handle_id = match raw_handle {
+                    RawWindowHandle::Xlib(h) => h.window as usize,
+                    RawWindowHandle::Wayland(h) => h.surface.as_ptr() as usize,
+                    RawWindowHandle::Win32(h) => h.hwnd.get() as usize,
+                    RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
+                    _ => panic!("Unsupported platform: cannot get raw window handle"),
+                };
 
-                    // set the gstreamer element to output to this handle!
-                    unsafe {
-                        overlay.set_window_handle(handle_id);
-                    }
-
-                    // hold onto window ref
-                    windows.insert(window_request.element_uid, window);
+                // set the gstreamer element to output to this handle!
+                unsafe {
+                    overlay.set_window_handle(handle_id);
                 }
+
+                // hold onto window ref
+                windows.insert(window_request.element_uid, window);
             }
         }
 
-        // start the pipeline
-        pipeline.set_state(gst::State::Playing)?;
+        self.window_state = Some(
+            WinitState { 
+                event_loop: event_loop, 
+                windows: windows 
+            }
+        );
 
-        event_loop.run(move |event, event_loop_target| {
+        Ok(())
+    }
+
+    fn run_event_loop(&mut self) -> Result<()> {
+        if !self.is_main {
+            return Err(Error::msg("Unable to run event loop since this is not main"))
+        }
+        let winit_state =         std::mem::replace(&mut self.window_state, None).ok_or(Error::msg("Unable to run event loop since this is not main. We should have a window state"))?;
+        winit_state.event_loop.run(move |event, event_loop_target| {
             match event {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::CloseRequested => {
@@ -184,8 +208,7 @@ impl WindowComponent {
                 _ => (),
             }
         })?;
-
-        Ok(())
+        return Ok(());
     }
 }
 
@@ -210,6 +233,12 @@ impl Component for WindowComponent {
             // get the current window config
             let window_config = window_config.clone();
 
+            // construct the queue sink
+            let queue_name = format!("queue-{}", local_config.name());
+            let queue_element = gst::ElementFactory::make("queue")
+                .name(queue_name)
+                .build()?;
+
             // construct the opengl image sink and ensure it's configured properly
             let output_element = gst::ElementFactory::make("glimagesink")
                 .name(local_config.name())
@@ -221,12 +250,13 @@ impl Component for WindowComponent {
                 config: local_config,
                 window_config: window_config,
 
+                queue_element: queue_element,
                 output_element: output_element,
                 has_setup: false,
-
-                // create empty state later setup during setup
-                event_thread: None,
+                
+                // default to not main. This will be configured during initialize_global_state
                 is_main: false,
+                window_state: None,
             };
             window_component.initialize_global_state()?;
             Ok(window_component)
@@ -246,16 +276,23 @@ impl Component for WindowComponent {
         if self.has_setup {
             return Ok(());
         }
-
+        
         // Add both elements to the pipelines and sync status
+        pipeline.add(&self.queue_element)?;
         pipeline.add(&self.output_element)?;
+        self.queue_element.sync_state_with_parent()?;
         self.output_element.sync_state_with_parent()?;
+
+        // setup the window after adding to the pipeline. 
+        // ! Note this must come after adding the components to the pipeline:
+        self.initialize_window_elements(pipeline);
 
         // Fetch the compoennt that should be pointing to us
         let src_comp = lookup_func.lookup_and_setup(self.config.src_uid, pipeline)?;
 
-        // link the desired source with the queue
-        src_comp.borrow().element().link(&self.output_element)?;
+        // link the desired source with the queue and then the queue with the output sink
+        self.queue_element.link(&self.output_element)?;
+        src_comp.borrow().element().link(&self.queue_element)?;
 
         // mark setup as complete so as to not rerun
         self.has_setup = true;
@@ -277,11 +314,8 @@ impl Component for WindowComponent {
             return Ok(());
         }
 
-        WindowComponent::run_event_loop(pipeline.clone())?;
-
-        // let dup_pipeline = pipeline.clone();
-        // let window_thread = thread::spawn(|| WindowComponent::run_event_loop(dup_pipeline));
-        // self.event_thread = Some(window_thread);
+        // if we're main then run the real event loop!
+        self.run_event_loop()?;
 
         Ok(())
     }

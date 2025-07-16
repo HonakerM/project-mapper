@@ -1,4 +1,5 @@
 pub enum RuntimeMessage {
-    UserExit(),
+    StartPipeline(),
+    StopPipeline(),
     GSTMessage(gst::Message),
 }
