@@ -1,3 +1,4 @@
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::LazyLock;
 use std::sync::Mutex;
@@ -34,7 +35,12 @@ struct WinitState {
     // needed to keep reference to a window
     _windows: HashMap<Uid, Window>,
 }
+// use thread local window state since we only ever need it on the main thread
+thread_local! {
+    static GLOBAL_WINDOW_STATE: RefCell<Option<WinitState>> = RefCell::new(None);
+}
 
+// Struct for components to request a window with
 #[derive(Clone)]
 struct WindowRequest {
     pub element_name: String,
@@ -46,11 +52,11 @@ struct WindowRequest {
 // keep it to allow us to determine which component is the "main" one
 // and will start threads/etc
 #[derive(Clone)]
-struct GlobalWindowState {
+struct ProxyWindowState {
     pub event_loop_proxy: Option<EventLoopProxy<()>>,
     pub window_configs: HashMap<String, WindowRequest>,
 }
-static WINDOW_PROXY: LazyLock<Mutex<Option<GlobalWindowState>>> =
+static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
     LazyLock::new(|| Mutex::new(None));
 
 pub struct WindowComponent {
@@ -63,7 +69,6 @@ pub struct WindowComponent {
 
     // winit state
     is_main: bool,
-    window_state: Option<WinitState>,
 
     // helpers
     has_setup: bool,
@@ -75,12 +80,12 @@ impl WindowComponent {
     fn initialize_global_state(&mut self) -> Result<()> {
         // if the current proxy is None we can assume ownership of the winit state. This component
         // will now become the primary "runable" window
-        let mut global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
+        let mut global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
             "Unable to aquire window proxy lock. Should not happen in normal operation",
         )))?;
 
         if let None = *global_state {
-            let new_global_state = GlobalWindowState {
+            let new_global_state: ProxyWindowState = ProxyWindowState {
                 event_loop_proxy: None,
                 window_configs: HashMap::new(),
             };
@@ -116,7 +121,7 @@ impl WindowComponent {
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
         // create all the required windows and update the global state
-        let mut global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
+        let mut global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
             "Unable to aquire window proxy lock. Should not happen in normal operation",
         )))?;
         if let Some(state) = global_state.as_mut() {
@@ -174,10 +179,10 @@ impl WindowComponent {
             }
         }
 
-        self.window_state = Some(WinitState {
+        GLOBAL_WINDOW_STATE.replace(Some(WinitState {
             event_loop: event_loop,
             _windows: windows,
-        });
+        }));
 
         Ok(())
     }
@@ -204,13 +209,13 @@ impl WindowComponent {
         Ok(())
     }
 
-    fn run_event_loop(&mut self) -> Result<()> {
+    fn run_event_loop(&self) -> Result<()> {
         if !self.is_main {
             return Err(Error::msg(
                 "Unable to run event loop since this is not main",
             ));
         }
-        let winit_state = std::mem::replace(&mut self.window_state, None).ok_or(Error::msg(
+        let winit_state = GLOBAL_WINDOW_STATE.take().ok_or(Error::msg(
             "Unable to run event loop since this is not main. We should have a window state",
         ))?;
         winit_state
@@ -279,7 +284,6 @@ impl Component for WindowComponent {
 
                 // default to not main. This will be configured during initialize_global_state
                 is_main: false,
-                window_state: None,
             };
             window_component.initialize_global_state()?;
             Ok(window_component)
@@ -314,7 +318,7 @@ impl Component for WindowComponent {
             // only lock global state while gathering components to initialize
             let mut comp_ids_to_init: Vec<Uid> = vec![];
             {
-                let global_state = WINDOW_PROXY.lock().or(Err(Error::msg(
+                let global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
                     "Unable to aquire window proxy lock. Should not happen in normal operation",
                 )))?;
                 if let Some(state) = global_state.as_ref() {
@@ -360,7 +364,7 @@ impl Component for WindowComponent {
     }
 
     // Start this component
-    fn start_or_run(&mut self, _pipeline: &gst::Pipeline) -> Result<()> {
+    fn start_or_run(&self, _pipeline: &gst::Pipeline) -> Result<()> {
         // if we're not main then do nothing
         if !self.is_main {
             return Ok(());

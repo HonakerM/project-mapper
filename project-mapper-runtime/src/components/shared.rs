@@ -15,7 +15,7 @@ pub trait ComponentLookupHelper {
     ) -> Result<Rc<RefCell<Box<dyn Component>>>>;
     // start and run all pipelines. If has_main_requirement is true then this will
     // block
-    fn start_and_run(&mut self, pipeline: &gst::Pipeline) -> Result<()>;
+    fn start_and_run(&self, pipeline: &gst::Pipeline) -> Result<()>;
     // if this helper has a component that requires the main thread to run
     fn has_main_requirement(&self) -> bool;
 }
@@ -46,7 +46,7 @@ pub trait Component {
     /* Runtime Functions */
     // Start this component. Should only hold/run if requires_main
     // is true
-    fn start_or_run(&mut self, _pipeline: &gst::Pipeline) -> Result<()> {
+    fn start_or_run(&self, _pipeline: &gst::Pipeline) -> Result<()> {
         Ok(())
     }
 

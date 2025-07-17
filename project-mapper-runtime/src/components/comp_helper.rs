@@ -63,9 +63,9 @@ impl ComponentLookupHelper for ComponentHelper {
         Ok(comp_rc)
     }
 
-    fn start_and_run(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn start_and_run(&self, pipeline: &gst::Pipeline) -> Result<()> {
         for comp in self.component_map.values() {
-            let mut mutable_comp = comp.borrow_mut();
+            let mutable_comp = comp.borrow();
             // if we don't require main then start. Else mark the component
             // for later starting. This ensures we start all components before running the `main` one
             if !mutable_comp.requires_main() {
@@ -77,7 +77,7 @@ impl ComponentLookupHelper for ComponentHelper {
         if let Some(comp_id) = self.main_comp_id {
             let mutable_comp = self.component_map.get(&comp_id);
             if let Some(mutable_comp) = mutable_comp {
-                return mutable_comp.borrow_mut().start_or_run(pipeline);
+                return mutable_comp.borrow().start_or_run(pipeline);
             } else {
                 return Err(Error::msg(
                     "Unable to find component. This should not happen due to previous checks",
