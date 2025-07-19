@@ -10,6 +10,10 @@ pub mod comp_helper;
 #[path = "./factory.rs"]
 pub mod factory;
 
+// Default runtime component for handling events
+#[path = "./runtime.rs"]
+pub mod runtime;
+
 // Output components
 #[path = "./output/mod.rs"]
 pub mod output;

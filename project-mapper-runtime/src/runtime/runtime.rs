@@ -1,4 +1,4 @@
-use std::sync::mpsc;
+use std::sync::{Arc, Mutex, mpsc};
 
 use anyhow::Result;
 use gst::prelude::*;
@@ -6,7 +6,8 @@ use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 use crate::components::comp_helper::ComponentHelper;
-use crate::components::shared::ComponentLookupHelper;
+use crate::components::runtime::DefaultRuntimeComponent;
+use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
 
 pub struct Runtime {
@@ -15,7 +16,7 @@ pub struct Runtime {
 
     // message sender/reciever for runtime events
     pub message_sender: mpsc::Sender<RuntimeMessage>,
-    message_reciever: mpsc::Receiver<RuntimeMessage>,
+    message_reciever: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
 }
 
 impl Runtime {
@@ -30,17 +31,8 @@ impl Runtime {
             component_helper: component_helper,
             // handle the message
             message_sender: send,
-            message_reciever: recv,
+            message_reciever: Arc::new(Mutex::new(recv)),
         })
-    }
-
-    pub fn watch_for_events(self) -> Result<()> {
-        for event in self.message_reciever.iter() {
-            match event {
-                RuntimeMessage::StopRuntime() => {}
-            }
-        }
-        Ok(())
     }
 
     // run the given runtime
@@ -72,11 +64,25 @@ impl Runtime {
                 .lookup_and_setup(output_uid, &pipeline)?;
         }
 
+        // if there is no component that requires main then add the default runtime component.
+        // this keeps the logic the same
+        if !self.component_helper.has_main_requirement() {
+            let default_config = DefaultRuntimeComponent::new_config()?;
+            self.component_helper
+                .create_and_insert_comp(&default_config)?;
+            self.component_helper
+                .lookup_and_setup(ComponentConfig::uid(&default_config), &pipeline)?;
+        }
+
         // Start the pipeline
         pipeline.set_state(gst::State::Playing)?;
 
         // Next tell the component helper to start all components
-        self.component_helper.start_and_run(&pipeline)?;
+        self.component_helper.start(&pipeline)?;
+
+        // Then run the components
+        self.component_helper
+            .run(&pipeline, self.message_reciever)?;
 
         // wait for events to exit I guess?
         // let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =

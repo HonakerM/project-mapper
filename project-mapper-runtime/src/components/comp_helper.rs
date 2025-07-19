@@ -2,11 +2,14 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
-use crate::components::{
-    factory::create_default_component,
-    shared::{Component, ComponentLookupHelper},
+use crate::{
+    components::{
+        factory::create_default_component,
+        shared::{Component, ComponentLookupHelper},
+    },
+    types::message::RuntimeMessage,
 };
-use anyhow::{Error, Result};
+use anyhow::{Error, Result, anyhow};
 
 pub struct ComponentHelper {
     main_comp_id: Option<Uid>,
@@ -63,28 +66,37 @@ impl ComponentLookupHelper for ComponentHelper {
         Ok(comp_rc)
     }
 
-    fn start_and_run(&self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn start(&self, pipeline: &gst::Pipeline) -> Result<()> {
         for comp in self.component_map.values() {
             let mutable_comp = comp.borrow();
             // if we don't require main then start. Else mark the component
             // for later starting. This ensures we start all components before running the `main` one
             if !mutable_comp.requires_main() {
-                mutable_comp.start_or_run(pipeline)?;
+                mutable_comp.start(pipeline)?;
             }
         }
-
+        Ok(())
+    }
+    fn run(
+        &self,
+        pipeline: &gst::Pipeline,
+        message_broker: std::sync::Arc<
+            std::sync::Mutex<std::sync::mpsc::Receiver<crate::types::message::RuntimeMessage>>,
+        >,
+    ) -> Result<RuntimeMessage> {
         // if there is a main component then run it
         if let Some(comp_id) = self.main_comp_id {
             let mutable_comp = self.component_map.get(&comp_id);
             if let Some(mutable_comp) = mutable_comp {
-                return mutable_comp.borrow().start_or_run(pipeline);
+                return mutable_comp.borrow().run(pipeline, message_broker);
             } else {
                 return Err(Error::msg(
                     "Unable to find component. This should not happen due to previous checks",
                 ));
             }
+        } else {
+            Err(anyhow!("No main component in component helper"))
         }
-        Ok(())
     }
 
     fn has_main_requirement(&self) -> bool {

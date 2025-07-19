@@ -1,6 +1,6 @@
 use std::any::Any;
 
-pub type Uid = u32;
+pub type Uid = i32;
 
 //Common trait for all types of components
 pub trait ComponentConfig {

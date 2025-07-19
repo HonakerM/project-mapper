@@ -70,10 +70,10 @@ impl Component for TestComponent {
     }
 
     // accessor functions
-    fn element(&self) -> &Element {
+    fn element(&self) -> Result<&Element> {
         // return the tee element since that's what people should
         // be linking against
-        &self.tee_element
+        Ok(&self.tee_element)
     }
     fn uid(&self) -> Uid {
         return self.config.uid();

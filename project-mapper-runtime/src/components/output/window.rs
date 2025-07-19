@@ -4,10 +4,12 @@ use std::sync::LazyLock;
 use std::sync::Mutex;
 
 use crate::components::shared::{Component, ComponentLookupHelper};
+use crate::types::message::RuntimeMessage;
 use crate::utils::winit::get_monitor_by_name;
 use crate::utils::winit::get_video_mode_for_config;
 use anyhow::Context;
 use anyhow::Ok;
+use anyhow::anyhow;
 use anyhow::{Error, Result};
 use gst::Element;
 use gst::prelude::*;
@@ -344,7 +346,7 @@ impl Component for WindowComponent {
 
         // link the desired source with the queue and then the queue with the output sink
         self.queue_element.link(&self.output_element)?;
-        src_comp.borrow().element().link(&self.queue_element)?;
+        src_comp.borrow().element()?.link(&self.queue_element)?;
 
         // mark setup as complete so as to not rerun
         self.has_setup = true;
@@ -356,24 +358,25 @@ impl Component for WindowComponent {
     }
 
     // accessor functions
-    fn element(&self) -> &Element {
-        &self.output_element
+    fn element(&self) -> Result<&Element> {
+        Ok(&self.output_element)
     }
     fn uid(&self) -> Uid {
         self.config.uid()
     }
 
     // Start this component
-    fn start_or_run(&self, _pipeline: &gst::Pipeline) -> Result<()> {
-        // if we're not main then do nothing
-        if !self.is_main {
-            return Ok(());
-        }
-
+    fn run(
+        &self,
+        _pipeline: &gst::Pipeline,
+        message_broker: std::sync::Arc<
+            std::sync::Mutex<std::sync::mpsc::Receiver<crate::types::message::RuntimeMessage>>,
+        >,
+    ) -> Result<RuntimeMessage> {
         // if we're main then run the real event loop!
         self.run_event_loop()?;
 
-        Ok(())
+        Err(anyhow!("Working on implementation"))
     }
 
     // Stop this component

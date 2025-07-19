@@ -1,3 +1,3 @@
 pub enum RuntimeMessage {
-    StopRuntime(),
+    ExitRuntime(),
 }

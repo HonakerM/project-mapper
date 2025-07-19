@@ -50,6 +50,14 @@ fn run_main() -> Result<()> {
                    }),
                    src_uid: 0,
                },*/
+            OutputComponentConfig {
+                uid: 3,
+                name: "comp_3".to_string(),
+                config: OutputConfig::Window(WindowConfig {
+                    mode: WindowMode::Windowed {},
+                }),
+                src_uid: 0,
+            },
         ],
     };
 

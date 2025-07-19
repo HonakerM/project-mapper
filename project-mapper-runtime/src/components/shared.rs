@@ -1,8 +1,14 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex, mpsc},
+};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use gst::Element;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
+
+use crate::types::message::RuntimeMessage;
 
 pub trait ComponentLookupHelper {
     // factory function to create a component and register it with the helper
@@ -15,8 +21,15 @@ pub trait ComponentLookupHelper {
     ) -> Result<Rc<RefCell<Box<dyn Component>>>>;
     // start and run all pipelines. If has_main_requirement is true then this will
     // block
-    fn start_and_run(&self, pipeline: &gst::Pipeline) -> Result<()>;
-    // if this helper has a component that requires the main thread to run
+    fn start(&self, pipeline: &gst::Pipeline) -> Result<()>;
+    fn run(
+        &self,
+        pipeline: &gst::Pipeline,
+        message_broker: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
+    ) -> Result<RuntimeMessage>;
+
+    // if this helper has a component that requires the main thread to run. ! This must be valid after running
+    // setup
     fn has_main_requirement(&self) -> bool;
 }
 
@@ -40,14 +53,22 @@ pub trait Component {
     }
 
     // accessor functions
-    fn element(&self) -> &Element;
+    fn element(&self) -> Result<&Element>;
     fn uid(&self) -> Uid;
 
     /* Runtime Functions */
     // Start this component. Should only hold/run if requires_main
     // is true
-    fn start_or_run(&self, _pipeline: &gst::Pipeline) -> Result<()> {
+    fn start(&self, _pipeline: &gst::Pipeline) -> Result<()> {
         Ok(())
+    }
+    fn run(
+        &self,
+        _pipeline: &gst::Pipeline,
+        message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
+    ) -> Result<RuntimeMessage> {
+        let recv = message_receiver.lock().unwrap();
+        Ok(recv.recv()?)
     }
 
     // Completely stop and destroy this component
