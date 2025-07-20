@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::sync::mpsc;
+use std::thread;
 
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
@@ -218,7 +219,7 @@ impl WindowComponent {
 
     fn run_event_monitor(
         message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
-    ) -> Result<()> {
+    ) -> Result<RuntimeMessage> {
         let recv = message_receiver.lock().unwrap();
         for event in recv.iter() {
             match event {
@@ -231,14 +232,17 @@ impl WindowComponent {
                     if let Some(state) = proxy_state.as_ref()
                         && let Some(proxy) = &state.event_loop_proxy
                     {
-                        proxy.send_event(event)?;
+                        proxy.send_event(event.clone())?;
+                        if event == RuntimeMessage::ExitRuntime() {
+                            return Ok(event);
+                        }
                     } else {
                         return Err(anyhow!("Unable to get proxt to get event"));
                     }
                 }
             }
         }
-        Ok(())
+        Err(anyhow!("Did not detect last event"))
     }
 
     fn run_event_loop(&self) -> Result<()> {
@@ -256,7 +260,6 @@ impl WindowComponent {
                 match event {
                     Event::WindowEvent { event, .. } => match event {
                         WindowEvent::CloseRequested => {
-                            println!("close requestted");
                             // Stop the event loop
                             // ! Todo send event to parent
                             event_loop_target.exit();
@@ -264,6 +267,12 @@ impl WindowComponent {
                         _msg => {
                             //println!("other message {:?}", msg)
                         }
+                    },
+                    Event::UserEvent(event) => match event {
+                        RuntimeMessage::ExitRuntime() => {
+                            event_loop_target.exit();
+                        }
+                        _ => {}
                     },
                     _ => (),
                 }
@@ -401,10 +410,28 @@ impl Component for WindowComponent {
         _pipeline: &gst::Pipeline,
         message_broker: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
+        let event_handle = thread::spawn(|| WindowComponent::run_event_monitor(message_broker));
+
         // if we're main then run the real event loop!
         self.run_event_loop()?;
 
-        Err(anyhow!("Working on implementation"))
+        // if we exited the event loop we also must have exited the event watcher...
+        if event_handle.is_finished() {
+            event_handle.join().map_err(|panic_err| {
+                // Try to extract a meaningful panic message
+                if let Some(s) = panic_err.downcast_ref::<&'static str>() {
+                    anyhow!("Thread panicked: {}", s)
+                } else if let Some(s) = panic_err.downcast_ref::<String>() {
+                    anyhow!("Thread panicked: {}", s)
+                } else {
+                    anyhow!("Thread panicked with non-string payload")
+                }
+            })?
+        } else {
+            Err(anyhow!(
+                "Event watcher thread not finished even though event is done"
+            ))
+        }
     }
 
     // Stop this component
