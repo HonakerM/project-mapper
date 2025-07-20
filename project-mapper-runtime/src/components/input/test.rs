@@ -1,4 +1,9 @@
-use crate::components::shared::{Component, ComponentLookupHelper};
+use std::sync::mpsc;
+
+use crate::{
+    components::shared::{Component, ComponentLookupHelper},
+    types::message::RuntimeMessage,
+};
 use anyhow::{Error, Result};
 use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::{
@@ -53,6 +58,7 @@ impl Component for TestComponent {
     fn setup(
         &mut self,
         pipeline: &gst::Pipeline,
+        _message_sender: mpsc::Sender<RuntimeMessage>,
         _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         self.has_setup = true;

@@ -71,6 +71,9 @@ pub struct WindowComponent {
     config: OutputComponentConfig,
     window_config: WindowConfig,
 
+    // message sender for runtime events
+    message_sender: Option<mpsc::Sender<RuntimeMessage>>,
+
     // gst elements
     queue_element: Element,
     output_element: Element,
@@ -245,7 +248,7 @@ impl WindowComponent {
         Err(anyhow!("Did not detect last event"))
     }
 
-    fn run_event_loop(&self) -> Result<()> {
+    fn run_event_loop(&self, message_sender: mpsc::Sender<RuntimeMessage>) -> Result<()> {
         if !self.is_main {
             return Err(Error::msg(
                 "Unable to run event loop since this is not main",
@@ -260,9 +263,8 @@ impl WindowComponent {
                 match event {
                     Event::WindowEvent { event, .. } => match event {
                         WindowEvent::CloseRequested => {
-                            // Stop the event loop
-                            // ! Todo send event to parent
-                            event_loop_target.exit();
+                            // Send a message to stop the event loop
+                            message_sender.send(RuntimeMessage::ExitRuntime());
                         }
                         _msg => {
                             //println!("other message {:?}", msg)
@@ -298,40 +300,36 @@ impl Component for WindowComponent {
 
         // load the config
         let local_config = config.clone();
-        if let OutputConfig::Window(window_config) = config.config {
-            // get the current window config
-            let window_config = window_config.clone();
+        match config.config {
+            OutputConfig::Window(window_config) => {
+                let window_config = window_config.clone();
+                let queue_name = format!("queue-{}", local_config.name());
+                let queue_element = gst::ElementFactory::make("queue")
+                    .name(queue_name)
+                    .build()?;
+                let output_element = gst::ElementFactory::make("glimagesink")
+                    .name(local_config.name())
+                    .build()?;
+                output_element.set_property("sync", &false);
+                let mut window_component = Self {
+                    config: local_config,
+                    window_config: window_config,
 
-            // construct the queue sink
-            let queue_name = format!("queue-{}", local_config.name());
-            let queue_element = gst::ElementFactory::make("queue")
-                .name(queue_name)
-                .build()?;
+                    queue_element: queue_element,
+                    output_element: output_element,
+                    has_setup: false,
 
-            // construct the opengl image sink and ensure it's configured properly
-            let output_element = gst::ElementFactory::make("glimagesink")
-                .name(local_config.name())
-                .build()?;
-            // Disable sync to avoid blocking on display
-            output_element.set_property("sync", &false);
+                    message_sender: None,
 
-            let mut window_component = Self {
-                config: local_config,
-                window_config: window_config,
-
-                queue_element: queue_element,
-                output_element: output_element,
-                has_setup: false,
-
-                // default to not main. This will be configured during initialize_global_state
-                is_main: false,
-            };
-            window_component.initialize_global_state()?;
-            Ok(window_component)
-        } else {
-            Err(Error::msg(
+                    // default to not main. This will be configured during initialize_global_state
+                    is_main: false,
+                };
+                window_component.initialize_global_state()?;
+                Ok(window_component)
+            }
+            _ => Err(Error::msg(
                 "OutputConfig is not correct type for this component",
-            ))
+            )),
         }
     }
 
@@ -339,11 +337,15 @@ impl Component for WindowComponent {
     fn setup(
         &mut self,
         pipeline: &gst::Pipeline,
+        message_sender: mpsc::Sender<RuntimeMessage>,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         if self.has_setup {
             return Ok(());
         }
+
+        // copy the message sender into the object
+        self.message_sender = Some(message_sender.clone());
 
         // Add both elements to the pipelines and sync status
         pipeline.add(&self.queue_element)?;
@@ -373,7 +375,7 @@ impl Component for WindowComponent {
             }
             // initialize components outside of locked loop
             for id in comp_ids_to_init {
-                lookup_func.lookup_and_setup(id, pipeline)?;
+                lookup_func.lookup_and_setup(id, pipeline, message_sender.clone())?;
             }
 
             // initialize all the window elements
@@ -381,7 +383,8 @@ impl Component for WindowComponent {
         }
 
         // Fetch the compoennt that should be pointing to us
-        let src_comp = lookup_func.lookup_and_setup(self.config.src_uid, pipeline)?;
+        let src_comp =
+            lookup_func.lookup_and_setup(self.config.src_uid, pipeline, message_sender.clone())?;
 
         // link the desired source with the queue and then the queue with the output sink
         self.queue_element.link(&self.output_element)?;
@@ -410,10 +413,18 @@ impl Component for WindowComponent {
         _pipeline: &gst::Pipeline,
         message_broker: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
+        let message_sender = if let Some(sender) = &self.message_sender {
+            Ok(sender)
+        } else {
+            Err(anyhow!(
+                "Somehow window component did not get message sender"
+            ))
+        }?;
+
         let event_handle = thread::spawn(|| WindowComponent::run_event_monitor(message_broker));
 
         // if we're main then run the real event loop!
-        self.run_event_loop()?;
+        self.run_event_loop(message_sender.clone())?;
 
         // if we exited the event loop we also must have exited the event watcher...
         if event_handle.is_finished() {

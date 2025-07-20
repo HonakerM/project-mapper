@@ -1,4 +1,4 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::mpsc};
 
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
@@ -51,6 +51,7 @@ impl ComponentLookupHelper for ComponentHelper {
         &self,
         uid: Uid,
         pipeline: &gst::Pipeline,
+        message_sender: mpsc::Sender<RuntimeMessage>,
     ) -> Result<Rc<RefCell<Box<dyn Component>>>> {
         let comp_rc = {
             self.component_map
@@ -61,14 +62,16 @@ impl ComponentLookupHelper for ComponentHelper {
 
         let has_setup = comp_rc.borrow().has_setup();
         if !has_setup {
-            comp_rc.borrow_mut().setup(pipeline, self)?;
+            comp_rc
+                .borrow_mut()
+                .setup(pipeline, message_sender.clone(), self)?;
         }
         Ok(comp_rc)
     }
 
     fn start(&self, pipeline: &gst::Pipeline) -> Result<()> {
         for comp in self.component_map.values() {
-            let mutable_comp = comp.borrow();
+            let mutable_comp = comp.borrow_mut();
             // if we don't require main then start. Else mark the component
             // for later starting. This ensures we start all components before running the `main` one
             if !mutable_comp.requires_main() {

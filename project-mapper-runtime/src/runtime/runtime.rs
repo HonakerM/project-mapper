@@ -60,8 +60,11 @@ impl Runtime {
         // for each output uid call setup. No need to do this on other components since they
         // will work recursively
         for output_uid in output_uids {
-            self.component_helper
-                .lookup_and_setup(output_uid, &pipeline)?;
+            self.component_helper.lookup_and_setup(
+                output_uid,
+                &pipeline,
+                self.message_sender.clone(),
+            )?;
         }
 
         // if there is no component that requires main then add the default runtime component.
@@ -70,8 +73,11 @@ impl Runtime {
             let default_config = DefaultRuntimeComponent::new_config()?;
             self.component_helper
                 .create_and_insert_comp(&default_config)?;
-            self.component_helper
-                .lookup_and_setup(ComponentConfig::uid(&default_config), &pipeline)?;
+            self.component_helper.lookup_and_setup(
+                ComponentConfig::uid(&default_config),
+                &pipeline,
+                self.message_sender.clone(),
+            )?;
         }
 
         // Start the pipeline
@@ -81,9 +87,11 @@ impl Runtime {
         self.component_helper.start(&pipeline)?;
 
         // Then run the components
-        self.component_helper
+        let message = self
+            .component_helper
             .run(&pipeline, self.message_reciever)?;
 
+        println!("Exiting with message: {:?}", message);
         // wait for events to exit I guess?
         // let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =
         //     mpsc::channel();

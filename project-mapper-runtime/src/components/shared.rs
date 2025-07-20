@@ -18,6 +18,7 @@ pub trait ComponentLookupHelper {
         &self,
         uid: Uid,
         pipeline: &gst::Pipeline,
+        message_sender: mpsc::Sender<RuntimeMessage>,
     ) -> Result<Rc<RefCell<Box<dyn Component>>>>;
     // start and run all pipelines. If has_main_requirement is true then this will
     // block
@@ -46,6 +47,7 @@ pub trait Component {
     fn setup(
         &mut self,
         pipeline: &gst::Pipeline,
+        message_sender: mpsc::Sender<RuntimeMessage>,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()>;
     fn has_setup(&self) -> bool {

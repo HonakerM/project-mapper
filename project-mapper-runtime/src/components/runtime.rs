@@ -1,6 +1,9 @@
-use std::any::Any;
+use std::{any::Any, sync::mpsc};
 
-use crate::components::shared::{Component, ComponentLookupHelper};
+use crate::{
+    components::shared::{Component, ComponentLookupHelper},
+    types::message::RuntimeMessage,
+};
 use anyhow::{Result, anyhow};
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
@@ -27,6 +30,7 @@ impl Component for DefaultRuntimeComponent {
     fn setup(
         &mut self,
         _pipeline: &gst::Pipeline,
+        _message_sender: mpsc::Sender<RuntimeMessage>,
         _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         Ok(())
