@@ -1,10 +1,15 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
+use std::sync::mpsc;
 
+use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
+use crate::utils::winit::WinitPMEventLoop;
+use crate::utils::winit::WinitPMEventLoopProxy;
 use crate::utils::winit::get_monitor_by_name;
 use crate::utils::winit::get_video_mode_for_config;
 use anyhow::Context;
@@ -33,7 +38,7 @@ use winit::window::WindowBuilder;
 // helper struct to store information about winit. This
 // will only be held by the main component
 struct WinitState {
-    event_loop: EventLoop<()>,
+    event_loop: WinitPMEventLoop,
     // needed to keep reference to a window
     _windows: HashMap<Uid, Window>,
 }
@@ -55,7 +60,7 @@ struct WindowRequest {
 // and will start threads/etc
 #[derive(Clone)]
 struct ProxyWindowState {
-    pub event_loop_proxy: Option<EventLoopProxy<()>>,
+    pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
     pub window_configs: HashMap<String, WindowRequest>,
 }
 static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
@@ -114,7 +119,7 @@ impl WindowComponent {
 
     fn initialize_window_elements(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         // construct the event loop and window mapping
-        let event_loop = EventLoopBuilder::new().build()?;
+        let event_loop: WinitPMEventLoop = EventLoopBuilder::with_user_event().build()?;
         let mut windows: HashMap<Uid, Window> = HashMap::new();
 
         // ControlFlow::Wait pauses the event loop if no events are available to process.
@@ -190,7 +195,7 @@ impl WindowComponent {
     }
 
     fn configure_window(
-        event_loop: &EventLoop<()>,
+        event_loop: &WinitPMEventLoop,
         window: &Window,
         config: WindowConfig,
     ) -> Result<()> {
@@ -208,6 +213,31 @@ impl WindowComponent {
             }
         }
 
+        Ok(())
+    }
+
+    fn run_event_monitor(
+        message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
+    ) -> Result<()> {
+        let recv = message_receiver.lock().unwrap();
+        for event in recv.iter() {
+            match event {
+                event => {
+                    // Fetch the window proxy so we can do something with it
+                    let proxy_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
+                        "Unable to aquire window proxy lock. Should not happen in normal operation",
+                    )))?;
+
+                    if let Some(state) = proxy_state.as_ref()
+                        && let Some(proxy) = &state.event_loop_proxy
+                    {
+                        proxy.send_event(event)?;
+                    } else {
+                        return Err(anyhow!("Unable to get proxt to get event"));
+                    }
+                }
+            }
+        }
         Ok(())
     }
 
@@ -369,9 +399,7 @@ impl Component for WindowComponent {
     fn run(
         &self,
         _pipeline: &gst::Pipeline,
-        message_broker: std::sync::Arc<
-            std::sync::Mutex<std::sync::mpsc::Receiver<crate::types::message::RuntimeMessage>>,
-        >,
+        message_broker: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
         // if we're main then run the real event loop!
         self.run_event_loop()?;

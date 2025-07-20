@@ -1,8 +1,16 @@
 use anyhow::{Error, Result, anyhow};
 use project_mapper_core::runtime_config::output::window::MonitorConfig;
-use winit::{event_loop::EventLoop, monitor::MonitorHandle, monitor::VideoMode};
+use winit::{
+    event_loop::{EventLoop, EventLoopProxy},
+    monitor::{MonitorHandle, VideoMode},
+};
 
-pub fn get_monitor_by_name(event_loop: &EventLoop<()>, name: String) -> Result<MonitorHandle> {
+use crate::types::message::RuntimeMessage;
+
+pub type WinitPMEventLoop = EventLoop<RuntimeMessage>;
+pub type WinitPMEventLoopProxy = EventLoopProxy<RuntimeMessage>;
+
+pub fn get_monitor_by_name(event_loop: &WinitPMEventLoop, name: String) -> Result<MonitorHandle> {
     for monitor in event_loop.available_monitors() {
         if let Some(monitor_name) = monitor.name() {
             if monitor_name == name {
@@ -17,7 +25,7 @@ pub fn get_monitor_by_name(event_loop: &EventLoop<()>, name: String) -> Result<M
 }
 
 pub fn get_video_mode_for_config(
-    event_loop: &EventLoop<()>,
+    event_loop: &WinitPMEventLoop,
     config: &MonitorConfig,
 ) -> Result<VideoMode> {
     // Get all available monitors
