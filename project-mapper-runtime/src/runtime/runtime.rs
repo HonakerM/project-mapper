@@ -5,9 +5,8 @@ use gst::prelude::*;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
-use crate::components::comp_helper::ComponentHelper;
 use crate::components::runtime::DefaultRuntimeComponent;
-use crate::components::shared::{Component, ComponentLookupHelper};
+use crate::components::shared::ComponentLookupHelper;
 use crate::types::message::RuntimeMessage;
 
 pub struct Runtime {

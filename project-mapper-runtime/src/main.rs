@@ -5,9 +5,7 @@ use project_mapper_core::runtime_config::input::common::InputConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::output::common::OutputConfig;
-use project_mapper_core::runtime_config::output::window::{
-    WindowConfig, WindowMode,
-};
+use project_mapper_core::runtime_config::output::window::{WindowConfig, WindowMode};
 use project_mapper_core::types::video::Resolution;
 use project_mapper_runtime::components::comp_helper::ComponentHelper;
 use project_mapper_runtime::runtime::runtime::Runtime;

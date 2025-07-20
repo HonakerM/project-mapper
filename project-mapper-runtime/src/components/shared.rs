@@ -4,7 +4,7 @@ use std::{
     sync::{Arc, Mutex, mpsc},
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use gst::Element;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 

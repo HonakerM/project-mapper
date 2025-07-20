@@ -6,7 +6,6 @@ use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread;
 
-use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
 use crate::utils::winit::WinitPMEventLoop;
@@ -30,9 +29,7 @@ use raw_window_handle::HasWindowHandle;
 use raw_window_handle::RawWindowHandle;
 use winit::event::Event;
 use winit::event::WindowEvent;
-use winit::event_loop::EventLoop;
 use winit::event_loop::EventLoopBuilder;
-use winit::event_loop::EventLoopProxy;
 use winit::window::Window;
 use winit::window::WindowBuilder;
 
@@ -279,7 +276,7 @@ impl WindowComponent {
                     _ => (),
                 }
             })?;
-        return Ok(());
+        Ok(())
     }
 }
 
