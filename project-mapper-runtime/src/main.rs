@@ -1,9 +1,9 @@
 use anyhow::Result;
-use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
 use project_mapper_core::runtime_config::effect::common::EffectConfig;
+use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::common::InputConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
@@ -43,7 +43,7 @@ fn run_main() -> Result<()> {
                     hue: None,
                 }),
                 src_uid: 0
-            },            
+            },
             EffectComponentConfig {
                 uid: 7,
                 name: "gamma_bright".to_string(),

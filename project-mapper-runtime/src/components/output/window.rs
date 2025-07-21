@@ -40,11 +40,20 @@ use winit::window::WindowBuilder;
 struct WinitState {
     event_loop: Option<WinitPMEventLoop>,
     // needed to keep reference to a window
-    _windows: HashMap<Uid, Window>,
+    windows: HashMap<Uid, Window>,
 }
+impl Default for WinitState {
+    fn default() -> Self {
+        Self {
+            event_loop: None,
+            windows: HashMap::new(),
+        }
+    }
+}
+
 // use thread local window state since we only ever need it on the main thread
 thread_local! {
-    static GLOBAL_WINDOW_STATE: RefCell<Option<WinitState>> = RefCell::new(None);
+    static GLOBAL_WINDOW_STATE: RefCell<WinitState> = RefCell::new(WinitState::default());
 }
 
 // Struct for components to request a window with
@@ -189,10 +198,10 @@ impl WindowComponent {
             }
         }
 
-        GLOBAL_WINDOW_STATE.replace(Some(WinitState {
+        GLOBAL_WINDOW_STATE.replace(WinitState {
             event_loop: Some(event_loop),
-            _windows: windows,
-        }));
+            windows: windows,
+        });
 
         Ok(())
     }
@@ -254,9 +263,7 @@ impl WindowComponent {
                 "Unable to run event loop since this is not main",
             ));
         }
-        let mut winit_state = GLOBAL_WINDOW_STATE.take().ok_or(Error::msg(
-            "Unable to run event loop since this is not main. We should have a window state",
-        ))?;
+        let mut winit_state = GLOBAL_WINDOW_STATE.take();
         let event_loop = winit_state.event_loop.take().ok_or(anyhow!(
             "Event loop does not exist which should never happen"
         ))?;
@@ -282,7 +289,7 @@ impl WindowComponent {
         })?;
 
         // after running replace the global state to retain references to the windows
-        GLOBAL_WINDOW_STATE.set(Some(winit_state));
+        GLOBAL_WINDOW_STATE.set(winit_state);
         Ok(())
     }
 }
@@ -465,10 +472,8 @@ impl Component for WindowComponent {
         }
 
         // else destroy/drop all windows
-        let mut winit_state = GLOBAL_WINDOW_STATE.take().ok_or(Error::msg(
-            "Unable to run event loop since this is not main. We should have a window state",
-        ))?;
-        winit_state._windows.clear();
+        let mut winit_state = GLOBAL_WINDOW_STATE.take();
+        winit_state.windows.clear();
 
         Ok(())
     }
