@@ -37,7 +37,7 @@ use winit::window::WindowBuilder;
 // helper struct to store information about winit. This
 // will only be held by the main component
 struct WinitState {
-    event_loop: WinitPMEventLoop,
+    event_loop: Option<WinitPMEventLoop>,
     // needed to keep reference to a window
     _windows: HashMap<Uid, Window>,
 }
@@ -189,7 +189,7 @@ impl WindowComponent {
         }
 
         GLOBAL_WINDOW_STATE.replace(Some(WinitState {
-            event_loop: event_loop,
+            event_loop: Some(event_loop),
             _windows: windows,
         }));
 
@@ -253,31 +253,35 @@ impl WindowComponent {
                 "Unable to run event loop since this is not main",
             ));
         }
-        let winit_state = GLOBAL_WINDOW_STATE.take().ok_or(Error::msg(
+        let mut winit_state = GLOBAL_WINDOW_STATE.take().ok_or(Error::msg(
             "Unable to run event loop since this is not main. We should have a window state",
         ))?;
-        winit_state
-            .event_loop
-            .run(move |event, event_loop_target| {
-                match event {
-                    Event::WindowEvent { event, .. } => match event {
-                        WindowEvent::CloseRequested => {
-                            // Send a message to stop the event loop
-                            message_sender.send(RuntimeMessage::ExitRuntime());
-                        }
-                        _msg => {
-                            //println!("other message {:?}", msg)
-                        }
-                    },
-                    Event::UserEvent(event) => match event {
-                        RuntimeMessage::ExitRuntime() => {
-                            event_loop_target.exit();
-                        }
-                        _ => {}
-                    },
-                    _ => (),
-                }
-            })?;
+        let event_loop = winit_state.event_loop.take().ok_or(anyhow!(
+            "Event loop does not exist which should never happen"
+        ))?;
+        event_loop.run(move |event, event_loop_target| {
+            match event {
+                Event::WindowEvent { event, .. } => match event {
+                    WindowEvent::CloseRequested => {
+                        // Send a message to stop the event loop
+                        message_sender.send(RuntimeMessage::ExitRuntime());
+                    }
+                    _msg => {
+                        //println!("other message {:?}", msg)
+                    }
+                },
+                Event::UserEvent(event) => match event {
+                    RuntimeMessage::ExitRuntime() => {
+                        event_loop_target.exit();
+                    }
+                    _ => {}
+                },
+                _ => (),
+            }
+        })?;
+
+        // after running replace the global state to retain references to the windows
+        GLOBAL_WINDOW_STATE.set(Some(winit_state));
         Ok(())
     }
 }
@@ -456,6 +460,13 @@ impl Component for WindowComponent {
         if !self.is_main {
             return Ok(());
         }
+
+        // else destroy/drop all windows
+        let mut winit_state = GLOBAL_WINDOW_STATE.take().ok_or(Error::msg(
+            "Unable to run event loop since this is not main. We should have a window state",
+        ))?;
+        winit_state._windows.clear();
+
         Ok(())
     }
     // only the main window requires the main thread
