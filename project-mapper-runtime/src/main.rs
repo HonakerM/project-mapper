@@ -1,5 +1,8 @@
 use anyhow::Result;
 use project_mapper_core::runtime_config::RuntimeConfig;
+use project_mapper_core::runtime_config::effect::EffectComponentConfig;
+use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
+use project_mapper_core::runtime_config::effect::common::EffectConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::common::InputConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
@@ -28,7 +31,19 @@ fn run_main() -> Result<()> {
             config: InputConfig::URI(UriConfig {uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4".to_string()}),
         },
         ],
-        effects: vec![],
+        effects: vec![
+            EffectComponentConfig {
+                uid: 6,
+                name: "super_bright".to_string(),
+                config: EffectConfig::Balance(BalanceConfig {
+                    brightness: Some(1.0),
+                    contrast: Some(1.0),
+                    saturation: None,
+                    hue: None,
+                }),
+                src_uid: 0
+            }
+        ],
         outputs: vec![
             OutputComponentConfig {
                 uid: 1,
@@ -38,7 +53,7 @@ fn run_main() -> Result<()> {
                         name: "\\\\.\\DISPLAY1".to_string(),
                     },
                 }),
-                src_uid: 0,
+                src_uid: 6,
             }, /*,
                OutputComponentConfig {
                    uid: 2,
@@ -60,7 +75,7 @@ fn run_main() -> Result<()> {
                 config: OutputConfig::Window(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 4,
+                src_uid: 0,
             },
         ],
     };

@@ -21,3 +21,6 @@ pub mod output;
 // Input components
 #[path = "./input/mod.rs"]
 pub mod input;
+
+#[path = "./effect/mod.rs"]
+pub mod effect;

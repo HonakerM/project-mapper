@@ -2,12 +2,17 @@ use std::any::Any;
 
 use serde::{Deserialize, Serialize};
 
-use crate::runtime_config::shared::{ComponentConfig, Uid};
+use crate::runtime_config::{
+    effect::balance::BalanceConfig,
+    shared::{ComponentConfig, Uid},
+};
 
 // EffectConfig contains
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type")]
-pub enum EffectConfig {}
+pub enum EffectConfig {
+    Balance(BalanceConfig),
+}
 
 // EffectComponent is the generic component for
 // all Effect types
