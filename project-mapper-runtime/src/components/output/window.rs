@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread;
 
+use crate::components::branch::BranchControl;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
@@ -73,7 +74,7 @@ pub struct WindowComponent {
     message_sender: Option<mpsc::Sender<RuntimeMessage>>,
 
     // gst elements
-    queue_element: Element,
+    branch: BranchControl,
     output_element: Element,
 
     // winit state
@@ -306,10 +307,8 @@ impl Component for WindowComponent {
         match config.config {
             OutputConfig::Window(window_config) => {
                 let window_config = window_config.clone();
-                let queue_name = format!("queue-{}", local_config.name());
-                let queue_element = gst::ElementFactory::make("queue")
-                    .name(queue_name)
-                    .build()?;
+
+                let branch = BranchControl::new(local_config.name(), true, false)?;
                 let output_element = gst::ElementFactory::make("glimagesink")
                     .name(local_config.name())
                     .build()?;
@@ -318,7 +317,7 @@ impl Component for WindowComponent {
                     config: local_config,
                     window_config: window_config,
 
-                    queue_element: queue_element,
+                    branch: branch,
                     output_element: output_element,
                     has_setup: false,
 
@@ -351,10 +350,12 @@ impl Component for WindowComponent {
         self.message_sender = Some(message_sender.clone());
 
         // Add both elements to the pipelines and sync status
-        pipeline.add(&self.queue_element)?;
         pipeline.add(&self.output_element)?;
-        self.queue_element.sync_state_with_parent()?;
         self.output_element.sync_state_with_parent()?;
+
+        // construct branch and wrap
+        self.branch.add_to_pipeline(pipeline)?;
+        self.branch.link_wrapped(&self.output_element)?;
 
         // If we're the main function than recursively call setup on all available window references
         // this ensures all pipeline elements that require a window have been added to the pipeline
@@ -389,9 +390,11 @@ impl Component for WindowComponent {
         let src_comp =
             lookup_func.lookup_and_setup(self.config.src_uid, pipeline, message_sender.clone())?;
 
-        // link the desired source with the queue and then the queue with the output sink
-        self.queue_element.link(&self.output_element)?;
-        src_comp.borrow().element()?.link(&self.queue_element)?;
+        // link the desired source with the branch
+        src_comp
+            .borrow()
+            .element()?
+            .link(self.branch.get_input()?)?;
 
         // mark setup as complete so as to not rerun
         self.has_setup = true;

@@ -1,7 +1,10 @@
 use std::sync::{Arc, Mutex, mpsc};
 
 use crate::{
-    components::shared::{Component, ComponentLookupHelper},
+    components::{
+        branch::BranchControl,
+        shared::{Component, ComponentLookupHelper},
+    },
     types::message::RuntimeMessage,
 };
 use anyhow::{Error, Result, anyhow};
@@ -14,7 +17,7 @@ use project_mapper_core::runtime_config::{
 pub struct UriComponent {
     config: InputComponentConfig,
     element: Element,
-    tee_element: Element,
+    branch: BranchControl,
     has_setup: bool,
 }
 
@@ -43,14 +46,10 @@ impl Component for UriComponent {
             Err(Error::msg("Component Config is not proper type"))
         }?;
 
-        // Add tee to src element to allow multiple linkages
-        let tee_name: String = format!("tee-{}", config.name());
-        let src_tee = gst::ElementFactory::make("tee").name(tee_name).build()?;
-
         Ok(Self {
+            branch: BranchControl::new(config.name(), false, true)?,
             config: config,
             element: element,
-            tee_element: src_tee,
             has_setup: false,
         })
     }
@@ -66,10 +65,10 @@ impl Component for UriComponent {
 
         // Add elements to the pipelines and sync status
         pipeline.add(&self.element)?;
-        pipeline.add(&self.tee_element)?;
-
-        self.tee_element.sync_state_with_parent()?;
         self.element.sync_state_with_parent()?;
+
+        self.branch.add_to_pipeline(pipeline)?;
+        self.branch.link_wrapped(&self.element)?;
 
         // Need to move a new reference into the closure.
         // !!ATTENTION!!:
@@ -83,7 +82,7 @@ impl Component for UriComponent {
         let pipeline_weak = pipeline.downgrade();
 
         // Clone sink element so it can be refenced in a callback
-        let sink_element = self.tee_element.clone();
+        let sink_element = self.branch.get_output()?.clone();
 
         // Connect to decodebin's pad-added signal, that is emitted whenever
         // it found another stream from the input file and found a way to decode it to its raw format.
@@ -180,7 +179,7 @@ impl Component for UriComponent {
     fn element(&self) -> Result<&Element> {
         // return the tee element since that's what people should
         // be linking against
-        Ok(&self.tee_element)
+        self.branch.get_output()
     }
     fn uid(&self) -> Uid {
         return self.config.uid();
