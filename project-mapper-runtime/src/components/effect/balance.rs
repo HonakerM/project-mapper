@@ -1,7 +1,10 @@
 use std::sync::mpsc;
 
 use crate::{
-    components::shared::{Component, ComponentLookupHelper},
+    components::{
+        branch::BranchControl,
+        shared::{Component, ComponentLookupHelper},
+    },
     types::message::RuntimeMessage,
 };
 use anyhow::{Error, Result, anyhow};
@@ -15,8 +18,7 @@ use project_mapper_core::runtime_config::{
 pub struct BalanceComponent {
     config: EffectComponentConfig,
     element: Element,
-    queue_element: Element,
-    tee_element: Element,
+    branch: BranchControl,
     has_setup: bool,
 }
 
@@ -59,19 +61,11 @@ impl Component for BalanceComponent {
             _ => Err(anyhow!("Component Config is not proper type")),
         }?;
 
-        // Add tee to src element to allow multiple linkages
-        let tee_name: String = format!("tee-{}", config.name());
-        let sink_tee = gst::ElementFactory::make("tee").name(tee_name).build()?;
-
-        let src_queue = gst::ElementFactory::make("queue")
-            .name(format!("queue-{}", config.name()))
-            .build()?;
-
+        let branch = BranchControl::new(config.name(), true, true)?;
         Ok(Self {
             config: config,
             element: element,
-            tee_element: sink_tee,
-            queue_element: src_queue,
+            branch: branch,
             has_setup: false,
         })
     }
@@ -88,30 +82,30 @@ impl Component for BalanceComponent {
 
         // Add elements to the pipelines and sync status
         pipeline.add(&self.element)?;
-        pipeline.add(&self.tee_element)?;
-        pipeline.add(&self.queue_element)?;
-
         self.element.sync_state_with_parent()?;
-        self.tee_element.sync_state_with_parent()?;
-        self.queue_element.sync_state_with_parent()?;
 
-        self.queue_element.link(&self.element)?;
-        self.element.link(&self.tee_element)?;
+        // ensure the branch is correctly setup and wrap the parent element
+        self.branch.add_to_pipeline(pipeline)?;
+        self.branch.link_wrapped(&self.element)?;
 
         // Fetch the compoennt that should be pointing to us and link it to the
         // input queue
         let src_comp =
             lookup_func.lookup_and_setup(self.config.src_uid, pipeline, message_sender.clone())?;
-        src_comp.borrow().element()?.link(&self.queue_element)?;
+
+        src_comp
+            .borrow()
+            .element()?
+            .link(self.branch.get_input()?)?;
 
         Ok(())
     }
 
     // accessor functions
     fn element(&self) -> Result<&Element> {
-        // return the tee element since that's what people should
-        // be linking against
-        Ok(&self.tee_element)
+        // return the branch output element since that's what people
+        // should be linking
+        self.branch.get_output()
     }
     fn uid(&self) -> Uid {
         return self.config.uid();
