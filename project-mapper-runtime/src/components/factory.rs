@@ -5,7 +5,9 @@ use project_mapper_core::runtime_config::{
 };
 
 use crate::components::{
-    input::test::TestComponent, output::window::WindowComponent, shared::Component,
+    input::{test::TestComponent, uri::UriComponent},
+    output::window::WindowComponent,
+    shared::Component,
 };
 use anyhow::{Error, Result};
 
@@ -23,7 +25,10 @@ pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn 
                 let comp = TestComponent::new(config)?;
                 Ok(Box::new(comp))
             }
-            InputConfig::URI(_) => Err(Error::msg("URI Component not yet implemented")),
+            InputConfig::URI(_) => {
+                let comp = UriComponent::new(config)?;
+                Ok(Box::new(comp))
+            }
         }
     } else {
         Err(Error::msg("Unknown component config type"))

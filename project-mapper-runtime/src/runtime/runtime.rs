@@ -25,6 +25,9 @@ impl Runtime {
     ) -> Result<Self> {
         let (send, recv) = mpsc::channel();
 
+        // ensure the config is generally valid
+        config.validate()?;
+
         Ok(Self {
             config: config,
             component_helper: component_helper,

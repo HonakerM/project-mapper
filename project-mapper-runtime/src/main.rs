@@ -3,6 +3,7 @@ use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::common::InputConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
+use project_mapper_core::runtime_config::input::uri::UriConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::output::common::OutputConfig;
 use project_mapper_core::runtime_config::output::window::{WindowConfig, WindowMode};
@@ -19,9 +20,14 @@ fn run_main() -> Result<()> {
     let config = RuntimeConfig {
         inputs: vec![InputComponentConfig {
             uid: 0,
-            name: "in_comp".to_string(),
+            name: "test_comp".to_string(),
             config: InputConfig::Test(TestConfig {}),
-        }],
+        },InputComponentConfig {
+            uid: 4,
+            name: "uri_comp".to_string(),
+            config: InputConfig::URI(UriConfig {uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4".to_string()}),
+        },
+        ],
         effects: vec![],
         outputs: vec![
             OutputComponentConfig {
@@ -54,7 +60,7 @@ fn run_main() -> Result<()> {
                 config: OutputConfig::Window(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 0,
+                src_uid: 4,
             },
         ],
     };
