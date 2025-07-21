@@ -1,4 +1,5 @@
 use anyhow::Result;
+use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
@@ -42,7 +43,15 @@ fn run_main() -> Result<()> {
                     hue: None,
                 }),
                 src_uid: 0
-            }
+            },            
+            EffectComponentConfig {
+                uid: 7,
+                name: "gamma_bright".to_string(),
+                config: EffectConfig::Gamma(GammaConfig {
+                    gamma: Some(0.1)
+                }),
+                src_uid: 0
+            },
         ],
         outputs: vec![
             OutputComponentConfig {
@@ -75,7 +84,7 @@ fn run_main() -> Result<()> {
                 config: OutputConfig::Window(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 0,
+                src_uid: 7,
             },
         ],
     };

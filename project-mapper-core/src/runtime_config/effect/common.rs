@@ -3,7 +3,7 @@ use std::any::Any;
 use serde::{Deserialize, Serialize};
 
 use crate::runtime_config::{
-    effect::balance::BalanceConfig,
+    effect::{balance::BalanceConfig, gamma::GammaConfig},
     shared::{ComponentConfig, Uid},
 };
 
@@ -12,6 +12,7 @@ use crate::runtime_config::{
 #[serde(tag = "type")]
 pub enum EffectConfig {
     Balance(BalanceConfig),
+    Gamma(GammaConfig),
 }
 
 // EffectComponent is the generic component for

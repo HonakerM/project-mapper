@@ -1,0 +1,107 @@
+use std::sync::mpsc;
+
+use crate::{
+    components::{
+        branch::BranchControl,
+        shared::{Component, ComponentLookupHelper},
+    },
+    types::message::RuntimeMessage,
+};
+use anyhow::{Error, Result, anyhow};
+use gst::{Element, prelude::*};
+use project_mapper_core::runtime_config::{
+    effect::{EffectComponentConfig, common::EffectConfig},
+    input::{InputComponentConfig, common::InputConfig},
+    shared::{ComponentConfig, Uid},
+};
+
+pub struct GammaComponent {
+    config: EffectComponentConfig,
+    element: Element,
+    branch: BranchControl,
+    has_setup: bool,
+}
+
+impl Component for GammaComponent {
+    // runtime lifecycle functions
+    // Construct object
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<GammaComponent> {
+        // parse config and ensure it's correct types
+        let config: EffectComponentConfig = match unknown_config
+            .as_any()
+            .downcast_ref::<EffectComponentConfig>()
+        {
+            Some(b) => Ok(b.clone()),
+            None => Err(Error::msg(
+                "ComponentConfig can not be typed to EffectComponentConfig",
+            )),
+        }?;
+
+        // construct element
+        let element = match &config.config {
+            EffectConfig::Gamma(gama_config) => {
+                let element = gst::ElementFactory::make("gamma")
+                    .name(config.name())
+                    .build()?;
+
+                if let Some(hue) = &gama_config.gamma {
+                    element.set_property("gamma", hue.clone());
+                }
+                Ok(element)
+            }
+            _ => Err(anyhow!("Component Config is not proper type")),
+        }?;
+
+        let branch = BranchControl::new(config.name(), true, true)?;
+        Ok(Self {
+            config: config,
+            element: element,
+            branch: branch,
+            has_setup: false,
+        })
+    }
+
+    // Run any post init setup functions
+    // ! Will probably be removed or edited to have more params
+    fn setup(
+        &mut self,
+        pipeline: &gst::Pipeline,
+        message_sender: mpsc::Sender<RuntimeMessage>,
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
+        self.has_setup = true;
+
+        // Add elements to the pipelines and sync status
+        pipeline.add(&self.element)?;
+        self.element.sync_state_with_parent()?;
+
+        // ensure the branch is correctly setup and wrap the parent element
+        self.branch.add_to_pipeline(pipeline)?;
+        self.branch.link_wrapped(&self.element)?;
+
+        // Fetch the compoennt that should be pointing to us and link it to the
+        // input queue
+        let src_comp =
+            lookup_func.lookup_and_setup(self.config.src_uid, pipeline, message_sender.clone())?;
+
+        src_comp
+            .borrow()
+            .element()?
+            .link(self.branch.get_input()?)?;
+
+        Ok(())
+    }
+
+    // accessor functions
+    fn element(&self) -> Result<&Element> {
+        // return the branch output element since that's what people
+        // should be linking
+        self.branch.get_output()
+    }
+    fn uid(&self) -> Uid {
+        return self.config.uid();
+    }
+    fn has_setup(&self) -> bool {
+        return self.has_setup;
+    }
+}

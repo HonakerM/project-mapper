@@ -1,12 +1,12 @@
 use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, common::EffectConfig},
+    effect::{EffectComponentConfig, common::EffectConfig, gamma::GammaConfig},
     input::{InputComponentConfig, common::InputConfig},
     output::{OutputComponentConfig, common::OutputConfig},
     shared::ComponentConfig,
 };
 
 use crate::components::{
-    effect::balance::BalanceComponent,
+    effect::{balance::BalanceComponent, gamma::GammaComponent},
     input::{test::TestComponent, uri::UriComponent},
     output::window::WindowComponent,
     shared::Component,
@@ -36,6 +36,10 @@ pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn 
         match &effect_cfg.config {
             EffectConfig::Balance(_) => {
                 let comp = BalanceComponent::new(config)?;
+                Ok(Box::new(comp))
+            }
+            EffectConfig::Gamma(_) => {
+                let comp = GammaComponent::new(config)?;
                 Ok(Box::new(comp))
             }
         }
