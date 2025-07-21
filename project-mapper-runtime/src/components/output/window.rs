@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread;
 
+use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
 use crate::utils::winit::WinitPMEventLoop;
@@ -220,8 +221,10 @@ impl WindowComponent {
     fn run_event_monitor(
         message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
-        let recv = message_receiver.lock().unwrap();
-        for event in recv.iter() {
+        loop {
+            // use the default runtime's component manage events function to get the next event in a
+            // controlled manor
+            let event = DefaultRuntimeComponent::manage_events(message_receiver.clone())?;
             match event {
                 event => {
                     // Fetch the window proxy so we can do something with it
@@ -242,7 +245,6 @@ impl WindowComponent {
                 }
             }
         }
-        Err(anyhow!("Did not detect last event"))
     }
 
     fn run_event_loop(&self, message_sender: mpsc::Sender<RuntimeMessage>) -> Result<()> {
@@ -404,12 +406,18 @@ impl Component for WindowComponent {
         self.config.uid()
     }
 
-    // Start this component
+    // Run this component
     fn run(
         &self,
         _pipeline: &gst::Pipeline,
         message_broker: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
+        if !self.is_main {
+            return Err(anyhow!(
+                "Component is not main window. run should not have been called"
+            ));
+        }
+
         let message_sender = if let Some(sender) = &self.message_sender {
             Ok(sender)
         } else {

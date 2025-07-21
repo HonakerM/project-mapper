@@ -83,14 +83,21 @@ impl Runtime {
         pipeline.set_state(gst::State::Playing)?;
 
         // Next tell the component helper to start all components
-        self.component_helper.start(&pipeline)?;
+        self.component_helper.start_or_resume(&pipeline)?;
 
         // Then run the components
         let message = self
             .component_helper
             .run(&pipeline, self.message_reciever)?;
 
-        println!("Exiting with message: {:?}", message);
+        match message {
+            RuntimeMessage::ExitRuntime() => {
+                self.component_helper.stop()?;
+
+                println!("Exiting runtime due to exit event: {:?}", message);
+            }
+        }
+
         // wait for events to exit I guess?
         // let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =
         //     mpsc::channel();

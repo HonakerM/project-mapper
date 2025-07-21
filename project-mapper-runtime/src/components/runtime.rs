@@ -1,4 +1,7 @@
-use std::{any::Any, sync::mpsc};
+use std::{
+    any::Any,
+    sync::{Arc, Mutex, mpsc},
+};
 
 use crate::{
     components::shared::{Component, ComponentLookupHelper},
@@ -8,6 +11,7 @@ use anyhow::{Result, anyhow};
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 pub static DEFAULT_ID: Uid = -1;
+pub static DEFAULT_NAME: &str = "DefaultRuntimeComponent";
 
 // The default runtime component is used when there is no other
 // component that requires main
@@ -16,6 +20,15 @@ pub struct DefaultRuntimeComponent {}
 impl DefaultRuntimeComponent {
     pub fn new_config() -> Result<DefaultRuntimeComponent> {
         Ok(DefaultRuntimeComponent {})
+    }
+
+    pub fn manage_events(
+        message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
+    ) -> Result<RuntimeMessage> {
+        let recv = message_receiver
+            .lock()
+            .map_err(|_| anyhow!("Unable to lock message receiver due to thread panic"))?;
+        Ok(recv.recv()?)
     }
 }
 
@@ -49,7 +62,7 @@ impl Component for DefaultRuntimeComponent {
 
 impl ComponentConfig for DefaultRuntimeComponent {
     fn name(&self) -> String {
-        "DefaultRuntimeComponent".to_string()
+        String::from(DEFAULT_NAME)
     }
     fn uid(&self) -> Uid {
         DEFAULT_ID

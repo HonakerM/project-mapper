@@ -69,17 +69,23 @@ impl ComponentLookupHelper for ComponentHelper {
         Ok(comp_rc)
     }
 
-    fn start(&self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn start_or_resume(&self, pipeline: &gst::Pipeline) -> Result<()> {
         for comp in self.component_map.values() {
-            let mutable_comp = comp.borrow_mut();
-            // if we don't require main then start. Else mark the component
-            // for later starting. This ensures we start all components before running the `main` one
-            if !mutable_comp.requires_main() {
-                mutable_comp.start(pipeline)?;
-            }
+            let mut mutable_comp = comp.borrow_mut();
+            // start all components
+            mutable_comp.start_or_resume(pipeline)?;
         }
         Ok(())
     }
+    fn stop(&self) -> Result<()> {
+        for comp in self.component_map.values() {
+            let mut mutable_comp = comp.borrow_mut();
+            // start all components
+            mutable_comp.stop()?;
+        }
+        Ok(())
+    }
+
     fn run(
         &self,
         pipeline: &gst::Pipeline,
@@ -100,6 +106,15 @@ impl ComponentLookupHelper for ComponentHelper {
         } else {
             Err(anyhow!("No main component in component helper"))
         }
+    }
+
+    fn destory(&self) -> Result<()> {
+        for comp in self.component_map.values() {
+            let mut mutable_comp = comp.borrow_mut();
+            // start all components
+            mutable_comp.destroy()?;
+        }
+        Ok(())
     }
 
     fn has_main_requirement(&self) -> bool {

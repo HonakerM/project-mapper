@@ -4,11 +4,11 @@ use std::{
     sync::{Arc, Mutex, mpsc},
 };
 
-use anyhow::Result;
+use anyhow::{Error, Result, anyhow};
 use gst::Element;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
-use crate::types::message::RuntimeMessage;
+use crate::{components::runtime::DefaultRuntimeComponent, types::message::RuntimeMessage};
 
 pub trait ComponentLookupHelper {
     // factory function to create a component and register it with the helper
@@ -20,14 +20,17 @@ pub trait ComponentLookupHelper {
         pipeline: &gst::Pipeline,
         message_sender: mpsc::Sender<RuntimeMessage>,
     ) -> Result<Rc<RefCell<Box<dyn Component>>>>;
-    // start and run all pipelines. If has_main_requirement is true then this will
-    // block
-    fn start(&self, pipeline: &gst::Pipeline) -> Result<()>;
+    // start or resume all components. Components must be safe against already initialized
+    // state
+    fn start_or_resume(&self, pipeline: &gst::Pipeline) -> Result<()>;
+    fn stop(&self) -> Result<()>;
     fn run(
         &self,
         pipeline: &gst::Pipeline,
         message_broker: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage>;
+    // Special function called when exiting the application
+    fn destory(&self) -> Result<()>;
 
     // if this helper has a component that requires the main thread to run. ! This must be valid after running
     // setup
@@ -59,9 +62,12 @@ pub trait Component {
     fn uid(&self) -> Uid;
 
     /* Runtime Functions */
-    // Start this component. Should only hold/run if requires_main
-    // is true
-    fn start(&self, _pipeline: &gst::Pipeline) -> Result<()> {
+    // Start this component. Should return quickly
+    fn start_or_resume(&mut self, _pipeline: &gst::Pipeline) -> Result<()> {
+        Ok(())
+    }
+    //
+    fn stop(&mut self) -> Result<()> {
         Ok(())
     }
     fn run(
@@ -69,8 +75,7 @@ pub trait Component {
         _pipeline: &gst::Pipeline,
         message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
-        let recv = message_receiver.lock().unwrap();
-        Ok(recv.recv()?)
+        DefaultRuntimeComponent::manage_events(message_receiver)
     }
 
     // Completely stop and destroy this component
