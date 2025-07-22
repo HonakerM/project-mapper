@@ -315,7 +315,8 @@ impl WindowComponent {
             });
         }
 
-        // after running replace the global state to retain references to the windows
+        // after running replace the global state and event loop to retain references to the windows
+        winit_state.event_loop = Some(event_loop);
         GLOBAL_WINDOW_STATE.set(winit_state);
 
         // if there was an exit error return it first

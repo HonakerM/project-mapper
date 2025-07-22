@@ -1,4 +1,6 @@
+use core::time;
 use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
 
 use anyhow::Result;
 use gst::prelude::*;
@@ -104,11 +106,5 @@ impl Runtime {
                 RuntimeMessage::UpdateRuntime() => {}
             }
         }
-        // wait for events to exit I guess?
-        // let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =
-        //     mpsc::channel();
-        // for event in recv.iter() {
-        //     // do nothing for ever
-        // }
     }
 }
