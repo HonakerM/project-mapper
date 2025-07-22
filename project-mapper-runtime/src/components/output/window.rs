@@ -31,7 +31,9 @@ use raw_window_handle::HasWindowHandle;
 use raw_window_handle::RawWindowHandle;
 use winit::event::Event;
 use winit::event::WindowEvent;
+use winit::event_loop;
 use winit::event_loop::EventLoopBuilder;
+use winit::platform::pump_events::EventLoopExtPumpEvents;
 use winit::window::Window;
 use winit::window::WindowBuilder;
 
@@ -257,40 +259,63 @@ impl WindowComponent {
         }
     }
 
-    fn run_event_loop(&self, message_sender: mpsc::Sender<RuntimeMessage>) -> Result<()> {
+    fn run_event_loop(
+        &self,
+        message_sender: mpsc::Sender<RuntimeMessage>,
+    ) -> Result<RuntimeMessage> {
         if !self.is_main {
             return Err(Error::msg(
                 "Unable to run event loop since this is not main",
             ));
         }
         let mut winit_state = GLOBAL_WINDOW_STATE.take();
-        let event_loop = winit_state.event_loop.take().ok_or(anyhow!(
+        let mut event_loop = winit_state.event_loop.take().ok_or(anyhow!(
             "Event loop does not exist which should never happen"
         ))?;
-        event_loop.run(move |event, event_loop_target| {
-            match event {
-                Event::WindowEvent { event, .. } => match event {
-                    WindowEvent::CloseRequested => {
-                        // Send a message to stop the event loop
-                        message_sender.send(RuntimeMessage::ExitRuntime());
+
+        let mut exit_event: Option<RuntimeMessage> = None;
+        let mut exit_error: Option<Error> = None;
+
+        while exit_event.is_none() {
+            event_loop.pump_events(None, |event, _event_loop_target| {
+                match event {
+                    Event::UserEvent(user_event) => {
+                        exit_event = Some(user_event);
                     }
-                    _msg => {
-                        //println!("other message {:?}", msg)
-                    }
-                },
-                Event::UserEvent(event) => match event {
-                    RuntimeMessage::ExitRuntime() => {
-                        event_loop_target.exit();
-                    }
+                    Event::WindowEvent {
+                        event: window_event,
+                        ..
+                    } => match window_event {
+                        WindowEvent::CloseRequested => {
+                            // Send a message to stop the event loop
+                            let send_result = message_sender.send(RuntimeMessage::ExitRuntime());
+                            if let Err(err) = send_result {
+                                exit_error = Some(err.into());
+                            }
+                        }
+                        _ => {}
+                    },
                     _ => {}
-                },
-                _ => (),
-            }
-        })?;
+                }
+            });
+        }
 
         // after running replace the global state to retain references to the windows
         GLOBAL_WINDOW_STATE.set(winit_state);
-        Ok(())
+
+        // if there was an exit error return it first
+        if let Some(err) = exit_error {
+            return Err(err);
+        }
+
+        // get the exit event if it was created
+        if let Some(event) = exit_event {
+            Ok(event)
+        } else {
+            Err(anyhow!(
+                "Event loop exited without event. Should never happen due to loop conditions"
+            ))
+        }
     }
 }
 
@@ -474,6 +499,11 @@ impl Component for WindowComponent {
         // else destroy/drop all windows
         let mut winit_state = GLOBAL_WINDOW_STATE.take();
         winit_state.windows.clear();
+
+        // exit the event loop
+        if let Some(event_loop) = winit_state.event_loop {
+            event_loop.exit();
+        }
 
         Ok(())
     }
