@@ -89,25 +89,26 @@ impl Runtime {
         self.component_helper.start_or_resume(&pipeline)?;
 
         // Then run the components
-        let message = self
-            .component_helper
-            .run(&pipeline, self.message_reciever)?;
+        loop {
+            let message = self
+                .component_helper
+                .run(&pipeline, self.message_reciever.clone())?;
 
-        match message {
-            RuntimeMessage::ExitRuntime() => {
-                self.component_helper.stop()?;
+            match message {
+                RuntimeMessage::ExitRuntime() => {
+                    self.component_helper.stop()?;
 
-                println!("Exiting runtime due to exit event: {:?}", message);
+                    println!("Exiting runtime due to exit event: {:?}", message);
+                    return Ok(());
+                }
+                RuntimeMessage::UpdateRuntime() => {}
             }
         }
-
         // wait for events to exit I guess?
         // let (send, recv): (mpsc::Sender<RuntimeMessage>, Receiver<RuntimeMessage>) =
         //     mpsc::channel();
         // for event in recv.iter() {
         //     // do nothing for ever
         // }
-
-        Ok(())
     }
 }

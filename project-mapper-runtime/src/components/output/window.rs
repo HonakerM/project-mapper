@@ -40,6 +40,7 @@ use winit::window::WindowBuilder;
 // helper struct to store information about winit. This
 // will only be held by the main component
 struct WinitState {
+    message_sender_thread: Option<thread::JoinHandle<Result<()>>>,
     event_loop: Option<WinitPMEventLoop>,
     // needed to keep reference to a window
     windows: HashMap<Uid, Window>,
@@ -47,6 +48,7 @@ struct WinitState {
 impl Default for WinitState {
     fn default() -> Self {
         Self {
+            message_sender_thread: None,
             event_loop: None,
             windows: HashMap::new(),
         }
@@ -201,6 +203,8 @@ impl WindowComponent {
         }
 
         GLOBAL_WINDOW_STATE.replace(WinitState {
+            // don't create the message sender until we have it in run
+            message_sender_thread: None,
             event_loop: Some(event_loop),
             windows: windows,
         });
@@ -232,7 +236,7 @@ impl WindowComponent {
 
     fn run_event_monitor(
         message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
-    ) -> Result<RuntimeMessage> {
+    ) -> Result<()> {
         loop {
             // use the default runtime's component manage events function to get the next event in a
             // controlled manor
@@ -249,7 +253,7 @@ impl WindowComponent {
                     {
                         proxy.send_event(event.clone())?;
                         if event == RuntimeMessage::ExitRuntime() {
-                            return Ok(event);
+                            return Ok(());
                         }
                     } else {
                         return Err(anyhow!("Unable to get proxt to get event"));
@@ -262,6 +266,9 @@ impl WindowComponent {
     fn run_event_loop(
         &self,
         message_sender: mpsc::Sender<RuntimeMessage>,
+        message_receiver: std::sync::Arc<
+            std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>,
+        >,
     ) -> Result<RuntimeMessage> {
         if !self.is_main {
             return Err(Error::msg(
@@ -269,6 +276,14 @@ impl WindowComponent {
             ));
         }
         let mut winit_state = GLOBAL_WINDOW_STATE.take();
+
+        // if we haven't already started the event thread do so
+        if winit_state.message_sender_thread.is_none() {
+            let event_handle =
+                thread::spawn(|| WindowComponent::run_event_monitor(message_receiver));
+            winit_state.message_sender_thread = Some(event_handle);
+        }
+
         let mut event_loop = winit_state.event_loop.take().ok_or(anyhow!(
             "Event loop does not exist which should never happen"
         ))?;
@@ -397,10 +412,10 @@ impl Component for WindowComponent {
             // only lock global state while gathering components to initialize
             let mut comp_ids_to_init: Vec<Uid> = vec![];
             {
-                let global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
+                let proxy_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
                     "Unable to aquire window proxy lock. Should not happen in normal operation",
                 )))?;
-                if let Some(state) = global_state.as_ref() {
+                if let Some(state) = proxy_state.as_ref() {
                     for request in state.window_configs.values() {
                         // we don't want to re-init this component as that can cause issues
                         if request.element_uid != self.uid() {
@@ -465,28 +480,11 @@ impl Component for WindowComponent {
             ))
         }?;
 
-        let event_handle = thread::spawn(|| WindowComponent::run_event_monitor(message_broker));
-
         // if we're main then run the real event loop!
-        self.run_event_loop(message_sender.clone())?;
-
+        self.run_event_loop(message_sender.clone(), message_broker.clone())
+        /*
         // if we exited the event loop we also must have exited the event watcher...
-        if event_handle.is_finished() {
-            event_handle.join().map_err(|panic_err| {
-                // Try to extract a meaningful panic message
-                if let Some(s) = panic_err.downcast_ref::<&'static str>() {
-                    anyhow!("Thread panicked: {}", s)
-                } else if let Some(s) = panic_err.downcast_ref::<String>() {
-                    anyhow!("Thread panicked: {}", s)
-                } else {
-                    anyhow!("Thread panicked with non-string payload")
-                }
-            })?
-        } else {
-            Err(anyhow!(
-                "Event watcher thread not finished even though event is done"
-            ))
-        }
+         */
     }
 
     // Stop this component
@@ -503,6 +501,27 @@ impl Component for WindowComponent {
         // exit the event loop
         if let Some(event_loop) = winit_state.event_loop {
             event_loop.exit();
+        }
+
+        // ensure we destory/join the event listener thread
+        if let Some(event_handle) = winit_state.message_sender_thread {
+            let possible_error = if event_handle.is_finished() {
+                event_handle.join().map_err(|panic_err| {
+                    // Try to extract a meaningful panic message
+                    if let Some(s) = panic_err.downcast_ref::<&'static str>() {
+                        anyhow!("Thread panicked: {}", s)
+                    } else if let Some(s) = panic_err.downcast_ref::<String>() {
+                        anyhow!("Thread panicked: {}", s)
+                    } else {
+                        anyhow!("Thread panicked with non-string payload")
+                    }
+                })
+            } else {
+                Err(anyhow!(
+                    "Event watcher thread not finished even though event is done"
+                ))
+            }?;
+            possible_error?;
         }
 
         Ok(())
