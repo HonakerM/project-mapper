@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Error, Result, anyhow};
 use gst::{Element, element_error, element_warning, glib, prelude::*};
 use project_mapper_core::runtime_config::{
-    input::{InputComponentConfig, common::InputConfig},
+    input::{uri::UriConfig, InputComponentConfig},
     shared::{ComponentConfig, Uid},
 };
 
@@ -36,15 +36,19 @@ impl Component for UriComponent {
             )),
         }?;
 
-        let element = if let InputConfig::URI(uri_config) = &config.config {
-            gst::ElementFactory::make("uridecodebin")
-                .name(config.name())
-                .property("uri", glib::GString::from(uri_config.uri.clone()))
-                .build()
-                .map_err(|err| anyhow!("Unable to construct element").context(err))
-        } else {
-            Err(Error::msg("Component Config is not proper type"))
+
+        
+        // ensure we have a test config
+        let uri_config = match config.config.as_any().downcast_ref::<UriConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("InputComponentConfig is not UriConfig"))
         }?;
+
+        let element =             gst::ElementFactory::make("uridecodebin")
+        .name(config.name())
+        .property("uri", glib::GString::from(uri_config.uri.clone()))
+        .build()
+        .map_err(|err| anyhow!("Unable to construct element").context(err))?;
 
         Ok(Self {
             branch: BranchControl::new(config.name(), false, true)?,

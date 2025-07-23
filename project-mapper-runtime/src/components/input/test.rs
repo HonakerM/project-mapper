@@ -7,10 +7,10 @@ use crate::{
     },
     types::message::RuntimeMessage,
 };
-use anyhow::{Error, Result};
+use anyhow::{anyhow, Error, Result};
 use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::{
-    input::{InputComponentConfig, common::InputConfig},
+    input::{test::TestConfig, InputComponentConfig},
     shared::{ComponentConfig, Uid},
 };
 
@@ -35,9 +35,12 @@ impl Component for TestComponent {
                 "ComponentConfig can not be typed to InputComponentConfig",
             )),
         }?;
-        if !matches!(config.config, InputConfig::Test(_)) {
-            return Err(Error::msg("Component Config is not proper type"));
-        }
+
+        // ensure we have a test config
+        match config.config.as_any().downcast_ref::<TestConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("InputComponentConfig is not TestConfig"))
+        }?;
 
         // construct test gstreamer element
         let element = gst::ElementFactory::make("videotestsrc")

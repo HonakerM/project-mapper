@@ -1,33 +1,34 @@
 use std::any::Any;
 
 use serde::{Deserialize, Serialize};
+use typetag;
 
-use crate::runtime_config::{
-    input::{test::TestConfig, uri::UriConfig},
-    shared::{ComponentConfig, Uid},
-};
+use crate::runtime_config::shared::{ComponentConfig, Uid};
 
-// InputConfig contains
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
-pub enum InputConfig {
-    Test(TestConfig),
-    URI(UriConfig),
+// Trait representing an input config
+// ! I don't know if this is good/okay....
+#[typetag::serde(tag = "type")]
+pub trait InputConfigTrait: std::fmt::Debug + Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+    fn clone_box(&self) -> Box<dyn InputConfigTrait>;
 }
 
-// InputComponent is the generic component for
-// all Input types
+// Clone support for Box<dyn InputConfigTrait>
+impl Clone for Box<dyn InputConfigTrait> {
+    fn clone(&self) -> Box<dyn InputConfigTrait> {
+        self.clone_box()
+    }
+}
+
+// InputComponentConfig is now driven by trait object
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct InputComponentConfig {
-    // core component uid
     pub uid: Uid,
-    // core component name
     pub name: String,
-    // core component config
-    pub config: InputConfig,
+    pub config: Box<dyn InputConfigTrait>,
 }
 
-// Implmement the Shared component trait to allow name/id fetching
+// Implement the shared component trait
 impl ComponentConfig for InputComponentConfig {
     fn name(&self) -> String {
         self.name.clone()

@@ -5,7 +5,6 @@ use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
 use project_mapper_core::runtime_config::effect::common::EffectConfig;
 use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
-use project_mapper_core::runtime_config::input::common::InputConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
 use project_mapper_core::runtime_config::input::uri::UriConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
@@ -25,11 +24,11 @@ fn run_main() -> Result<()> {
         inputs: vec![InputComponentConfig {
             uid: 0,
             name: "test_comp".to_string(),
-            config: InputConfig::Test(TestConfig {}),
+            config: Box::new(TestConfig {}),
         },InputComponentConfig {
             uid: 4,
             name: "uri_comp".to_string(),
-            config: InputConfig::URI(UriConfig {uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4".to_string()}),
+            config: Box::new(UriConfig {uri: "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4".to_string()}),
         },
         ],
         effects: vec![

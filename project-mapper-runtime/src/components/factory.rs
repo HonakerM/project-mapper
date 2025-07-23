@@ -1,7 +1,9 @@
+use std::any::type_name_of_val;
+
 use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, common::EffectConfig, gamma::GammaConfig},
-    input::{InputComponentConfig, common::InputConfig},
-    output::{OutputComponentConfig, common::OutputConfig},
+    effect::{common::EffectConfig, gamma::GammaConfig, EffectComponentConfig},
+    input::{test::TestConfig, uri::UriConfig, InputComponentConfig},
+    output::{common::OutputConfig, OutputComponentConfig},
     shared::ComponentConfig,
 };
 
@@ -11,7 +13,7 @@ use crate::components::{
     output::window::WindowComponent,
     shared::Component,
 };
-use anyhow::{Error, Result};
+use anyhow::{Error, Result, anyhow};
 
 pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
     if let Some(output_cfg) = config.as_any().downcast_ref::<OutputComponentConfig>() {
@@ -22,15 +24,15 @@ pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn 
             }
         }
     } else if let Some(input_cfg) = config.as_any().downcast_ref::<InputComponentConfig>() {
-        match &input_cfg.config {
-            InputConfig::Test(_) => {
-                let comp = TestComponent::new(config)?;
-                Ok(Box::new(comp))
-            }
-            InputConfig::URI(_) => {
-                let comp = UriComponent::new(config)?;
-                Ok(Box::new(comp))
-            }
+        if let Some(_) = input_cfg.as_any().downcast_ref::<TestConfig>() {
+            let comp = TestComponent::new(config)?;
+            Ok(Box::new(comp))
+        } else if let Some(_) = input_cfg.as_any().downcast_ref::<UriConfig>() {
+            let comp = UriComponent::new(config)?;
+            Ok(Box::new(comp))
+        } else {
+            let unknown_name = type_name_of_val(input_cfg.as_any());
+            Err(anyhow!("Unknown config type: {}", unknown_name))
         }
     } else if let Some(effect_cfg) = config.as_any().downcast_ref::<EffectComponentConfig>() {
         match &effect_cfg.config {

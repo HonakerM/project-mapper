@@ -11,7 +11,6 @@ use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::{
     effect::{EffectComponentConfig, common::EffectConfig},
-    input::{InputComponentConfig, common::InputConfig},
     shared::{ComponentConfig, Uid},
 };
 
