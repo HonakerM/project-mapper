@@ -130,7 +130,7 @@ impl Runtime {
                     println!("Exiting runtime due to exit event: {:?}", message);
                     return Ok(());
                 }
-                RuntimeMessage::UpdateRuntime() => {}
+                RuntimeMessage::UpdateRuntime(_) => {}
             }
         }
     }

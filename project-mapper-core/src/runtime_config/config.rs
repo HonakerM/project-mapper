@@ -25,6 +25,7 @@ pub struct RuntimeConfig {
     pub outputs: Vec<OutputComponentConfig>,
 }
 
+#[derive(PartialEq, Clone)]
 struct RuntimeConfigValidationHelper {
     name: String,
     type_name: String,
@@ -34,7 +35,7 @@ impl RuntimeConfig {
     // validate if a new config is a valid update of the existing config
     pub fn validate_changes(
         &self,
-        new_config: RuntimeConfig,
+        new_config: &RuntimeConfig,
     ) -> Result<(), RuntimeConfigValidationError> {
         let current_helper_data = self.gather_validation_helper_data();
         let new_helper_data = new_config.gather_validation_helper_data();
@@ -160,5 +161,11 @@ impl RuntimeConfig {
         }
 
         map
+    }
+}
+
+impl PartialEq for RuntimeConfig {
+    fn eq(&self, other: &Self) -> bool {
+        self.gather_validation_helper_data() == other.gather_validation_helper_data()
     }
 }

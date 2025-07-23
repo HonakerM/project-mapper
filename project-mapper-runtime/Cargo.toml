@@ -15,3 +15,13 @@ raw-window-handle = "0.6.2"
 project-mapper-core = { workspace = true}
 anyhow = {workspace = true}
 
+# Optional receiver dependencies
+tokio = { version = "1.38", features = ["rt", "macros"], optional = true}
+tower = {version = "0.4", optional=true}
+# Optional HTTP receiver dependency
+axum = {version = "0.7", optional=true}
+
+[features]
+default = ["http-receiver"]
+receivers = ["dep:tokio","dep:tower"]
+http-receiver = ["receivers", "dep:axum"]
