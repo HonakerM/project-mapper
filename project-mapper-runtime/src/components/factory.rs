@@ -1,9 +1,9 @@
 use std::any::type_name_of_val;
 
 use project_mapper_core::runtime_config::{
-    effect::{common::EffectConfig, gamma::GammaConfig, EffectComponentConfig},
-    input::{test::TestConfig, uri::UriConfig, InputComponentConfig},
-    output::{common::OutputConfig, OutputComponentConfig},
+    effect::{EffectComponentConfig, common::EffectConfig, gamma::GammaConfig},
+    input::{InputComponentConfig, test::TestConfig, uri::UriConfig},
+    output::{OutputComponentConfig, common::OutputConfig},
     shared::ComponentConfig,
 };
 
@@ -24,14 +24,14 @@ pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn 
             }
         }
     } else if let Some(input_cfg) = config.as_any().downcast_ref::<InputComponentConfig>() {
-        if let Some(_) = input_cfg.as_any().downcast_ref::<TestConfig>() {
+        if let Some(_) = input_cfg.config.as_any().downcast_ref::<TestConfig>() {
             let comp = TestComponent::new(config)?;
             Ok(Box::new(comp))
-        } else if let Some(_) = input_cfg.as_any().downcast_ref::<UriConfig>() {
+        } else if let Some(_) = input_cfg.config.as_any().downcast_ref::<UriConfig>() {
             let comp = UriComponent::new(config)?;
             Ok(Box::new(comp))
         } else {
-            let unknown_name = type_name_of_val(input_cfg.as_any());
+            let unknown_name = type_name_of_val(&input_cfg.config);
             Err(anyhow!("Unknown config type: {}", unknown_name))
         }
     } else if let Some(effect_cfg) = config.as_any().downcast_ref::<EffectComponentConfig>() {

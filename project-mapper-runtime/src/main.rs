@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
@@ -87,13 +87,17 @@ fn run_main() -> Result<()> {
             },
         ],
     };
+    config
+        .validate()
+        .context("Failed to validate runtime config")?;
 
-    let runtime = Runtime::new(config, Box::new(ComponentHelper::new()))?;
-    runtime.run()
+    let runtime = Runtime::new(config, Box::new(ComponentHelper::new()))
+        .context("Failed to create runtime")?;
+    runtime.run().context("Failed to run runtime due to error")
 }
 
 fn main() {
     if let Err(error) = run_main() {
-        panic!("{}", error);
+        panic!("{:#}", error);
     }
 }

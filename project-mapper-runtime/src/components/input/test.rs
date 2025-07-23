@@ -7,10 +7,10 @@ use crate::{
     },
     types::message::RuntimeMessage,
 };
-use anyhow::{anyhow, Error, Result};
+use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::{
-    input::{test::TestConfig, InputComponentConfig},
+    input::{InputComponentConfig, test::TestConfig},
     shared::{ComponentConfig, Uid},
 };
 
@@ -39,7 +39,7 @@ impl Component for TestComponent {
         // ensure we have a test config
         match config.config.as_any().downcast_ref::<TestConfig>() {
             Some(b) => Ok(b.clone()),
-            None => Err(anyhow!("InputComponentConfig is not TestConfig"))
+            None => Err(anyhow!("InputComponentConfig is not TestConfig")),
         }?;
 
         // construct test gstreamer element
