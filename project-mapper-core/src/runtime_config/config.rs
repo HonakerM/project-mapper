@@ -1,4 +1,9 @@
-use std::{collections::HashSet, error::Error, fmt::Display};
+use std::{
+    any::type_name_of_val,
+    collections::{HashMap, HashSet},
+    error::Error,
+    fmt::Display,
+};
 
 use serde::{Deserialize, Serialize};
 
@@ -20,7 +25,46 @@ pub struct RuntimeConfig {
     pub outputs: Vec<OutputComponentConfig>,
 }
 
+struct RuntimeConfigValidationHelper {
+    name: String,
+    type_name: String,
+}
+
 impl RuntimeConfig {
+    // validate if a new config is a valid update of the existing config
+    pub fn validate_changes(
+        &self,
+        new_config: RuntimeConfig,
+    ) -> Result<(), RuntimeConfigValidationError> {
+        let current_helper_data = self.gather_validation_helper_data();
+        let new_helper_data = new_config.gather_validation_helper_data();
+
+        // first start by generally validating the new config. This ensures no duplicate
+        // configs
+        new_config.validate()?;
+
+        // ensure that for all current helper data the name/type remains unchanged
+        for (uid, helper_data) in current_helper_data.iter() {
+            if let Some(new_helper_data) = new_helper_data.get(uid) {
+                if helper_data.name != new_helper_data.name {
+                    return Err(RuntimeConfigValidationError::from(format!(
+                        "Can not change component {}'s name. Previous name: {}",
+                        uid, helper_data.name
+                    )));
+                }
+                if helper_data.type_name != new_helper_data.type_name {
+                    return Err(RuntimeConfigValidationError::from(format!(
+                        "Can not change component {}'s type. Previous type: {}",
+                        uid, helper_data.type_name
+                    )));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    // check if a config is valid. Ensures unique names and uids
     pub fn validate(&self) -> Result<(), RuntimeConfigValidationError> {
         let mut name_set: HashSet<String> = HashSet::new();
         let mut uid_set: HashSet<Uid> = HashSet::new();
@@ -83,5 +127,38 @@ impl RuntimeConfig {
         uid_set.insert(uid);
 
         Ok(())
+    }
+
+    fn gather_validation_helper_data(&self) -> HashMap<Uid, RuntimeConfigValidationHelper> {
+        let mut map = HashMap::new();
+        for config in &self.inputs {
+            map.insert(
+                config.uid(),
+                RuntimeConfigValidationHelper {
+                    name: config.name(),
+                    type_name: type_name_of_val(config.config.as_ref()).to_string(),
+                },
+            );
+        }
+        for config in &self.effects {
+            map.insert(
+                config.uid(),
+                RuntimeConfigValidationHelper {
+                    name: config.name(),
+                    type_name: type_name_of_val(config.config.as_ref()).to_string(),
+                },
+            );
+        }
+        for config in &self.outputs {
+            map.insert(
+                config.uid(),
+                RuntimeConfigValidationHelper {
+                    name: config.name(),
+                    type_name: type_name_of_val(config.config.as_ref()).to_string(),
+                },
+            );
+        }
+
+        map
     }
 }
