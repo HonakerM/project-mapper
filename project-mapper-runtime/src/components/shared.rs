@@ -10,9 +10,18 @@ use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 use crate::{components::runtime::DefaultRuntimeComponent, types::message::RuntimeMessage};
 
+// trait to aid in the creation of new components
+pub trait ComponentFactory {
+    fn create_component(&self, config: &dyn ComponentConfig) -> Result<Box<dyn Component>>;
+}
+
 pub trait ComponentLookupHelper {
     // factory function to create a component and register it with the helper
-    fn create_and_insert_comp(&mut self, config: &dyn ComponentConfig) -> Result<()>;
+    fn create_and_insert_comp(
+        &mut self,
+        config: &dyn ComponentConfig,
+        factory: &dyn ComponentFactory,
+    ) -> Result<()>;
     // helper function to return a desired component and run setup if it hasn't already
     fn lookup_and_setup(
         &self,

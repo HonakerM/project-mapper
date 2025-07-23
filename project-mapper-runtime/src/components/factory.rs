@@ -1,4 +1,4 @@
-use std::any::type_name_of_val;
+use std::{any::type_name_of_val, default};
 
 use project_mapper_core::runtime_config::{
     effect::{EffectComponentConfig, common::EffectConfig, gamma::GammaConfig},
@@ -11,7 +11,7 @@ use crate::components::{
     effect::{balance::BalanceComponent, gamma::GammaComponent},
     input::{test::TestComponent, uri::UriComponent},
     output::window::WindowComponent,
-    shared::Component,
+    shared::{Component, ComponentFactory},
 };
 use anyhow::{Error, Result, anyhow};
 
@@ -47,5 +47,15 @@ pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn 
         }
     } else {
         Err(Error::msg("Unknown component config type"))
+    }
+}
+
+// default factory for creating components
+#[derive(Default)]
+pub struct DefaultComponentFactory {}
+
+impl ComponentFactory for DefaultComponentFactory {
+    fn create_component(&self, config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
+        create_default_component(config)
     }
 }

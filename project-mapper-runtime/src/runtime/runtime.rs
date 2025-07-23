@@ -8,11 +8,12 @@ use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 use crate::components::runtime::DefaultRuntimeComponent;
-use crate::components::shared::ComponentLookupHelper;
+use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
 
 pub struct Runtime {
     pub config: RuntimeConfig,
+    pub component_factory: Box<dyn ComponentFactory>,
     pub component_helper: Box<dyn ComponentLookupHelper>,
 
     // message sender/reciever for runtime events
@@ -23,6 +24,7 @@ pub struct Runtime {
 impl Runtime {
     pub fn new(
         config: RuntimeConfig,
+        component_factory: Box<dyn ComponentFactory>,
         component_helper: Box<dyn ComponentLookupHelper>,
     ) -> Result<Self> {
         let (send, recv) = mpsc::channel();
@@ -35,6 +37,7 @@ impl Runtime {
         Ok(Self {
             config: config,
             component_helper: component_helper,
+            component_factory: component_factory,
             // handle the message
             message_sender: send,
             message_reciever: Arc::new(Mutex::new(recv)),
@@ -52,7 +55,7 @@ impl Runtime {
         let mut output_uids: Vec<Uid> = vec![];
         for input_config in &self.config.inputs {
             self.component_helper
-                .create_and_insert_comp(input_config)
+                .create_and_insert_comp(input_config, self.component_factory.as_ref())
                 .context(format!(
                     "failed to create input component: {}",
                     input_config.uid()
@@ -60,7 +63,7 @@ impl Runtime {
         }
         for effect_config in &self.config.effects {
             self.component_helper
-                .create_and_insert_comp(effect_config)
+                .create_and_insert_comp(effect_config, self.component_factory.as_ref())
                 .context(format!(
                     "failed to create effect component: {}",
                     effect_config.uid()
@@ -68,7 +71,7 @@ impl Runtime {
         }
         for output_config in &self.config.outputs {
             self.component_helper
-                .create_and_insert_comp(output_config)
+                .create_and_insert_comp(output_config, self.component_factory.as_ref())
                 .context(format!(
                     "failed to create output component: {}",
                     output_config.uid()
@@ -90,7 +93,7 @@ impl Runtime {
             let default_config = DefaultRuntimeComponent::new_config()
                 .context("Failed to contstruct default runtime component config")?;
             self.component_helper
-                .create_and_insert_comp(&default_config)
+                .create_and_insert_comp(&default_config, self.component_factory.as_ref())
                 .context(format!("failed to create default runtime component"))?;
             self.component_helper
                 .lookup_and_setup(

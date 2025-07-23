@@ -5,18 +5,18 @@ use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 use crate::{
     components::{
         factory::create_default_component,
-        shared::{Component, ComponentLookupHelper},
+        shared::{Component, ComponentFactory, ComponentLookupHelper},
     },
     types::message::RuntimeMessage,
 };
 use anyhow::{Error, Result, anyhow};
 
-pub struct ComponentHelper {
+pub struct DefaultComponentHelper {
     main_comp_id: Option<Uid>,
     component_map: HashMap<Uid, Rc<RefCell<Box<dyn Component>>>>,
 }
 
-impl ComponentHelper {
+impl DefaultComponentHelper {
     pub fn new() -> Self {
         Self {
             main_comp_id: None,
@@ -25,10 +25,14 @@ impl ComponentHelper {
     }
 }
 
-impl ComponentLookupHelper for ComponentHelper {
-    fn create_and_insert_comp(&mut self, config: &dyn ComponentConfig) -> Result<()> {
+impl ComponentLookupHelper for DefaultComponentHelper {
+    fn create_and_insert_comp(
+        &mut self,
+        config: &dyn ComponentConfig,
+        factory: &dyn ComponentFactory,
+    ) -> Result<()> {
         // create the component
-        let comp = create_default_component(config)?;
+        let comp = factory.create_component(config)?;
 
         // if this component requires main then update the main_id
         if comp.requires_main() {

@@ -11,7 +11,8 @@ use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::output::common::OutputConfig;
 use project_mapper_core::runtime_config::output::window::{WindowConfig, WindowMode};
 use project_mapper_core::types::video::Resolution;
-use project_mapper_runtime::components::comp_helper::ComponentHelper;
+use project_mapper_runtime::components::comp_helper::DefaultComponentHelper;
+use project_mapper_runtime::components::factory::DefaultComponentFactory;
 use project_mapper_runtime::runtime::runtime::Runtime;
 
 fn run_main() -> Result<()> {
@@ -91,8 +92,12 @@ fn run_main() -> Result<()> {
         .validate()
         .context("Failed to validate runtime config")?;
 
-    let runtime = Runtime::new(config, Box::new(ComponentHelper::new()))
-        .context("Failed to create runtime")?;
+    let runtime = Runtime::new(
+        config,
+        Box::new(DefaultComponentFactory {}),
+        Box::new(DefaultComponentHelper::new()),
+    )
+    .context("Failed to create runtime")?;
     runtime.run().context("Failed to run runtime due to error")
 }
 
