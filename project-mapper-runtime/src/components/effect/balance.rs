@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, common::EffectConfig},
+    effect::{EffectComponentConfig, balance::BalanceConfig},
     shared::{ComponentConfig, Uid},
 };
 
@@ -37,28 +37,25 @@ impl Component for BalanceComponent {
         }?;
 
         // construct element
-        let element = match &config.config {
-            EffectConfig::Balance(balance_config) => {
-                let element = gst::ElementFactory::make("videobalance")
-                    .name(config.name())
-                    .build()?;
-
-                if let Some(brightness) = &balance_config.brightness {
-                    element.set_property("brightness", brightness.clone());
-                }
-                if let Some(contrast) = &balance_config.contrast {
-                    element.set_property("contrast", contrast.clone());
-                }
-                if let Some(saturation) = &balance_config.saturation {
-                    element.set_property("saturation", saturation.clone());
-                }
-                if let Some(hue) = &balance_config.hue {
-                    element.set_property("hue", hue.clone());
-                }
-                Ok(element)
-            }
-            _ => Err(anyhow!("Component Config is not proper type")),
+        let balance_config = match config.config.as_any().downcast_ref::<BalanceConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("BalannceComponentConfig is not BalanceConfig")),
         }?;
+        let element = gst::ElementFactory::make("videobalance")
+            .name(config.name())
+            .build()?;
+        if let Some(brightness) = &balance_config.brightness {
+            element.set_property("brightness", brightness.clone());
+        }
+        if let Some(contrast) = &balance_config.contrast {
+            element.set_property("contrast", contrast.clone());
+        }
+        if let Some(saturation) = &balance_config.saturation {
+            element.set_property("saturation", saturation.clone());
+        }
+        if let Some(hue) = &balance_config.hue {
+            element.set_property("hue", hue.clone());
+        }
 
         let branch = BranchControl::new(config.name(), true, true)?;
         Ok(Self {

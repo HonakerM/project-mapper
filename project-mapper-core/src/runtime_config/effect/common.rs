@@ -7,12 +7,19 @@ use crate::runtime_config::{
     shared::{ComponentConfig, Uid},
 };
 
-// EffectConfig contains
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(tag = "type")]
-pub enum EffectConfig {
-    Balance(BalanceConfig),
-    Gamma(GammaConfig),
+// Trait representing an input config
+// ! I don't know if this is good/okay....
+#[typetag::serde(tag = "type")]
+pub trait EffectConfigTrait: std::fmt::Debug + Send + Sync {
+    fn as_any(&self) -> &dyn Any;
+    fn clone_box(&self) -> Box<dyn EffectConfigTrait>;
+}
+
+// Clone support for Box<dyn EffectConfigTrait>
+impl Clone for Box<dyn EffectConfigTrait> {
+    fn clone(&self) -> Box<dyn EffectConfigTrait> {
+        self.clone_box()
+    }
 }
 
 // EffectComponent is the generic component for
@@ -24,7 +31,7 @@ pub struct EffectComponentConfig {
     // core component name
     pub name: String,
     // core component config
-    pub config: EffectConfig,
+    pub config: Box<dyn EffectConfigTrait>,
 
     // what source to use for this Effect
     pub src_uid: Uid,

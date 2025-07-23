@@ -2,13 +2,11 @@ use anyhow::{Context, Result};
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
-use project_mapper_core::runtime_config::effect::common::EffectConfig;
 use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
 use project_mapper_core::runtime_config::input::uri::UriConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
-use project_mapper_core::runtime_config::output::common::OutputConfig;
 use project_mapper_core::runtime_config::output::window::{WindowConfig, WindowMode};
 use project_mapper_core::types::video::Resolution;
 use project_mapper_runtime::components::comp_helper::DefaultComponentHelper;
@@ -36,7 +34,7 @@ fn run_main() -> Result<()> {
             EffectComponentConfig {
                 uid: 6,
                 name: "super_bright".to_string(),
-                config: EffectConfig::Balance(BalanceConfig {
+                config: Box::new(BalanceConfig {
                     brightness: Some(1.0),
                     contrast: Some(1.0),
                     saturation: None,
@@ -47,7 +45,7 @@ fn run_main() -> Result<()> {
             EffectComponentConfig {
                 uid: 7,
                 name: "gamma_bright".to_string(),
-                config: EffectConfig::Gamma(GammaConfig {
+                config: Box::new(GammaConfig {
                     gamma: Some(0.1)
                 }),
                 src_uid: 0
@@ -57,7 +55,7 @@ fn run_main() -> Result<()> {
             OutputComponentConfig {
                 uid: 1,
                 name: "comp_1".to_string(),
-                config: OutputConfig::Window(WindowConfig {
+                config: Box::new(WindowConfig {
                     mode: WindowMode::Borderless {
                         name: "\\\\.\\DISPLAY1".to_string(),
                     },
@@ -81,7 +79,7 @@ fn run_main() -> Result<()> {
             OutputComponentConfig {
                 uid: 3,
                 name: "comp_3".to_string(),
-                config: OutputConfig::Window(WindowConfig {
+                config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
                 src_uid: 7,

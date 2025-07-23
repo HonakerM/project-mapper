@@ -1,9 +1,9 @@
 use std::{any::type_name_of_val, default};
 
 use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, common::EffectConfig, gamma::GammaConfig},
+    effect::{EffectComponentConfig, balance::BalanceConfig, gamma::GammaConfig},
     input::{InputComponentConfig, test::TestConfig, uri::UriConfig},
-    output::{OutputComponentConfig, common::OutputConfig},
+    output::{OutputComponentConfig, window::WindowConfig},
     shared::ComponentConfig,
 };
 
@@ -17,11 +17,12 @@ use anyhow::{Error, Result, anyhow};
 
 pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
     if let Some(output_cfg) = config.as_any().downcast_ref::<OutputComponentConfig>() {
-        match &output_cfg.config {
-            OutputConfig::Window(_) => {
-                let comp = WindowComponent::new(config)?;
-                Ok(Box::new(comp))
-            }
+        if let Some(_) = output_cfg.config.as_any().downcast_ref::<WindowConfig>() {
+            let comp = WindowComponent::new(config)?;
+            Ok(Box::new(comp))
+        } else {
+            let unknown_name = type_name_of_val(&output_cfg.config);
+            Err(anyhow!("Unknown config type: {}", unknown_name))
         }
     } else if let Some(input_cfg) = config.as_any().downcast_ref::<InputComponentConfig>() {
         if let Some(_) = input_cfg.config.as_any().downcast_ref::<TestConfig>() {
@@ -35,15 +36,15 @@ pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn 
             Err(anyhow!("Unknown config type: {}", unknown_name))
         }
     } else if let Some(effect_cfg) = config.as_any().downcast_ref::<EffectComponentConfig>() {
-        match &effect_cfg.config {
-            EffectConfig::Balance(_) => {
-                let comp = BalanceComponent::new(config)?;
-                Ok(Box::new(comp))
-            }
-            EffectConfig::Gamma(_) => {
-                let comp = GammaComponent::new(config)?;
-                Ok(Box::new(comp))
-            }
+        if let Some(_) = effect_cfg.config.as_any().downcast_ref::<BalanceConfig>() {
+            let comp = BalanceComponent::new(config)?;
+            Ok(Box::new(comp))
+        } else if let Some(_) = effect_cfg.config.as_any().downcast_ref::<GammaConfig>() {
+            let comp = GammaComponent::new(config)?;
+            Ok(Box::new(comp))
+        } else {
+            let unknown_name = type_name_of_val(&effect_cfg.config);
+            Err(anyhow!("Unknown config type: {}", unknown_name))
         }
     } else {
         Err(Error::msg("Unknown component config type"))

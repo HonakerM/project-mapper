@@ -10,7 +10,7 @@ use crate::{
 use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, common::EffectConfig},
+    effect::{EffectComponentConfig, gamma::GammaConfig},
     shared::{ComponentConfig, Uid},
 };
 
@@ -37,19 +37,16 @@ impl Component for GammaComponent {
         }?;
 
         // construct element
-        let element = match &config.config {
-            EffectConfig::Gamma(gama_config) => {
-                let element = gst::ElementFactory::make("gamma")
-                    .name(config.name())
-                    .build()?;
-
-                if let Some(hue) = &gama_config.gamma {
-                    element.set_property("gamma", hue.clone());
-                }
-                Ok(element)
-            }
-            _ => Err(anyhow!("Component Config is not proper type")),
+        let gamma_config = match config.config.as_any().downcast_ref::<GammaConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("GammaComponent is not GammaConfig")),
         }?;
+        let element = gst::ElementFactory::make("gamma")
+            .name(config.name())
+            .build()?;
+        if let Some(hue) = &gamma_config.gamma {
+            element.set_property("gamma", hue.clone());
+        }
 
         let branch = BranchControl::new(config.name(), true, true)?;
         Ok(Self {

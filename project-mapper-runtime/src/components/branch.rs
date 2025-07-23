@@ -4,10 +4,7 @@ use crate::{
 };
 use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
-use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, common::EffectConfig},
-    shared::{ComponentConfig, Uid},
-};
+use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 use std::sync::mpsc;
 
 /// Controls optional insertion of a queue and/or tee element into a pipeline branch.

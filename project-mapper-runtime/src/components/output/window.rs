@@ -24,7 +24,7 @@ use gst_video::prelude::*;
 use project_mapper_core::runtime_config::output::window::WindowMode;
 use project_mapper_core::runtime_config::shared::Uid;
 use project_mapper_core::runtime_config::{
-    output::{OutputComponentConfig, common::OutputConfig, window::WindowConfig},
+    output::{OutputComponentConfig, window::WindowConfig},
     shared::ComponentConfig,
 };
 use raw_window_handle::HasWindowHandle;
@@ -351,36 +351,31 @@ impl Component for WindowComponent {
         }?;
 
         // load the config
-        let local_config = config.clone();
-        match config.config {
-            OutputConfig::Window(window_config) => {
-                let window_config = window_config.clone();
+        let window_config = match config.config.as_any().downcast_ref::<WindowConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("WindowComponentConfig is not WindowConfig")),
+        }?;
 
-                let branch = BranchControl::new(local_config.name(), true, false)?;
-                let output_element = gst::ElementFactory::make("glimagesink")
-                    .name(local_config.name())
-                    .build()?;
-                output_element.set_property("sync", &false);
-                let mut window_component = Self {
-                    config: local_config,
-                    window_config: window_config,
+        let branch = BranchControl::new(config.name(), true, false)?;
+        let output_element = gst::ElementFactory::make("glimagesink")
+            .name(config.name())
+            .build()?;
+        output_element.set_property("sync", &false);
+        let mut window_component = Self {
+            config: config,
+            window_config: window_config,
 
-                    branch: branch,
-                    output_element: output_element,
-                    has_setup: false,
+            branch: branch,
+            output_element: output_element,
+            has_setup: false,
 
-                    message_sender: None,
+            message_sender: None,
 
-                    // default to not main. This will be configured during initialize_global_state
-                    is_main: false,
-                };
-                window_component.initialize_global_state()?;
-                Ok(window_component)
-            }
-            _ => Err(Error::msg(
-                "OutputConfig is not correct type for this component",
-            )),
-        }
+            // default to not main. This will be configured during initialize_global_state
+            is_main: false,
+        };
+        window_component.initialize_global_state()?;
+        Ok(window_component)
     }
 
     // Run any post init setup functions

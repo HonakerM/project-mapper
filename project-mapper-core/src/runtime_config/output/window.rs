@@ -1,6 +1,11 @@
+use std::any::Any;
+
 use serde::{Deserialize, Serialize};
 
-use crate::types::video::{RefreshRate, Resolution};
+use crate::{
+    runtime_config::output::common::OutputConfigTrait,
+    types::video::{RefreshRate, Resolution},
+};
 
 // struct that identifies a specific monitor and it's desired config.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -23,4 +28,16 @@ pub enum WindowMode {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WindowConfig {
     pub mode: WindowMode,
+}
+
+// Implement InputConfigTrait for TestConfig
+#[typetag::serde]
+impl OutputConfigTrait for WindowConfig {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_box(&self) -> Box<dyn OutputConfigTrait> {
+        Box::new(self.clone())
+    }
 }

@@ -3,7 +3,6 @@ use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
 use project_mapper_core::runtime_config::input::uri::UriConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
-use project_mapper_core::runtime_config::output::common::OutputConfig;
 use project_mapper_core::runtime_config::output::window::{
     MonitorConfig, WindowConfig, WindowMode,
 };
@@ -34,7 +33,7 @@ pub fn main() {
         outputs: vec![OutputComponentConfig {
             uid: 1,
             name: "comp_1".to_string(),
-            config: OutputConfig::Window(WindowConfig {
+            config: Box::new(WindowConfig {
                 mode: WindowMode::Exclusive {
                     config: MonitorConfig {
                         name: "monitor_1".to_string(),
