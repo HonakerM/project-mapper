@@ -20,10 +20,13 @@ struct Receiver {
 }
 
 impl Receiver {
-    pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: RuntimeConfig) -> Self {
+    pub fn new(
+        sender: mpsc::Sender<RuntimeMessage>,
+        config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
+    ) -> Self {
         Self {
             update_service: Arc::new(tokio::sync::Mutex::new(UpdateRuntimeService::new(
-                sender, config,
+                sender, config_fn,
             ))),
         }
     }
@@ -41,7 +44,10 @@ impl Receiver {
     }
 }
 
-pub fn run_receiver(sender: mpsc::Sender<RuntimeMessage>, config: RuntimeConfig) -> Result<()> {
-    let local_receiver = Receiver::new(sender, config);
+pub fn run_receiver(
+    sender: mpsc::Sender<RuntimeMessage>,
+    config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
+) -> Result<()> {
+    let local_receiver = Receiver::new(sender, config_fn);
     local_receiver.run()
 }

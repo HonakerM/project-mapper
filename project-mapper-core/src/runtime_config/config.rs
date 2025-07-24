@@ -18,7 +18,7 @@ use crate::{
 };
 
 // Top-Level Config object for the runtime
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct RuntimeConfig {
     pub inputs: Vec<InputComponentConfig>,
     pub effects: Vec<EffectComponentConfig>,

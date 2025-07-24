@@ -1,8 +1,8 @@
 use core::time;
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::{Arc, LazyLock, Mutex, mpsc};
 use std::thread;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use gst::prelude::*;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
@@ -12,8 +12,10 @@ use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::receivers::receiver::run_receiver;
 use crate::types::message::RuntimeMessage;
 
+static GLOBAL_RUNTIME_CONFIG: LazyLock<Arc<Mutex<Option<RuntimeConfig>>>> =
+    LazyLock::new(|| Arc::new(Mutex::new(None)));
+
 pub struct Runtime {
-    pub config: RuntimeConfig,
     pub component_factory: Box<dyn ComponentFactory>,
     pub component_helper: Box<dyn ComponentLookupHelper>,
 
@@ -35,8 +37,21 @@ impl Runtime {
             .validate()
             .context("Failed to validate runtime config")?;
 
+        // update the global config with the one provided
+        {
+            if !GLOBAL_RUNTIME_CONFIG
+                .lock()
+                .map_err(|_| anyhow!("Unable to aquire global runtime lock"))?
+                .is_none()
+            {
+                return Err(anyhow!(
+                    "GLOBAL_RUNTIME_CONFIG has already been set. Can not have multiple runtimes running in the same process"
+                ));
+            }
+        }
+        Runtime::set_config(config)?;
+
         Ok(Self {
-            config: config,
             component_helper: component_helper,
             component_factory: component_factory,
             // handle the message
@@ -54,7 +69,8 @@ impl Runtime {
         // next add all components to the comp helper. Make sure to track the output
         // components since those will be the root of our lookup_and_setup function
         let mut output_uids: Vec<Uid> = vec![];
-        for input_config in &self.config.inputs {
+        let local_config = Runtime::get_config()?;
+        for input_config in &local_config.inputs {
             self.component_helper
                 .create_and_insert_comp(input_config, self.component_factory.as_ref())
                 .context(format!(
@@ -62,7 +78,7 @@ impl Runtime {
                     input_config.uid()
                 ))?;
         }
-        for effect_config in &self.config.effects {
+        for effect_config in &local_config.effects {
             self.component_helper
                 .create_and_insert_comp(effect_config, self.component_factory.as_ref())
                 .context(format!(
@@ -70,7 +86,7 @@ impl Runtime {
                     effect_config.uid()
                 ))?;
         }
-        for output_config in &self.config.outputs {
+        for output_config in &local_config.outputs {
             self.component_helper
                 .create_and_insert_comp(output_config, self.component_factory.as_ref())
                 .context(format!(
@@ -106,7 +122,9 @@ impl Runtime {
         }
 
         // start the receiver threads
-        thread::spawn(move || run_receiver(self.message_sender.clone(), self.config.clone()));
+        thread::spawn(move || {
+            run_receiver(self.message_sender.clone(), Arc::new(Runtime::get_config))
+        });
 
         // Start the pipeline
         pipeline
@@ -137,5 +155,24 @@ impl Runtime {
                 RuntimeMessage::UpdateRuntime(_) => {}
             }
         }
+    }
+
+    fn get_config() -> Result<RuntimeConfig> {
+        let runtime_config_option = GLOBAL_RUNTIME_CONFIG
+            .lock()
+            .map_err(|_| anyhow!(("Unable to acquire global runtime lock")))?;
+
+        match runtime_config_option.as_ref() {
+            None => Err(anyhow!("Unable to locate global runtime config")),
+            Some(config) => Ok(config.clone()),
+        }
+    }
+
+    fn set_config(config: RuntimeConfig) -> Result<()> {
+        let mut runtime_config_option = GLOBAL_RUNTIME_CONFIG
+            .lock()
+            .map_err(|_| anyhow!(("Unable to acquire global runtime lock")))?;
+        runtime_config_option.replace(config);
+        Ok(())
     }
 }

@@ -2,10 +2,11 @@ use std::{
     convert::Infallible,
     future::{Future, ready},
     pin::Pin,
-    sync::mpsc,
+    sync::{Mutex, mpsc},
     task::{Context, Poll},
 };
 
+use anyhow::Result;
 use project_mapper_core::{
     loader::runtime_loader::load_config_json, runtime_config::RuntimeConfig,
 };
@@ -19,12 +20,15 @@ use crate::types::message::RuntimeMessage;
 #[derive(Clone)]
 pub struct UpdateRuntimeService {
     sender: mpsc::Sender<RuntimeMessage>,
-    config: RuntimeConfig,
+    config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
 }
 
 impl UpdateRuntimeService {
-    pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: RuntimeConfig) -> Self {
-        Self { sender, config }
+    pub fn new(
+        sender: mpsc::Sender<RuntimeMessage>,
+        config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
+    ) -> Self {
+        Self { sender, config_fn }
     }
 }
 
@@ -49,8 +53,19 @@ impl Service<String> for UpdateRuntimeService {
             }
         };
 
+        // Get the current config from the callback fn
+        let current_config = match (self.config_fn)() {
+            Ok(config) => config,
+            Err(err) => {
+                return Box::pin(ready(Err(format!(
+                    "Unable to deserialize config due to: {:#}",
+                    err
+                ))));
+            }
+        };
+
         // validate that the new config can be converted from the old
-        match self.config.validate_changes(&new_config) {
+        match current_config.validate_changes(&new_config) {
             Err(err) => {
                 return Box::pin(ready(Err(format!(
                     "Unable to update to new config due to: {:#}",
@@ -73,7 +88,8 @@ impl Service<String> for UpdateRuntimeService {
             }
             _ => {}
         }
-        self.config = new_config;
+
+        // ! todo we should avoid multiple updates in a row
 
         // send back the successful runtime
         Box::pin(ready(Ok("Updated runtime".to_string())))

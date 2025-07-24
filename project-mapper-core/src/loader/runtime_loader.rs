@@ -12,7 +12,7 @@ pub fn load_config_file(path: &String) -> Result<RuntimeConfig> {
 
 // load a runtime config from a raw json
 pub fn load_config_json(data: &String) -> Result<RuntimeConfig> {
-    let deserialized: RuntimeConfig = serde_json::from_str(data).unwrap();
+    let deserialized: RuntimeConfig = serde_json::from_str(data)?;
     Ok(deserialized)
 }
 
