@@ -17,9 +17,15 @@ use crate::types::message::RuntimeMessage;
 
 // Generic Service for updating the runtime
 #[derive(Clone)]
-struct UpdateRuntimeService {
+pub struct UpdateRuntimeService {
     sender: mpsc::Sender<RuntimeMessage>,
     config: RuntimeConfig,
+}
+
+impl UpdateRuntimeService {
+    pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: RuntimeConfig) -> Self {
+        Self { sender, config }
+    }
 }
 
 impl Service<String> for UpdateRuntimeService {

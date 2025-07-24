@@ -9,6 +9,7 @@ use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
+use crate::receivers::receiver::run_receiver;
 use crate::types::message::RuntimeMessage;
 
 pub struct Runtime {
@@ -103,6 +104,9 @@ impl Runtime {
                 )
                 .context("Failed to setup default runtime component")?;
         }
+
+        // start the receiver threads
+        thread::spawn(move || run_receiver(self.message_sender.clone(), self.config.clone()));
 
         // Start the pipeline
         pipeline
