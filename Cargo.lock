@@ -1283,9 +1283,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
+ "futures-util",
  "gstreamer",
  "gstreamer-video",
  "http",
+ "http-body-util",
  "hyper",
  "project-mapper-core",
  "raw-window-handle",

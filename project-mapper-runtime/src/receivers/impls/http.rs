@@ -1,7 +1,14 @@
+use crate::receivers::services::update::LockedUpdateService;
 use crate::receivers::{impls::shared::ReceiverImpl, services::update::UpdateRuntimeService};
+use axum::body::{Body};
+use axum::extract::Request;
+use axum::response::Response;
 use axum::{Router, body::Bytes, extract::State, response::IntoResponse, routing::post};
 use http::StatusCode;
+use std::convert::Infallible;
+use http_body_util::BodyExt;
 use std::sync::{Arc, Mutex};
+use std::task::{Context, Poll};
 use tokio::{runtime::Builder, task::JoinHandle};
 use tower::Service;
 use tower::util::ServiceExt;
@@ -21,8 +28,48 @@ impl ReceiverImpl for HttpReceiver {
     }
 }
 
+
+pub struct AxumUpdateService {
+    base: LockedUpdateService
+}
+
+impl Service<Request<Body>> for AxumUpdateService {
+    type Response = Response<Body>;
+    type Error = Infallible;
+    type Future = futures_util::future::Ready<Result<Self::Response, Self::Error>>;
+
+    
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // Always ready; locking happens in call
+        match self.base.poll_ready(cx) {
+            Poll::Ready(_) => Poll::Ready(Ok(())),
+            Poll::Pending => Poll::Pending,
+        }
+        
+    }
+
+    fn call(&mut self, req: Request<Body>) -> Self::Future {
+        let thing = req.body_mut().collect();
+
+        // get the data as a string
+        let body_bytes = body::to_bytes(req);
+
+        let str_data = req.body();
+        // get the inner service
+        let inner = self.base.clone();
+        let result = inner.call(req);
+
+        let response = Response::builder()
+        .status(StatusCode::OK)
+        .body(Body::from("Hello from Tower service!"))
+        .unwrap();
+
+        futures_util::future::ready(Ok(response))
+    }
+}
+
 async fn axum_handler(
-    State(service): State<Arc<tokio::sync::Mutex<UpdateRuntimeService>>>,
+    State(service): State<Arc<Mutex<UpdateRuntimeService>>>,
     body: Bytes,
 ) -> impl IntoResponse {
     let input = match String::from_utf8(body.to_vec()) {
@@ -30,8 +77,7 @@ async fn axum_handler(
         Err(_) => return (StatusCode::BAD_REQUEST, "Invalid UTF-8").into_response(),
     };
 
-    let mut locked_service = service.lock().await;
-    match locked_service.ready().await {
+    match service.ready().await {
         Ok(_) => match locked_service.call(input).await {
             Ok(resp) => resp.into_response(),
             Err(e) => (StatusCode::BAD_REQUEST, e).into_response(),

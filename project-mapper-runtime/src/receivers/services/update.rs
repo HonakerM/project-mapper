@@ -17,7 +17,7 @@ use tower::Service; // for `oneshot`
 use crate::types::message::RuntimeMessage;
 
 // Generic Service for updating the runtime
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct UpdateRuntimeService {
     sender: mpsc::Sender<RuntimeMessage>,
     config: Arc<Mutex<RuntimeConfig>>,
@@ -29,7 +29,10 @@ impl UpdateRuntimeService {
     }
 }
 
-impl Service<String> for UpdateRuntimeService {
+#[derive(Clone)]
+pub struct LockedUpdateService(pub Arc<Mutex<UpdateRuntimeService>>);
+
+impl Service<String> for LockedUpdateService {
     type Response = String;
     type Error = String;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
@@ -39,7 +42,7 @@ impl Service<String> for UpdateRuntimeService {
     }
 
     fn call(&mut self, input: String) -> Self::Future {
-        // attempt to load the string as a json
+        // attempt to load the string as a json before locking the service
         let new_config = match load_config_json(&input) {
             Ok(config) => config,
             Err(err) => {
@@ -49,10 +52,22 @@ impl Service<String> for UpdateRuntimeService {
                 ))));
             }
         };
+        
+        // Access the underlying type of the service and ensure it's locked
+        let svc_arc = self.0.clone();
+        let svc = match svc_arc.lock() {
+            Ok(svc) => svc,
+            Err(err)=>{
+                return Box::pin(ready(Err(format!(
+                    "Unable to lock service due to poison error: {:#}",
+                    err
+                ))));
+            } 
+        };
 
         // Lock the current config and get its value
         {
-            let current_config = match self.config.lock() {
+            let current_config = match svc.config.lock() {
                 Ok(config) => config,
                 Err(err) => {
                     return Box::pin(ready(Err(format!(
@@ -74,7 +89,7 @@ impl Service<String> for UpdateRuntimeService {
             }
 
             // send the update message and update our local conifg
-            match self
+            match svc
                 .sender
                 .send(RuntimeMessage::UpdateRuntime(new_config.clone()))
             {
