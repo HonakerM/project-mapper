@@ -12,8 +12,7 @@ use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::receivers::receiver::run_receiver;
 use crate::types::message::RuntimeMessage;
 
-static GLOBAL_RUNTIME_CONFIG: LazyLock<Arc<Mutex<Option<RuntimeConfig>>>> =
-    LazyLock::new(|| Arc::new(Mutex::new(None)));
+static GLOBAL_RUNTIME_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
 pub struct Runtime {
     pub component_factory: Box<dyn ComponentFactory>,
@@ -26,30 +25,10 @@ pub struct Runtime {
 
 impl Runtime {
     pub fn new(
-        config: RuntimeConfig,
         component_factory: Box<dyn ComponentFactory>,
         component_helper: Box<dyn ComponentLookupHelper>,
     ) -> Result<Self> {
         let (send, recv) = mpsc::channel();
-
-        // ensure the config is generally valid
-        config
-            .validate()
-            .context("Failed to validate runtime config")?;
-
-        // update the global config with the one provided
-        {
-            if !GLOBAL_RUNTIME_CONFIG
-                .lock()
-                .map_err(|_| anyhow!("Unable to aquire global runtime lock"))?
-                .is_none()
-            {
-                return Err(anyhow!(
-                    "GLOBAL_RUNTIME_CONFIG has already been set. Can not have multiple runtimes running in the same process"
-                ));
-            }
-        }
-        Runtime::set_config(config)?;
 
         Ok(Self {
             component_helper: component_helper,
@@ -61,40 +40,71 @@ impl Runtime {
     }
 
     // run the given runtime
-    pub fn run(mut self) -> Result<()> {
-        // start by initializing gst and the pipeline
+    pub fn run(mut self, config: Arc<Mutex<RuntimeConfig>>) -> Result<()> {
+        // Before doing literally anything. Initialize GST
         gst::init().context("Failed to initialize gst")?;
-        let pipeline = gst::Pipeline::new();
 
-        // next add all components to the comp helper. Make sure to track the output
-        // components since those will be the root of our lookup_and_setup function
+        // aquire the global lock to ensure only one runtime can run at a time
+        let _unused_lock = GLOBAL_RUNTIME_LOCK
+            .lock()
+            .map_err(|e| {
+                anyhow!(
+                    "Recieved poision error while aquireing global runtime lock: {}",
+                    e.to_string()
+                )
+            })
+            .context("Failed to aquire global runtime lock")?;
+
+        // track the output uids so we know what to setup
         let mut output_uids: Vec<Uid> = vec![];
-        let local_config = Runtime::get_config()?;
-        for input_config in &local_config.inputs {
-            self.component_helper
-                .create_and_insert_comp(input_config, self.component_factory.as_ref())
-                .context(format!(
-                    "failed to create input component: {}",
-                    input_config.uid()
-                ))?;
+        // setup all the components based on the config
+        {
+            let local_config = config
+                .lock()
+                .map_err(|e| {
+                    anyhow!(
+                        "Recieved poision error while aquireing config lock: {}",
+                        e.to_string()
+                    )
+                })
+                .context("Failed to aquire config lock")?;
+
+            // ensure the config is generally valid
+            local_config
+                .validate()
+                .context("Failed to validate runtime config")?;
+
+            // next add all components to the comp helper. Make sure to track the output
+            // components since those will be the root of our lookup_and_setup function
+            for input_config in &local_config.inputs {
+                self.component_helper
+                    .create_and_insert_comp(input_config, self.component_factory.as_ref())
+                    .context(format!(
+                        "failed to create input component: {}",
+                        input_config.uid()
+                    ))?;
+            }
+            for effect_config in &local_config.effects {
+                self.component_helper
+                    .create_and_insert_comp(effect_config, self.component_factory.as_ref())
+                    .context(format!(
+                        "failed to create effect component: {}",
+                        effect_config.uid()
+                    ))?;
+            }
+            for output_config in &local_config.outputs {
+                self.component_helper
+                    .create_and_insert_comp(output_config, self.component_factory.as_ref())
+                    .context(format!(
+                        "failed to create output component: {}",
+                        output_config.uid()
+                    ))?;
+                output_uids.push(output_config.uid());
+            }
         }
-        for effect_config in &local_config.effects {
-            self.component_helper
-                .create_and_insert_comp(effect_config, self.component_factory.as_ref())
-                .context(format!(
-                    "failed to create effect component: {}",
-                    effect_config.uid()
-                ))?;
-        }
-        for output_config in &local_config.outputs {
-            self.component_helper
-                .create_and_insert_comp(output_config, self.component_factory.as_ref())
-                .context(format!(
-                    "failed to create output component: {}",
-                    output_config.uid()
-                ))?;
-            output_uids.push(output_config.uid());
-        }
+
+        // create the pipeline
+        let pipeline = gst::Pipeline::new();
 
         // for each output uid call setup. No need to do this on other components since they
         // will work recursively
@@ -122,9 +132,7 @@ impl Runtime {
         }
 
         // start the receiver threads
-        thread::spawn(move || {
-            run_receiver(self.message_sender.clone(), Arc::new(Runtime::get_config))
-        });
+        thread::spawn(move || run_receiver(self.message_sender.clone(), config.clone()));
 
         // Start the pipeline
         pipeline
@@ -155,24 +163,5 @@ impl Runtime {
                 RuntimeMessage::UpdateRuntime(_) => {}
             }
         }
-    }
-
-    fn get_config() -> Result<RuntimeConfig> {
-        let runtime_config_option = GLOBAL_RUNTIME_CONFIG
-            .lock()
-            .map_err(|_| anyhow!(("Unable to acquire global runtime lock")))?;
-
-        match runtime_config_option.as_ref() {
-            None => Err(anyhow!("Unable to locate global runtime config")),
-            Some(config) => Ok(config.clone()),
-        }
-    }
-
-    fn set_config(config: RuntimeConfig) -> Result<()> {
-        let mut runtime_config_option = GLOBAL_RUNTIME_CONFIG
-            .lock()
-            .map_err(|_| anyhow!(("Unable to acquire global runtime lock")))?;
-        runtime_config_option.replace(config);
-        Ok(())
     }
 }

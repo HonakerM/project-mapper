@@ -20,15 +20,12 @@ use crate::types::message::RuntimeMessage;
 #[derive(Clone)]
 pub struct UpdateRuntimeService {
     sender: mpsc::Sender<RuntimeMessage>,
-    config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
+    config: Arc<Mutex<RuntimeConfig>>,
 }
 
 impl UpdateRuntimeService {
-    pub fn new(
-        sender: mpsc::Sender<RuntimeMessage>,
-        config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
-    ) -> Self {
-        Self { sender, config_fn }
+    pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
+        Self { sender, config }
     }
 }
 
@@ -53,43 +50,43 @@ impl Service<String> for UpdateRuntimeService {
             }
         };
 
-        // Get the current config from the callback fn
-        let current_config = match (self.config_fn)() {
-            Ok(config) => config,
-            Err(err) => {
-                return Box::pin(ready(Err(format!(
-                    "Unable to deserialize config due to: {:#}",
-                    err
-                ))));
-            }
-        };
-
-        // validate that the new config can be converted from the old
-        match current_config.validate_changes(&new_config) {
-            Err(err) => {
-                return Box::pin(ready(Err(format!(
-                    "Unable to update to new config due to: {:#}",
-                    err
-                ))));
-            }
-            _ => {}
-        }
-
-        // send the update message and update our local conifg
-        match self
-            .sender
-            .send(RuntimeMessage::UpdateRuntime(new_config.clone()))
+        // Lock the current config and get its value
         {
-            Err(err) => {
-                return Box::pin(ready(Err(format!(
-                    "Unable to send runtime message due to err: {:#}. Runtime is most likely shutting down",
-                    err
-                ))));
-            }
-            _ => {}
-        }
+            let current_config = match self.config.lock() {
+                Ok(config) => config,
+                Err(err) => {
+                    return Box::pin(ready(Err(format!(
+                        "Unable to capture config due to : {:#}",
+                        err
+                    ))));
+                }
+            };
 
-        // ! todo we should avoid multiple updates in a row
+            // validate that the new config can be converted from the old
+            match current_config.validate_changes(&new_config) {
+                Err(err) => {
+                    return Box::pin(ready(Err(format!(
+                        "Unable to update to new config due to: {:#}",
+                        err
+                    ))));
+                }
+                _ => {}
+            }
+
+            // send the update message and update our local conifg
+            match self
+                .sender
+                .send(RuntimeMessage::UpdateRuntime(new_config.clone()))
+            {
+                Err(err) => {
+                    return Box::pin(ready(Err(format!(
+                        "Unable to send runtime message due to err: {:#}. Runtime is most likely shutting down",
+                        err
+                    ))));
+                }
+                _ => {}
+            }
+        }
 
         // send back the successful runtime
         Box::pin(ready(Ok("Updated runtime".to_string())))

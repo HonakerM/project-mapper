@@ -1,4 +1,4 @@
-use std::sync::{Arc, mpsc};
+use std::sync::{Arc, Mutex, mpsc};
 
 use project_mapper_core::runtime_config::RuntimeConfig;
 use tokio::runtime::Builder;
@@ -20,13 +20,10 @@ struct Receiver {
 }
 
 impl Receiver {
-    pub fn new(
-        sender: mpsc::Sender<RuntimeMessage>,
-        config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
-    ) -> Self {
+    pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
         Self {
             update_service: Arc::new(tokio::sync::Mutex::new(UpdateRuntimeService::new(
-                sender, config_fn,
+                sender, config,
             ))),
         }
     }
@@ -46,8 +43,8 @@ impl Receiver {
 
 pub fn run_receiver(
     sender: mpsc::Sender<RuntimeMessage>,
-    config_fn: Arc<dyn Fn() -> Result<RuntimeConfig> + Send + Sync>,
+    config: Arc<Mutex<RuntimeConfig>>,
 ) -> Result<()> {
-    let local_receiver = Receiver::new(sender, config_fn);
+    let local_receiver = Receiver::new(sender, config);
     local_receiver.run()
 }

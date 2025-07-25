@@ -1,3 +1,5 @@
+use std::sync::{Arc, Mutex};
+
 use anyhow::{Context, Result};
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
@@ -83,6 +85,13 @@ fn run_main() -> Result<()> {
                     mode: WindowMode::Windowed {},
                 }),
                 src_uid: 7,
+            },            OutputComponentConfig {
+                uid: 12,
+                name: "comp_5".to_string(),
+                config: Box::new(WindowConfig {
+                    mode: WindowMode::Windowed {},
+                }),
+                src_uid: 7,
             },
         ],
     };
@@ -91,12 +100,13 @@ fn run_main() -> Result<()> {
         .context("Failed to validate runtime config")?;
 
     let runtime = Runtime::new(
-        config,
         Box::new(DefaultComponentFactory {}),
         Box::new(DefaultComponentHelper::new()),
     )
     .context("Failed to create runtime")?;
-    runtime.run().context("Failed to run runtime due to error")
+    runtime
+        .run(Arc::new(Mutex::new(config)))
+        .context("Failed to run runtime due to error")
 }
 
 fn main() {
