@@ -27,6 +27,15 @@ impl UpdateRuntimeService {
     pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
         Self { sender, config }
     }
+
+    pub fn new_locked(
+        sender: mpsc::Sender<RuntimeMessage>,
+        config: Arc<Mutex<RuntimeConfig>>,
+    ) -> LockedUpdateService {
+        LockedUpdateService(Arc::new(Mutex::new(UpdateRuntimeService::new(
+            sender, config,
+        ))))
+    }
 }
 
 #[derive(Clone)]
@@ -52,17 +61,17 @@ impl Service<String> for LockedUpdateService {
                 ))));
             }
         };
-        
+
         // Access the underlying type of the service and ensure it's locked
         let svc_arc = self.0.clone();
         let svc = match svc_arc.lock() {
             Ok(svc) => svc,
-            Err(err)=>{
+            Err(err) => {
                 return Box::pin(ready(Err(format!(
                     "Unable to lock service due to poison error: {:#}",
                     err
                 ))));
-            } 
+            }
         };
 
         // Lock the current config and get its value

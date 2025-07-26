@@ -7,7 +7,7 @@ use crate::{
     receivers::{
         impls::{http::HttpReceiver, shared::ReceiverImpl},
         receiver,
-        services::update::UpdateRuntimeService,
+        services::update::{LockedUpdateService, UpdateRuntimeService},
     },
     types::message::RuntimeMessage,
 };
@@ -16,15 +16,13 @@ use anyhow::{Result, anyhow};
 
 #[derive(Clone)]
 struct Receiver {
-    update_service: Arc<tokio::sync::Mutex<UpdateRuntimeService>>,
+    update_service: LockedUpdateService,
 }
 
 impl Receiver {
     pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
         Self {
-            update_service: Arc::new(tokio::sync::Mutex::new(UpdateRuntimeService::new(
-                sender, config,
-            ))),
+            update_service: UpdateRuntimeService::new_locked(sender, config),
         }
     }
 
