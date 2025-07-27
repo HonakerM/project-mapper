@@ -17,6 +17,7 @@ anyhow = {workspace = true}
 
 # Optional receiver dependencies
 tokio = { version = "1.38", features = ["rt", "macros"], optional = true}
+tokio-util = {version = "0.7", optional = true}
 tower = {version = "0.4", features=["util"], optional=true}
 # Optional HTTP receiver dependency
 axum = {version = "0.7", optional=true}
@@ -27,5 +28,5 @@ http-body-util = {version = "0.1", optional=true}
 
 [features]
 default = ["http-receiver"]
-receivers = ["dep:tokio","dep:tower"]
+receivers = ["dep:tokio","dep:tower", "dep:tokio-util"]
 http-receiver = ["receivers", "dep:axum", "dep:hyper", "dep:http", "dep:futures-util", "dep:http-body-util"]

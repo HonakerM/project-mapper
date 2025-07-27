@@ -9,7 +9,7 @@ use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
-use crate::receivers::receiver::run_receiver;
+use crate::receivers::receiver::start_receiver;
 use crate::types::message::RuntimeMessage;
 
 static GLOBAL_RUNTIME_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
@@ -132,7 +132,7 @@ impl Runtime {
         }
 
         // start the receiver threads
-        thread::spawn(move || run_receiver(self.message_sender.clone(), config.clone()));
+        let mut receiver_handle = start_receiver(self.message_sender.clone(), config.clone())?;
 
         // Start the pipeline
         pipeline
@@ -156,6 +156,8 @@ impl Runtime {
                     self.component_helper
                         .stop()
                         .context("Failed to stop components")?;
+
+                    receiver_handle.cancel()?;
 
                     println!("Exiting runtime due to exit event: {:?}", message);
                     return Ok(());
