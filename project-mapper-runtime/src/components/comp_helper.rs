@@ -56,6 +56,7 @@ impl ComponentLookupHelper for DefaultComponentHelper {
                     self.main_comp_id = Some(mut_comp.uid());
                 }
             }
+            return Ok(());
         }
 
         // else create the component

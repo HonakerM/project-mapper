@@ -9,6 +9,7 @@ use crate::{
 };
 use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
+use log::{debug, info};
 use project_mapper_core::runtime_config::{
     effect::{EffectComponentConfig, gamma::GammaConfig},
     shared::{ComponentConfig, Uid},
@@ -22,8 +23,10 @@ pub struct GammaComponent {
 
 impl GammaComponent {
     fn update_config(element: &gst::Element, config: &GammaConfig) -> Result<()> {
-        if let Some(hue) = &config.gamma {
-            element.set_property("gamma", hue.clone());
+        debug!("Updating gamma component with config: {:?}", config);
+        if let Some(gamma) = &config.gamma {
+            info!("Setting gamma element to {}", gamma);
+            element.set_property("gamma", gamma.clone());
         } else {
             let pspec = element
                 .find_property("gamma")
@@ -111,6 +114,7 @@ impl Component for GammaComponent {
             None => Err(anyhow!("GammaComponent is not GammaConfig")),
         }?;
 
+        self.config = config;
         GammaComponent::update_config(&self.element, &gamma_config)?;
 
         Ok(())

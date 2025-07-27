@@ -1,9 +1,11 @@
 use core::time;
+use std::any::type_name_of_val;
+use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, mpsc};
 use std::thread;
 
 use anyhow::{Context, Result, anyhow};
-use gst::prelude::*;
+use gst::{DebugGraphDetails, StateChangeSuccess, prelude::*};
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
@@ -35,10 +37,12 @@ impl Runtime {
         // setup the ctrlc handler early on to ensure we always capture the signal
         let local_send = send.clone();
         ctrlc::set_handler(move || {
-            local_send.send(RuntimeMessage::ExitRuntime()).expect("Unable to send exit event. Panicing");
-        }).context("Error setting Ctrl-C handler")?;
+            local_send
+                .send(RuntimeMessage::ExitRuntime())
+                .expect("Unable to send exit event. Panicing");
+        })
+        .context("Error setting Ctrl-C handler")?;
 
-        
         Ok(Self {
             component_helper: component_helper,
             component_factory: component_factory,
@@ -89,6 +93,11 @@ impl Runtime {
 
         // start the receiver threads
         let mut receiver_handle = start_receiver(self.message_sender.clone(), config.clone())?;
+        //let local_pipeline = pipeline.clone();
+        //thread::spawn(|| Runtime::monitor_pipeline_events(local_pipeline));
+
+        // right before starting the pipeline export it to a file
+        pipeline.debug_to_dot_file(DebugGraphDetails::all(), Path::new("./pipeline.dot"));
 
         // Start the pipeline
         pipeline
@@ -243,5 +252,38 @@ impl Runtime {
         }
 
         Ok(output_uids)
+    }
+
+    fn monitor_pipeline_events(pipeline: gst::Pipeline) {
+        let bus = pipeline.bus().unwrap();
+        for msg in bus.iter_timed(gst::ClockTime::NONE) {
+            match msg.view() {
+                gst::MessageView::Error(err) => {
+                    info!(
+                        "Error from {}: {} ({:?})",
+                        err.src()
+                            .map(|s| s.path_string())
+                            .unwrap_or_else(|| "None".to_string().into()),
+                        err.error(),
+                        err.debug()
+                    );
+                }
+                gst::MessageView::StateChanged(state) => {
+                    info!(
+                        "State changed: {} -> {:?}",
+                        state.src().map(|s| s.path_string()).unwrap(),
+                        state.current()
+                    );
+                }
+                msg => {
+                    info!(
+                        "Receieved unknown message (type: {}): {:?}",
+                        type_name_of_val(&msg),
+                        msg
+                    )
+                }
+                _ => {}
+            }
+        }
     }
 }
