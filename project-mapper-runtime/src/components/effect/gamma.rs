@@ -20,6 +20,20 @@ pub struct GammaComponent {
     branch: BranchControl,
 }
 
+impl GammaComponent {
+    fn update_config(element: &gst::Element, config: &GammaConfig) -> Result<()> {
+        if let Some(hue) = &config.gamma {
+            element.set_property("gamma", hue.clone());
+        } else {
+            let pspec = element
+                .find_property("gamma")
+                .ok_or(anyhow!("Unable to find default gamma spec"))?;
+            let default_value = pspec.default_value();
+            element.set_property("gamma", &default_value);
+        }
+        Ok(())
+    }
+}
 impl Component for GammaComponent {
     // runtime lifecycle functions
     // Construct object
@@ -43,9 +57,7 @@ impl Component for GammaComponent {
         let element = gst::ElementFactory::make("gamma")
             .name(config.name())
             .build()?;
-        if let Some(hue) = &gamma_config.gamma {
-            element.set_property("gamma", hue.clone());
-        }
+        GammaComponent::update_config(&element, &gamma_config)?;
 
         let branch = BranchControl::new(config.name(), true, true)?;
         Ok(Self {
@@ -80,6 +92,26 @@ impl Component for GammaComponent {
             .borrow()
             .element()?
             .link(self.branch.get_input()?)?;
+
+        Ok(())
+    }
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
+        // parse config and ensure it's correct types
+        let config: EffectComponentConfig =
+            match config.as_any().downcast_ref::<EffectComponentConfig>() {
+                Some(b) => Ok(b.clone()),
+                None => Err(Error::msg(
+                    "ComponentConfig can not be typed to EffectComponentConfig",
+                )),
+            }?;
+
+        // construct element
+        let gamma_config = match config.config.as_any().downcast_ref::<GammaConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("GammaComponent is not GammaConfig")),
+        }?;
+
+        GammaComponent::update_config(&self.element, &gamma_config)?;
 
         Ok(())
     }

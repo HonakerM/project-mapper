@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
+use project_mapper_core::loader::runtime_loader::export_config_json;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
@@ -98,6 +99,11 @@ fn run_main() -> Result<()> {
     config
         .validate()
         .context("Failed to validate runtime config")?;
+
+    println!(
+        "Current json config: '{}'",
+        export_config_json(&config).expect("no")
+    );
 
     let runtime = Runtime::new(
         Box::new(DefaultComponentFactory {}),

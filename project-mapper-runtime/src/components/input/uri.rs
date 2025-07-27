@@ -173,6 +173,28 @@ impl Component for UriComponent {
         Ok(())
     }
 
+    fn update(&mut self, unknown_config: &dyn ComponentConfig) -> Result<()> {
+        // parse config and ensure it's correct types
+        let config: InputComponentConfig = match unknown_config
+            .as_any()
+            .downcast_ref::<InputComponentConfig>()
+        {
+            Some(b) => Ok(b.clone()),
+            None => Err(Error::msg(
+                "ComponentConfig can not be typed to InputComponentConfig",
+            )),
+        }?;
+
+        // ensure we have a test config
+        let uri_config = match config.config.as_any().downcast_ref::<UriConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("InputComponentConfig is not UriConfig")),
+        }?;
+
+        self.element.set_property("uri", uri_config.uri);
+        Ok(())
+    }
+
     // accessor functions
     fn element(&self) -> Result<&Element> {
         // return the tee element since that's what people should
