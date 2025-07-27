@@ -32,6 +32,13 @@ impl Runtime {
     ) -> Result<Self> {
         let (send, recv) = mpsc::channel();
 
+        // setup the ctrlc handler early on to ensure we always capture the signal
+        let local_send = send.clone();
+        ctrlc::set_handler(move || {
+            local_send.send(RuntimeMessage::ExitRuntime()).expect("Unable to send exit event. Panicing");
+        }).context("Error setting Ctrl-C handler")?;
+
+        
         Ok(Self {
             component_helper: component_helper,
             component_factory: component_factory,
@@ -121,12 +128,12 @@ impl Runtime {
                 RuntimeMessage::UpdateRuntime(new_config) => {
                     info!("Running update with new config: {:?}", config);
                     // stop the pipeline before updating
-                    pipeline.set_state(gst::State::Paused)?;
+                    //pipeline.set_state(gst::State::Paused)?;
 
                     self.update_runtime(&pipeline, &config, new_config)?;
 
                     // restart the pipeline
-                    pipeline.set_state(gst::State::Playing)?;
+                    //pipeline.set_state(gst::State::Playing)?;
                     info!("Completed update logic");
                 }
             }

@@ -13,6 +13,7 @@ use project_mapper_core::runtime_config::{
     effect::{EffectComponentConfig, balance::BalanceConfig},
     shared::{ComponentConfig, Uid},
 };
+use log::{debug};
 
 pub struct BalanceComponent {
     config: EffectComponentConfig,
@@ -22,7 +23,9 @@ pub struct BalanceComponent {
 
 impl BalanceComponent {
     fn update_config(element: &gst::Element, config: BalanceConfig) -> Result<()> {
+        debug!("Updating balance component with config: {:?}", config);
         if let Some(brightness) = &config.brightness {
+            debug!("Setting brightness to: {:?}", brightness.clone());
             element.set_property("brightness", brightness.clone());
         } else {
             let pspec = element

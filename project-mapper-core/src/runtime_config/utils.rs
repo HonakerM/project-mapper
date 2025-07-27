@@ -72,9 +72,9 @@ pub fn gather_config_changes(
     updated: &RuntimeConfig,
 ) -> Result<RuntimeConfigChangeTracker> {
     // get a map to later lookup the config for the uid
-    let mut org_lookup_helper: HashMap<Uid, Box<dyn ComponentConfig>> = HashMap::new();
-    for config in org.gather_configs() {
-        org_lookup_helper.insert(config.uid(), config);
+    let mut new_lookup_helper: HashMap<Uid, Box<dyn ComponentConfig>> = HashMap::new();
+    for config in updated.gather_configs() {
+        new_lookup_helper.insert(config.uid(), config);
     }
 
     let mut updates: Vec<Box<dyn ComponentConfig>> = vec![];
@@ -82,7 +82,7 @@ pub fn gather_config_changes(
 
     // track updates for inputs
     gather_config_helper(
-        &mut org_lookup_helper,
+        &mut new_lookup_helper,
         &mut updates,
         &mut deletes,
         serde_json::to_value(&org.inputs)?,
@@ -91,7 +91,7 @@ pub fn gather_config_changes(
 
     // track updates for effects
     gather_config_helper(
-        &mut org_lookup_helper,
+        &mut new_lookup_helper,
         &mut updates,
         &mut deletes,
         serde_json::to_value(&org.effects)?,
@@ -100,7 +100,7 @@ pub fn gather_config_changes(
 
     // track updates for outputs
     gather_config_helper(
-        &mut org_lookup_helper,
+        &mut new_lookup_helper,
         &mut updates,
         &mut deletes,
         serde_json::to_value(&org.outputs)?,
@@ -114,7 +114,7 @@ pub fn gather_config_changes(
 }
 
 fn gather_config_helper(
-    org_lookup_helper: &mut HashMap<Uid, Box<dyn ComponentConfig>>,
+    lookup_helper: &mut HashMap<Uid, Box<dyn ComponentConfig>>,
     updates: &mut Vec<Box<dyn ComponentConfig>>,
     deletes: &mut Vec<Box<dyn ComponentConfig>>,
     org: Value,
@@ -125,13 +125,13 @@ fn gather_config_helper(
     {
         let input_helper = compare_config_vecs(org_vec, updated_vec)?;
         for uid in input_helper.updated {
-            let config = org_lookup_helper.remove(&uid).ok_or(anyhow!(
+            let config = lookup_helper.remove(&uid).ok_or(anyhow!(
                 "Somehow discovered change in component that doesn't exit"
             ))?;
             updates.push(config)
         }
         for uid in input_helper.deleted {
-            let config = org_lookup_helper.remove(&uid).ok_or(anyhow!(
+            let config = lookup_helper.remove(&uid).ok_or(anyhow!(
                 "Somehow discovered change in component that doesn't exit"
             ))?;
             deletes.push(config)
