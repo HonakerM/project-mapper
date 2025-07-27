@@ -2,5 +2,5 @@
 pub mod shared;
 
 #[cfg(feature = "http-receiver")]
-#[path = "./http.rs"]
+#[path = "./http/mod.rs"]
 pub mod http;

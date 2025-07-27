@@ -18,28 +18,13 @@ use tokio::{runtime::Builder, task::JoinHandle};
 use tower::Service;
 use tower::util::ServiceExt;
 
-pub struct HttpReceiver;
-
-impl ReceiverImpl for HttpReceiver {
-    async fn run(
-        address: String,
-        update_service: LockedUpdateService,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let app = build_axum(update_service);
-        println!("Serving HTTP on http://{}", address);
-        let listener = tokio::net::TcpListener::bind(address).await?;
-        axum::serve(listener, app).await?;
-        Ok(())
-    }
-}
-
 #[derive(Clone)]
 pub struct AxumUpdateService {
     base: LockedUpdateService,
 }
 
 impl AxumUpdateService {
-    fn new(base: LockedUpdateService) -> Self {
+    pub fn new(base: LockedUpdateService) -> Self {
         Self { base }
     }
 
@@ -96,10 +81,4 @@ impl Service<Request<Body>> for AxumUpdateService {
         }
         .boxed()
     }
-}
-
-fn build_axum(update_service: LockedUpdateService) -> Router {
-    let http_update_wrapper = AxumUpdateService::new(update_service);
-
-    Router::new().route("/v1/update_runtime", post_service(http_update_wrapper))
 }

@@ -27,8 +27,13 @@ impl UpdateRuntimeService {
     pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
         Self { sender, config }
     }
+}
 
-    pub fn new_locked(
+#[derive(Clone)]
+pub struct LockedUpdateService(pub Arc<Mutex<UpdateRuntimeService>>);
+
+impl LockedUpdateService {
+    pub fn new(
         sender: mpsc::Sender<RuntimeMessage>,
         config: Arc<Mutex<RuntimeConfig>>,
     ) -> LockedUpdateService {
@@ -37,9 +42,6 @@ impl UpdateRuntimeService {
         ))))
     }
 }
-
-#[derive(Clone)]
-pub struct LockedUpdateService(pub Arc<Mutex<UpdateRuntimeService>>);
 
 impl Service<String> for LockedUpdateService {
     type Response = String;

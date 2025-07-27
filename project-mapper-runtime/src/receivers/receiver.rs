@@ -22,7 +22,7 @@ struct Receiver {
 impl Receiver {
     pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
         Self {
-            update_service: UpdateRuntimeService::new_locked(sender, config),
+            update_service: LockedUpdateService::new(sender, config),
         }
     }
 
