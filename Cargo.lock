@@ -1295,6 +1295,7 @@ dependencies = [
  "http",
  "http-body-util",
  "hyper",
+ "log",
  "project-mapper-core",
  "raw-window-handle",
  "tokio",

@@ -12,6 +12,7 @@ use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::receivers::receiver::start_receiver;
 use crate::types::message::RuntimeMessage;
+use log::{info, warn};
 
 static GLOBAL_RUNTIME_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
@@ -56,9 +57,16 @@ impl Runtime {
             })
             .context("Failed to aquire global runtime lock")?;
 
+        let component_configs = {
+            config
+                .lock()
+                .map_err(|e| anyhow!("Unable to aquire config lock due to poison: {:#}", e))?
+                .gather_configs()
+        };
+
         // track the output uids so we know what to setup
         let output_uids: Vec<Uid> = self
-            .create_or_update_components(&config)
+            .create_or_update_components(&config, component_configs)
             .context("Unable to create components")?;
 
         // create the pipeline
@@ -107,11 +115,11 @@ impl Runtime {
                         .cancel()
                         .context("Failed to stop receiver handle")?;
 
-                    println!("Exiting runtime due to exit event: {:?}", message);
+                    info!("Exiting runtime due to exit event: {:?}", message);
                     return Ok(());
                 }
                 RuntimeMessage::UpdateRuntime(new_config) => {
-                    println!("Running update with new config: {:?}", config);
+                    info!("Running update with new config: {:?}", config);
                     // stop the pipeline before updating
                     pipeline.set_state(gst::State::Paused)?;
 
@@ -119,6 +127,7 @@ impl Runtime {
 
                     // restart the pipeline
                     pipeline.set_state(gst::State::Playing)?;
+                    info!("Completed update logic");
                 }
             }
         }
@@ -148,8 +157,12 @@ impl Runtime {
             change_tracker
         };
 
+        info!("Updated configs {:?}", change_tracker.updates);
+        info!("Deleted configs {:?}", change_tracker.deletes);
+
         // Create or update the remaining components
-        let updated_output_uids = self.update_components(change_tracker.updates)?;
+        let updated_output_uids =
+            self.create_or_update_components(current_config, change_tracker.updates)?;
 
         // for each output uid call setup. No need to do this on other components since they
         // will work recursively
@@ -164,6 +177,7 @@ impl Runtime {
     fn create_or_update_components(
         &mut self,
         config: &Arc<Mutex<RuntimeConfig>>,
+        component_configs: Vec<Box<dyn ComponentConfig>>,
     ) -> Result<Vec<Uid>> {
         // if the component helper contains the default component then remove it before creating
         // or updating components. This ensures if we add a component that could be main the default
@@ -195,32 +209,18 @@ impl Runtime {
                 .validate()
                 .context("Failed to validate runtime config")?;
 
-            // next add all components to the comp helper. Make sure to track the output
-            // components since those will be the root of our lookup_and_setup function
-            for input_config in &local_config.inputs {
+            for config in component_configs {
                 self.component_helper
-                    .create_or_update(input_config, self.component_factory.as_ref())
+                    .create_or_update(config.as_ref(), self.component_factory.as_ref())
                     .context(format!(
-                        "failed to create input component: {}",
-                        input_config.uid()
+                        "failed to create or update component: {}",
+                        config.uid()
                     ))?;
-            }
-            for effect_config in &local_config.effects {
-                self.component_helper
-                    .create_or_update(effect_config, self.component_factory.as_ref())
-                    .context(format!(
-                        "failed to create effect component: {}",
-                        effect_config.uid()
-                    ))?;
-            }
-            for output_config in &local_config.outputs {
-                self.component_helper
-                    .create_or_update(output_config, self.component_factory.as_ref())
-                    .context(format!(
-                        "failed to create output component: {}",
-                        output_config.uid()
-                    ))?;
-                output_uids.push(output_config.uid());
+
+                // parse config to check if its an output type
+                if let Some(__) = config.as_any().downcast_ref::<OutputComponentConfig>() {
+                    output_uids.push(config.uid());
+                }
             }
         }
 
@@ -233,24 +233,6 @@ impl Runtime {
                 .create_or_update(&default_config, self.component_factory.as_ref())
                 .context(format!("failed to create default runtime component"))?;
             output_uids.push(default_config.uid());
-        }
-
-        Ok(output_uids)
-    }
-
-    fn update_components(
-        &mut self,
-        component_configs: Vec<Box<dyn ComponentConfig>>,
-    ) -> Result<Vec<Uid>> {
-        let mut output_uids = vec![];
-        for config in component_configs {
-            self.component_helper
-                .create_or_update(config.as_ref(), self.component_factory.as_ref())?;
-
-            // parse config and ensure it's correct types
-            if let Some(__) = config.as_any().downcast_ref::<OutputComponentConfig>() {
-                output_uids.push(config.uid());
-            }
         }
 
         Ok(output_uids)

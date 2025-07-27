@@ -37,5 +37,5 @@ impl ReceiverImpl for HttpReceiver {
 fn build_axum(update_service: LockedUpdateService) -> Router {
     let http_update_wrapper = AxumUpdateService::new(update_service);
 
-    Router::new().route("/v1/update_runtime", post_service(http_update_wrapper))
+    Router::new().route("/v1/config", post_service(http_update_wrapper))
 }
