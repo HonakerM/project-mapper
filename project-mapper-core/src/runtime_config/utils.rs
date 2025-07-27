@@ -1,0 +1,192 @@
+use std::{
+    any::type_name_of_val,
+    collections::{HashMap, HashSet},
+    error::Error,
+    fmt::Display,
+};
+
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
+use crate::{
+    runtime_config::{
+        RuntimeConfig,
+        effect::EffectComponentConfig,
+        input::InputComponentConfig,
+        output::OutputComponentConfig,
+        shared::{ComponentConfig, Uid},
+    },
+    types::errors::RuntimeConfigValidationError,
+};
+use anyhow::{Result, anyhow};
+
+#[derive(PartialEq, Clone)]
+pub(crate) struct RuntimeConfigValidationHelper {
+    pub(crate) name: String,
+    pub(crate) type_name: String,
+}
+
+pub(crate) fn gather_validation_helper_data(
+    config: &RuntimeConfig,
+) -> HashMap<Uid, RuntimeConfigValidationHelper> {
+    let mut map = HashMap::new();
+    for config in &config.inputs {
+        map.insert(
+            config.uid(),
+            RuntimeConfigValidationHelper {
+                name: config.name(),
+                type_name: type_name_of_val(config.config.as_ref()).to_string(),
+            },
+        );
+    }
+    for config in &config.effects {
+        map.insert(
+            config.uid(),
+            RuntimeConfigValidationHelper {
+                name: config.name(),
+                type_name: type_name_of_val(config.config.as_ref()).to_string(),
+            },
+        );
+    }
+    for config in &config.outputs {
+        map.insert(
+            config.uid(),
+            RuntimeConfigValidationHelper {
+                name: config.name(),
+                type_name: type_name_of_val(config.config.as_ref()).to_string(),
+            },
+        );
+    }
+
+    map
+}
+
+#[derive(Debug)]
+pub struct RuntimeConfigChangeTracker {
+    pub updates: Vec<Box<dyn ComponentConfig>>,
+    pub deletes: Vec<Box<dyn ComponentConfig>>,
+}
+
+pub fn gather_config_changes(
+    org: &RuntimeConfig,
+    updated: &RuntimeConfig,
+) -> Result<RuntimeConfigChangeTracker> {
+    // get a map to later lookup the config for the uid
+    let mut org_lookup_helper: HashMap<Uid, Box<dyn ComponentConfig>> = HashMap::new();
+    for config in org.gather_configs() {
+        org_lookup_helper.insert(config.uid(), config);
+    }
+
+    let mut updates: Vec<Box<dyn ComponentConfig>> = vec![];
+    let mut deletes: Vec<Box<dyn ComponentConfig>> = vec![];
+
+    // track updates for inputs
+    gather_config_helper(
+        &mut org_lookup_helper,
+        &mut updates,
+        &mut deletes,
+        serde_json::to_value(&org.inputs)?,
+        serde_json::to_value(&updated.inputs)?,
+    )?;
+
+    // track updates for effects
+    gather_config_helper(
+        &mut org_lookup_helper,
+        &mut updates,
+        &mut deletes,
+        serde_json::to_value(&org.effects)?,
+        serde_json::to_value(&updated.effects)?,
+    )?;
+
+    // track updates for outputs
+    gather_config_helper(
+        &mut org_lookup_helper,
+        &mut updates,
+        &mut deletes,
+        serde_json::to_value(&org.outputs)?,
+        serde_json::to_value(&updated.outputs)?,
+    )?;
+
+    Ok(RuntimeConfigChangeTracker {
+        updates: updates,
+        deletes: deletes,
+    })
+}
+
+fn gather_config_helper(
+    org_lookup_helper: &mut HashMap<Uid, Box<dyn ComponentConfig>>,
+    updates: &mut Vec<Box<dyn ComponentConfig>>,
+    deletes: &mut Vec<Box<dyn ComponentConfig>>,
+    org: Value,
+    updated: Value,
+) -> Result<()> {
+    if let Value::Array(org_vec) = org
+        && let Value::Array(updated_vec) = updated
+    {
+        let input_helper = compare_config_vecs(org_vec, updated_vec)?;
+        for uid in input_helper.updated {
+            let config = org_lookup_helper.remove(&uid).ok_or(anyhow!(
+                "Somehow discovered change in component that doesn't exit"
+            ))?;
+            updates.push(config)
+        }
+        for uid in input_helper.deleted {
+            let config = org_lookup_helper.remove(&uid).ok_or(anyhow!(
+                "Somehow discovered change in component that doesn't exit"
+            ))?;
+            deletes.push(config)
+        }
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "Inputs to gather_config_helper do not have the correct type"
+        ))
+    }
+}
+
+struct RuntimeConfigChangeHelper {
+    pub updated: Vec<Uid>,
+    pub deleted: Vec<Uid>,
+}
+fn compare_config_vecs(
+    org_input: Vec<Value>,
+    new_input: Vec<Value>,
+) -> Result<RuntimeConfigChangeHelper> {
+    let mut updated_uids = vec![];
+    let mut deleted_uids = vec![];
+
+    // Convert Vec<Value> to HashMap<uid, Value>
+    let mut org_map: HashMap<Uid, Value> = HashMap::new();
+    for item in org_input {
+        org_map.insert(extract_uid_from_value(&item)?, item);
+    }
+
+    let mut new_map: HashMap<Uid, Value> = HashMap::new();
+    for item in new_input {
+        new_map.insert(extract_uid_from_value(&item)?, item);
+    }
+
+    for (uid, new_val) in &new_map {
+        match org_map.remove(uid) {
+            None => updated_uids.push(uid.clone()),
+            Some(old_val) if old_val != *new_val => updated_uids.push(uid.clone()),
+            Some(_) => {}
+        }
+    }
+    deleted_uids.extend(org_map.keys());
+
+    Ok(RuntimeConfigChangeHelper {
+        updated: updated_uids,
+        deleted: deleted_uids,
+    })
+}
+
+fn extract_uid_from_value(value: &Value) -> Result<Uid> {
+    let output = value
+        .get("uid")
+        .ok_or(anyhow!("Unable to find Uid Attribute"))?;
+    let output = output
+        .as_i64()
+        .ok_or(anyhow!("Unable to parse Uid into int"))?;
+    Ok(output as Uid)
+}

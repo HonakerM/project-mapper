@@ -13,9 +13,11 @@ use crate::{
         input::InputComponentConfig,
         output::OutputComponentConfig,
         shared::{ComponentConfig, Uid},
+        utils::{RuntimeConfigChangeTracker, gather_config_changes, gather_validation_helper_data},
     },
     types::errors::RuntimeConfigValidationError,
 };
+use anyhow::Result as AnyhowResult;
 
 // Top-Level Config object for the runtime
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -25,20 +27,38 @@ pub struct RuntimeConfig {
     pub outputs: Vec<OutputComponentConfig>,
 }
 
-#[derive(PartialEq, Clone)]
-struct RuntimeConfigValidationHelper {
-    name: String,
-    type_name: String,
-}
-
 impl RuntimeConfig {
+    pub fn gather_configs(&self) -> Vec<Box<dyn ComponentConfig>> {
+        let mut output_configs = vec![];
+        for config in &self.inputs {
+            let typed_config: Box<dyn ComponentConfig> = Box::new(config.clone());
+            output_configs.push(typed_config)
+        }
+        for config in &self.effects {
+            let typed_config: Box<dyn ComponentConfig> = Box::new(config.clone());
+            output_configs.push(typed_config)
+        }
+        for config in &self.outputs {
+            let typed_config: Box<dyn ComponentConfig> = Box::new(config.clone());
+            output_configs.push(typed_config)
+        }
+        output_configs
+    }
+
+    pub fn gather_config_changes(
+        &self,
+        new_config: &RuntimeConfig,
+    ) -> AnyhowResult<RuntimeConfigChangeTracker> {
+        gather_config_changes(self, new_config)
+    }
+
     // validate if a new config is a valid update of the existing config
     pub fn validate_changes(
         &self,
         new_config: &RuntimeConfig,
     ) -> Result<(), RuntimeConfigValidationError> {
-        let current_helper_data = self.gather_validation_helper_data();
-        let new_helper_data = new_config.gather_validation_helper_data();
+        let current_helper_data = gather_validation_helper_data(self);
+        let new_helper_data = gather_validation_helper_data(new_config);
 
         // first start by generally validating the new config. This ensures no duplicate
         // configs
@@ -129,43 +149,10 @@ impl RuntimeConfig {
 
         Ok(())
     }
-
-    fn gather_validation_helper_data(&self) -> HashMap<Uid, RuntimeConfigValidationHelper> {
-        let mut map = HashMap::new();
-        for config in &self.inputs {
-            map.insert(
-                config.uid(),
-                RuntimeConfigValidationHelper {
-                    name: config.name(),
-                    type_name: type_name_of_val(config.config.as_ref()).to_string(),
-                },
-            );
-        }
-        for config in &self.effects {
-            map.insert(
-                config.uid(),
-                RuntimeConfigValidationHelper {
-                    name: config.name(),
-                    type_name: type_name_of_val(config.config.as_ref()).to_string(),
-                },
-            );
-        }
-        for config in &self.outputs {
-            map.insert(
-                config.uid(),
-                RuntimeConfigValidationHelper {
-                    name: config.name(),
-                    type_name: type_name_of_val(config.config.as_ref()).to_string(),
-                },
-            );
-        }
-
-        map
-    }
 }
 
 impl PartialEq for RuntimeConfig {
     fn eq(&self, other: &Self) -> bool {
-        self.gather_validation_helper_data() == other.gather_validation_helper_data()
+        gather_validation_helper_data(self) == gather_validation_helper_data(other)
     }
 }

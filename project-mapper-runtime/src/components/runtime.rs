@@ -15,6 +15,7 @@ pub static DEFAULT_NAME: &str = "DefaultRuntimeComponent";
 
 // The default runtime component is used when there is no other
 // component that requires main
+#[derive(Debug)]
 pub struct DefaultRuntimeComponent {}
 
 impl DefaultRuntimeComponent {

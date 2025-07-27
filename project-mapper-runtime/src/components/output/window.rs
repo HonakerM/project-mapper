@@ -248,8 +248,11 @@ impl WindowComponent {
                     if let Some(state) = proxy_state.as_ref()
                         && let Some(proxy) = &state.event_loop_proxy
                     {
-                        proxy.send_event(event.clone())?;
-                        if event == RuntimeMessage::ExitRuntime() {
+                        let is_exit = matches!(event, RuntimeMessage::ExitRuntime());
+                        proxy.send_event(event).map_err(|_| {
+                            anyhow!("Unable to send message to event loop. It must be closed")
+                        })?;
+                        if is_exit {
                             return Ok(());
                         }
                     } else {
