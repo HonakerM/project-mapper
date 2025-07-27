@@ -18,7 +18,6 @@ pub struct BalanceComponent {
     config: EffectComponentConfig,
     element: Element,
     branch: BranchControl,
-    has_setup: bool,
 }
 
 impl Component for BalanceComponent {
@@ -62,7 +61,6 @@ impl Component for BalanceComponent {
             config: config,
             element: element,
             branch: branch,
-            has_setup: false,
         })
     }
 
@@ -74,8 +72,6 @@ impl Component for BalanceComponent {
         message_sender: mpsc::Sender<RuntimeMessage>,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
-        self.has_setup = true;
-
         // Add elements to the pipelines and sync status
         pipeline.add(&self.element)?;
         self.element.sync_state_with_parent()?;
@@ -105,8 +101,5 @@ impl Component for BalanceComponent {
     }
     fn uid(&self) -> Uid {
         return self.config.uid();
-    }
-    fn has_setup(&self) -> bool {
-        return self.has_setup;
     }
 }

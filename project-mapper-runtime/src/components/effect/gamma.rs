@@ -18,7 +18,6 @@ pub struct GammaComponent {
     config: EffectComponentConfig,
     element: Element,
     branch: BranchControl,
-    has_setup: bool,
 }
 
 impl Component for GammaComponent {
@@ -53,7 +52,6 @@ impl Component for GammaComponent {
             config: config,
             element: element,
             branch: branch,
-            has_setup: false,
         })
     }
 
@@ -65,8 +63,6 @@ impl Component for GammaComponent {
         message_sender: mpsc::Sender<RuntimeMessage>,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
-        self.has_setup = true;
-
         // Add elements to the pipelines and sync status
         pipeline.add(&self.element)?;
         self.element.sync_state_with_parent()?;
@@ -96,8 +92,5 @@ impl Component for GammaComponent {
     }
     fn uid(&self) -> Uid {
         return self.config.uid();
-    }
-    fn has_setup(&self) -> bool {
-        return self.has_setup;
     }
 }

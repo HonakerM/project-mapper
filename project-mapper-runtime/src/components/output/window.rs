@@ -92,9 +92,6 @@ pub struct WindowComponent {
 
     // winit state
     is_main: bool,
-
-    // helpers
-    has_setup: bool,
 }
 
 impl WindowComponent {
@@ -367,7 +364,6 @@ impl Component for WindowComponent {
 
             branch: branch,
             output_element: output_element,
-            has_setup: false,
 
             message_sender: None,
 
@@ -385,10 +381,6 @@ impl Component for WindowComponent {
         message_sender: mpsc::Sender<RuntimeMessage>,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
-        if self.has_setup {
-            return Ok(());
-        }
-
         // copy the message sender into the object
         self.message_sender = Some(message_sender.clone());
 
@@ -440,12 +432,7 @@ impl Component for WindowComponent {
             .link(self.branch.get_input()?)?;
 
         // mark setup as complete so as to not rerun
-        self.has_setup = true;
         Ok(())
-    }
-
-    fn has_setup(&self) -> bool {
-        self.has_setup
     }
 
     // accessor functions

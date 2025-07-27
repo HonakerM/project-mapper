@@ -18,7 +18,6 @@ pub struct UriComponent {
     config: InputComponentConfig,
     element: Element,
     branch: BranchControl,
-    has_setup: bool,
 }
 
 impl Component for UriComponent {
@@ -52,7 +51,6 @@ impl Component for UriComponent {
             branch: BranchControl::new(config.name(), false, true)?,
             config: config,
             element: element,
-            has_setup: false,
         })
     }
 
@@ -63,8 +61,6 @@ impl Component for UriComponent {
         _message_sender: mpsc::Sender<RuntimeMessage>,
         _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
-        self.has_setup = true;
-
         // Add elements to the pipelines and sync status
         pipeline.add(&self.element)?;
         self.element.sync_state_with_parent()?;
@@ -185,8 +181,5 @@ impl Component for UriComponent {
     }
     fn uid(&self) -> Uid {
         return self.config.uid();
-    }
-    fn has_setup(&self) -> bool {
-        return self.has_setup;
     }
 }

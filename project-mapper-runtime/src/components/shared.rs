@@ -62,9 +62,6 @@ pub trait Component {
         message_sender: mpsc::Sender<RuntimeMessage>,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()>;
-    fn has_setup(&self) -> bool {
-        return false;
-    }
 
     // accessor functions
     fn element(&self) -> Result<&Element>;

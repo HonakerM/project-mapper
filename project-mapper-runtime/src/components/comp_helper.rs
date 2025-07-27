@@ -1,4 +1,9 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc, sync::mpsc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+    sync::mpsc,
+};
 
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
@@ -14,6 +19,7 @@ use anyhow::{Error, Result, anyhow};
 pub struct DefaultComponentHelper {
     main_comp_id: Option<Uid>,
     component_map: HashMap<Uid, Rc<RefCell<Box<dyn Component>>>>,
+    setup_tracker: Rc<RefCell<HashSet<Uid>>>,
 }
 
 impl DefaultComponentHelper {
@@ -21,6 +27,7 @@ impl DefaultComponentHelper {
         Self {
             main_comp_id: None,
             component_map: HashMap::new(),
+            setup_tracker: Rc::new(RefCell::new(HashSet::new())),
         }
     }
 }
@@ -64,11 +71,14 @@ impl ComponentLookupHelper for DefaultComponentHelper {
                 .ok_or_else(|| Error::msg(format!("Unknown UID: {}", uid)))?
         };
 
-        let has_setup = comp_rc.borrow().has_setup();
+        // check if we've setup this component before. Ensure we don't borrow the tracker
+        // multiple times
+        let has_setup = self.setup_tracker.borrow().contains(&uid);
         if !has_setup {
             comp_rc
                 .borrow_mut()
                 .setup(pipeline, message_sender.clone(), self)?;
+            self.setup_tracker.borrow_mut().insert(uid);
         }
         Ok(comp_rc)
     }
