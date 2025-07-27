@@ -109,9 +109,52 @@ impl Runtime {
                     println!("Exiting runtime due to exit event: {:?}", message);
                     return Ok(());
                 }
-                RuntimeMessage::UpdateRuntime(_) => {}
+                RuntimeMessage::UpdateRuntime(new_config) => {
+                    // stop the pipeline before updating
+                    pipeline.set_state(gst::State::Paused)?;
+
+                    self.update_runtime(&pipeline, &config, new_config)?;
+
+                    // restart the pipeline
+                    pipeline.set_state(gst::State::Playing)?;
+                }
             }
         }
+    }
+
+    fn update_runtime(
+        &mut self,
+        pipeline: &gst::Pipeline,
+        current_config: &Arc<Mutex<RuntimeConfig>>,
+        new_config: RuntimeConfig,
+    ) -> Result<()> {
+        {
+            // start by locking the stored runtime
+            let mut locked_current_config = current_config
+                .lock()
+                .map_err(|e| anyhow!("Unable to lock config for update {:#}", e))?;
+
+            // ensure we destory the components before running create/update
+            let change_tracker = locked_current_config.gather_config_changes(&new_config)?;
+            for deleted_configs in change_tracker.deletes {
+                self.component_helper.destroy_comp(&deleted_configs.uid())?;
+            }
+
+            // update the stored config
+            *locked_current_config = new_config;
+        }
+
+        // Create or update the remaining components
+        let output_uids = self.create_or_update_components(&current_config)?;
+
+        // for each output uid call setup. No need to do this on other components since they
+        // will work recursively
+        for output_uid in output_uids {
+            self.component_helper
+                .lookup_and_setup(output_uid, &pipeline, self.message_sender.clone())
+                .context(format!("failed to setup component: {}", output_uid))?;
+        }
+        Ok(())
     }
 
     fn create_or_update_components(
