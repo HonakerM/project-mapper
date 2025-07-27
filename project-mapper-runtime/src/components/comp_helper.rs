@@ -33,12 +33,32 @@ impl DefaultComponentHelper {
 }
 
 impl ComponentLookupHelper for DefaultComponentHelper {
-    fn create_and_insert_comp(
+    fn create_or_update(
         &mut self,
         config: &dyn ComponentConfig,
         factory: &dyn ComponentFactory,
     ) -> Result<()> {
-        // create the component
+        // if the component map already contains the key then just update it
+        if let Some(comp) = self.component_map.get(&config.uid()) {
+            let mut mut_comp = comp.borrow_mut();
+            mut_comp.update(config)?;
+
+            // if this update affected the main requirements of the component check it.
+            if mut_comp.requires_main() {
+                if let Some(current_id) = self.main_comp_id {
+                    if current_id != mut_comp.uid() {
+                        return Err(Error::msg(
+                            "Component that requires main already exists. Can not have two main components",
+                        ));
+                    }
+                } else {
+                    // if we don't have a main component id then update it
+                    self.main_comp_id = Some(mut_comp.uid());
+                }
+            }
+        }
+
+        // else create the component
         let comp = factory.create_component(config)?;
 
         // if this component requires main then update the main_id
@@ -91,11 +111,11 @@ impl ComponentLookupHelper for DefaultComponentHelper {
         }
         Ok(())
     }
-    fn stop(&self) -> Result<()> {
+    fn pause(&self) -> Result<()> {
         for comp in self.component_map.values() {
             let mut mutable_comp = comp.borrow_mut();
             // start all components
-            mutable_comp.stop()?;
+            mutable_comp.pause()?;
         }
         Ok(())
     }
@@ -122,16 +142,35 @@ impl ComponentLookupHelper for DefaultComponentHelper {
         }
     }
 
-    fn destory(&self) -> Result<()> {
-        for comp in self.component_map.values() {
-            let mut mutable_comp = comp.borrow_mut();
-            // start all components
-            mutable_comp.destroy()?;
+    fn destroy_comp(&mut self, uid: &Uid) -> Result<()> {
+        // start by destroying the component
+        if let Some(comp) = self.component_map.get(uid) {
+            let mut mut_comp = comp.borrow_mut();
+            mut_comp.destroy()?;
+        }
+
+        // ensure to remove it from the component map and update our main_comp_id tracker
+        // if it has changed
+        self.component_map.remove(uid);
+        if let Some(main_uid) = self.main_comp_id
+            && main_uid == *uid
+        {
+            self.main_comp_id = None;
+        }
+        Ok(())
+    }
+    fn destory(&mut self) -> Result<()> {
+        let keys: Vec<Uid> = self.component_map.keys().copied().collect();
+        for uid in keys {
+            self.destroy_comp(&uid)?;
         }
         Ok(())
     }
 
     fn has_main_requirement(&self) -> bool {
         !self.main_comp_id.is_none()
+    }
+    fn contains_comp(&self, uid: &Uid) -> bool {
+        self.component_map.contains_key(uid)
     }
 }

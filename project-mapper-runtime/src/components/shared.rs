@@ -6,7 +6,10 @@ use std::{
 
 use anyhow::{Error, Result, anyhow};
 use gst::Element;
-use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
+use project_mapper_core::runtime_config::{
+    RuntimeConfig,
+    shared::{ComponentConfig, Uid},
+};
 
 use crate::{components::runtime::DefaultRuntimeComponent, types::message::RuntimeMessage};
 
@@ -17,7 +20,7 @@ pub trait ComponentFactory {
 
 pub trait ComponentLookupHelper {
     // factory function to create a component and register it with the helper
-    fn create_and_insert_comp(
+    fn create_or_update(
         &mut self,
         config: &dyn ComponentConfig,
         factory: &dyn ComponentFactory,
@@ -32,18 +35,22 @@ pub trait ComponentLookupHelper {
     // start or resume all components. Components must be safe against already initialized
     // state
     fn start_or_resume(&self, pipeline: &gst::Pipeline) -> Result<()>;
-    fn stop(&self) -> Result<()>;
+    // helper to pause all running components
+    fn pause(&self) -> Result<()>;
     fn run(
         &self,
         pipeline: &gst::Pipeline,
         message_broker: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage>;
+    fn destroy_comp(&mut self, uid: &Uid) -> Result<()>;
+
     // Special function called when exiting the application
-    fn destory(&self) -> Result<()>;
+    fn destory(&mut self) -> Result<()>;
 
     // if this helper has a component that requires the main thread to run. ! This must be valid after running
     // setup
     fn has_main_requirement(&self) -> bool;
+    fn contains_comp(&self, uid: &Uid) -> bool;
 }
 
 pub trait Component {
@@ -72,10 +79,11 @@ pub trait Component {
     fn start_or_resume(&mut self, _pipeline: &gst::Pipeline) -> Result<()> {
         Ok(())
     }
-    //
-    fn stop(&mut self) -> Result<()> {
+    // pause the component while it's running. This should not delete resources
+    fn pause(&mut self) -> Result<()> {
         Ok(())
     }
+    // run the component! This should only be called if we have a main requirement
     fn run(
         &self,
         _pipeline: &gst::Pipeline,
@@ -84,6 +92,10 @@ pub trait Component {
         DefaultRuntimeComponent::manage_events(message_receiver)
     }
 
+    // update a component based on a new config
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
+        Ok(())
+    }
     // Completely stop and destroy this component
     fn destroy(&mut self) -> Result<()> {
         Ok(())
@@ -91,7 +103,7 @@ pub trait Component {
     // if this component requires running on the main thread.
     // ! Warning: only one component can mark this as true. If multiple
     // components require main then we will raise an error.
-    // ! Note: This needs to be correctly set after new()
+    // ! Note: This needs to be correctly set after setup()
     fn requires_main(&self) -> bool {
         false
     }

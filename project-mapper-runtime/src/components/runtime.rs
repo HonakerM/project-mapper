@@ -18,6 +18,9 @@ pub static DEFAULT_NAME: &str = "DefaultRuntimeComponent";
 pub struct DefaultRuntimeComponent {}
 
 impl DefaultRuntimeComponent {
+    pub fn get_default_uid() -> Uid {
+        DEFAULT_ID
+    }
     pub fn new_config() -> Result<DefaultRuntimeComponent> {
         Ok(DefaultRuntimeComponent {})
     }
