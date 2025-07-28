@@ -15,16 +15,22 @@ use crate::{components::runtime::DefaultRuntimeComponent, types::message::Runtim
 
 // trait to aid in the creation of new components
 pub trait ComponentFactory {
-    fn create_component(&self, config: &dyn ComponentConfig) -> Result<Box<dyn Component>>;
+    fn create_component(
+        &self,
+        config: &dyn ComponentConfig,
+        pipeline: &gst::Pipeline,
+    ) -> Result<Box<dyn Component>>;
 }
 
 pub trait ComponentLookupHelper {
     // factory function to create a component and register it with the helper
-    fn create_or_update(
+    fn create(
         &mut self,
         config: &dyn ComponentConfig,
+        pipeline: &gst::Pipeline,
         factory: &dyn ComponentFactory,
     ) -> Result<()>;
+    fn update(&mut self, config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<()>;
     // helper function to return a desired component and run setup if it hasn't already
     fn lookup_and_setup(
         &self,
@@ -56,7 +62,7 @@ pub trait ComponentLookupHelper {
 pub trait Component {
     // runtime lifecycle functions
     // Construct object
-    fn new(config: &dyn ComponentConfig) -> Result<Self>
+    fn new(config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<Self>
     where
         Self: Sized;
 
@@ -93,7 +99,7 @@ pub trait Component {
     }
 
     // update a component based on a new config
-    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
+    fn update(&mut self, config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<()> {
         Ok(())
     }
     // Completely stop and destroy this component

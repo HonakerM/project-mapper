@@ -75,21 +75,11 @@ impl Runtime {
                 .gather_configs()
         };
 
-        // track the output uids so we know what to setup
-        let output_uids: Vec<Uid> = self
-            .create_or_update_components(&config, component_configs)
-            .context("Unable to create components")?;
-
         // create the pipeline
         let pipeline = gst::Pipeline::new();
 
-        // for each output uid call setup. No need to do this on other components since they
-        // will work recursively
-        for output_uid in output_uids {
-            self.component_helper
-                .lookup_and_setup(output_uid, &pipeline, self.message_sender.clone())
-                .context(format!("failed to setup component: {}", output_uid))?;
-        }
+        // configure all components
+        self.configure_components(&config, &pipeline, component_configs)?;
 
         // start the receiver threads
         let mut receiver_handle = start_receiver(self.message_sender.clone(), config.clone())?;
@@ -177,24 +167,17 @@ impl Runtime {
         info!("Deleted configs {:?}", change_tracker.deletes);
 
         // Create or update the remaining components
-        let updated_output_uids =
-            self.create_or_update_components(current_config, change_tracker.updates)?;
+        self.configure_components(current_config, pipeline, change_tracker.updates)?;
 
-        // for each output uid call setup. No need to do this on other components since they
-        // will work recursively
-        for output_uid in updated_output_uids {
-            self.component_helper
-                .lookup_and_setup(output_uid, &pipeline, self.message_sender.clone())
-                .context(format!("failed to setup component: {}", output_uid))?;
-        }
         Ok(())
     }
 
-    fn create_or_update_components(
+    fn configure_components(
         &mut self,
         config: &Arc<Mutex<RuntimeConfig>>,
+        pipeline: &gst::Pipeline,
         component_configs: Vec<Box<dyn ComponentConfig>>,
-    ) -> Result<Vec<Uid>> {
+    ) -> Result<()> {
         // if the component helper contains the default component then remove it before creating
         // or updating components. This ensures if we add a component that could be main the default
         // runtime doesn't affect it
@@ -206,8 +189,6 @@ impl Runtime {
                 .destroy_comp(&DefaultRuntimeComponent::get_default_uid())?;
         }
 
-        // track the output uids so we know what to setup
-        let mut output_uids: Vec<Uid> = vec![];
         // setup all the components based on the config
         {
             let local_config = config
@@ -225,18 +206,38 @@ impl Runtime {
                 .validate()
                 .context("Failed to validate runtime config")?;
 
+            // start by gathering all components we need to create. These should be created before doing the updates to
+            // ensure all elements have been created
+            let mut components_to_create = vec![];
+            let mut components_to_update = vec![];
             for config in component_configs {
-                self.component_helper
-                    .create_or_update(config.as_ref(), self.component_factory.as_ref())
-                    .context(format!(
-                        "failed to create or update component: {}",
-                        config.uid()
-                    ))?;
-
-                // parse config to check if its an output type
-                if let Some(__) = config.as_any().downcast_ref::<OutputComponentConfig>() {
-                    output_uids.push(config.uid());
+                if !self.component_helper.contains_comp(&config.uid()) {
+                    components_to_create.push(config);
+                } else {
+                    components_to_update.push(config);
                 }
+            }
+
+            // create components and then setup them up
+            for comp in &components_to_create {
+                self.component_helper.create(
+                    comp.as_ref(),
+                    pipeline,
+                    self.component_factory.as_ref(),
+                )?;
+            }
+            // do this in separate loops to ensure all components are created before being setup
+            for comp in &components_to_create {
+                self.component_helper.lookup_and_setup(
+                    comp.uid(),
+                    pipeline,
+                    self.message_sender.clone(),
+                )?;
+            }
+
+            // for all components that need to be updated run the update after the above setup functions have been called
+            for comp in &components_to_update {
+                self.component_helper.update(comp.as_ref(), pipeline)?;
             }
         }
 
@@ -246,12 +247,11 @@ impl Runtime {
             let default_config = DefaultRuntimeComponent::new_config()
                 .context("Failed to contstruct default runtime component config")?;
             self.component_helper
-                .create_or_update(&default_config, self.component_factory.as_ref())
+                .create(&default_config, pipeline, self.component_factory.as_ref())
                 .context(format!("failed to create default runtime component"))?;
-            output_uids.push(default_config.uid());
         }
 
-        Ok(output_uids)
+        Ok(())
     }
 
     fn monitor_pipeline_events(pipeline: gst::Pipeline) {

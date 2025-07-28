@@ -37,7 +37,7 @@ impl DefaultRuntimeComponent {
 }
 
 impl Component for DefaultRuntimeComponent {
-    fn new(_config: &dyn ComponentConfig) -> Result<Self>
+    fn new(_config: &dyn ComponentConfig, _pipeline: &gst::Pipeline) -> Result<Self>
     where
         Self: Sized,
     {

@@ -23,7 +23,10 @@ pub struct TestComponent {
 impl Component for TestComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(unknown_config: &dyn ComponentConfig) -> Result<TestComponent> {
+    fn new(
+        unknown_config: &dyn ComponentConfig,
+        pipeline: &gst::Pipeline,
+    ) -> Result<TestComponent> {
         // parse config and ensure it's correct types
         let config: InputComponentConfig = match unknown_config
             .as_any()
@@ -48,28 +51,29 @@ impl Component for TestComponent {
 
         // Add tee to src element to allow multiple linkages
 
-        Ok(Self {
+        let comp = Self {
             branch: BranchControl::new(config.name(), false, true)?,
             config: config,
             element: element,
-        })
+        };
+
+        // Add elements to the pipelines and sync status
+        pipeline.add(&comp.element)?;
+        comp.element.sync_state_with_parent()?;
+
+        comp.branch.add_to_pipeline(pipeline)?;
+        comp.branch.link_wrapped(&comp.element)?;
+        Ok(comp)
     }
 
     // Run any post init setup functions
     // ! Will probably be removed or edited to have more params
     fn setup(
         &mut self,
-        pipeline: &gst::Pipeline,
+        _pipeline: &gst::Pipeline,
         _message_sender: mpsc::Sender<RuntimeMessage>,
         _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
-        // Add elements to the pipelines and sync status
-        pipeline.add(&self.element)?;
-        self.element.sync_state_with_parent()?;
-
-        self.branch.add_to_pipeline(pipeline)?;
-        self.branch.link_wrapped(&self.element)?;
-
         Ok(())
     }
 

@@ -20,53 +20,12 @@ pub struct UriComponent {
     branch: BranchControl,
 }
 
-impl Component for UriComponent {
-    // runtime lifecycle functions
-    // Construct object
-    fn new(unknown_config: &dyn ComponentConfig) -> Result<UriComponent> {
-        // parse config and ensure it's correct types
-        let config: InputComponentConfig = match unknown_config
-            .as_any()
-            .downcast_ref::<InputComponentConfig>()
-        {
-            Some(b) => Ok(b.clone()),
-            None => Err(Error::msg(
-                "ComponentConfig can not be typed to InputComponentConfig",
-            )),
-        }?;
-
-        // ensure we have a test config
-        let uri_config = match config.config.as_any().downcast_ref::<UriConfig>() {
-            Some(b) => Ok(b.clone()),
-            None => Err(anyhow!("InputComponentConfig is not UriConfig")),
-        }?;
-
-        let element = gst::ElementFactory::make("uridecodebin")
-            .name(config.name())
-            .property("uri", glib::GString::from(uri_config.uri.clone()))
-            .build()
-            .map_err(|err| anyhow!("Unable to construct element").context(err))?;
-
-        Ok(Self {
-            branch: BranchControl::new(config.name(), false, true)?,
-            config: config,
-            element: element,
-        })
-    }
-
-    // Run any post init setup functions
-    fn setup(
-        &mut self,
-        pipeline: &gst::Pipeline,
-        _message_sender: mpsc::Sender<RuntimeMessage>,
-        _lookup_func: &dyn ComponentLookupHelper,
-    ) -> Result<()> {
+impl UriComponent {
+    fn configure_in_pipeline(&self, pipeline: &gst::Pipeline) -> Result<()> {
         // Add elements to the pipelines and sync status
         pipeline.add(&self.element)?;
         self.element.sync_state_with_parent()?;
-
         self.branch.add_to_pipeline(pipeline)?;
-        self.branch.link_wrapped(&self.element)?;
 
         // Need to move a new reference into the closure.
         // !!ATTENTION!!:
@@ -169,11 +128,61 @@ impl Component for UriComponent {
                 );
             }
         });
+        Ok(())
+    }
+}
 
+impl Component for UriComponent {
+    // runtime lifecycle functions
+    // Construct object
+    fn new(unknown_config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<UriComponent> {
+        // parse config and ensure it's correct types
+        let config: InputComponentConfig = match unknown_config
+            .as_any()
+            .downcast_ref::<InputComponentConfig>()
+        {
+            Some(b) => Ok(b.clone()),
+            None => Err(Error::msg(
+                "ComponentConfig can not be typed to InputComponentConfig",
+            )),
+        }?;
+
+        // ensure we have a test config
+        let uri_config = match config.config.as_any().downcast_ref::<UriConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("InputComponentConfig is not UriConfig")),
+        }?;
+
+        let element = gst::ElementFactory::make("uridecodebin")
+            .name(config.name())
+            .property("uri", glib::GString::from(uri_config.uri.clone()))
+            .build()
+            .map_err(|err| anyhow!("Unable to construct element").context(err))?;
+
+        let comp = Self {
+            branch: BranchControl::new(config.name(), false, true)?,
+            config: config,
+            element: element,
+        };
+        comp.configure_in_pipeline(pipeline)?;
+        Ok(comp)
+    }
+
+    // Run any post init setup functions
+    fn setup(
+        &mut self,
+        pipeline: &gst::Pipeline,
+        _message_sender: mpsc::Sender<RuntimeMessage>,
+        _lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
         Ok(())
     }
 
-    fn update(&mut self, unknown_config: &dyn ComponentConfig) -> Result<()> {
+    fn update(
+        &mut self,
+        unknown_config: &dyn ComponentConfig,
+        _pipeline: &gst::Pipeline,
+    ) -> Result<()> {
         // parse config and ensure it's correct types
         let config: InputComponentConfig = match unknown_config
             .as_any()

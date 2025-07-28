@@ -338,7 +338,10 @@ impl WindowComponent {
 impl Component for WindowComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(unknown_config: &dyn ComponentConfig) -> Result<WindowComponent> {
+    fn new(
+        unknown_config: &dyn ComponentConfig,
+        pipeline: &gst::Pipeline,
+    ) -> Result<WindowComponent> {
         // parse config and ensure it's correct types
         let config: OutputComponentConfig = match unknown_config
             .as_any()
@@ -374,6 +377,17 @@ impl Component for WindowComponent {
             is_main: false,
         };
         window_component.initialize_global_state()?;
+
+        // Add both elements to the pipelines and sync status
+        pipeline.add(&window_component.output_element)?;
+        window_component.output_element.sync_state_with_parent()?;
+
+        // construct branch and wrap
+        window_component.branch.add_to_pipeline(pipeline)?;
+        window_component
+            .branch
+            .link_wrapped(&window_component.output_element)?;
+
         Ok(window_component)
     }
 
@@ -386,14 +400,6 @@ impl Component for WindowComponent {
     ) -> Result<()> {
         // copy the message sender into the object
         self.message_sender = Some(message_sender.clone());
-
-        // Add both elements to the pipelines and sync status
-        pipeline.add(&self.output_element)?;
-        self.output_element.sync_state_with_parent()?;
-
-        // construct branch and wrap
-        self.branch.add_to_pipeline(pipeline)?;
-        self.branch.link_wrapped(&self.output_element)?;
 
         // If we're the main function than recursively call setup on all available window references
         // this ensures all pipeline elements that require a window have been added to the pipeline

@@ -33,34 +33,14 @@ impl DefaultComponentHelper {
 }
 
 impl ComponentLookupHelper for DefaultComponentHelper {
-    fn create_or_update(
+    fn create(
         &mut self,
         config: &dyn ComponentConfig,
+        pipeline: &gst::Pipeline,
         factory: &dyn ComponentFactory,
     ) -> Result<()> {
-        // if the component map already contains the key then just update it
-        if let Some(comp) = self.component_map.get(&config.uid()) {
-            let mut mut_comp = comp.borrow_mut();
-            mut_comp.update(config)?;
-
-            // if this update affected the main requirements of the component check it.
-            if mut_comp.requires_main() {
-                if let Some(current_id) = self.main_comp_id {
-                    if current_id != mut_comp.uid() {
-                        return Err(Error::msg(
-                            "Component that requires main already exists. Can not have two main components",
-                        ));
-                    }
-                } else {
-                    // if we don't have a main component id then update it
-                    self.main_comp_id = Some(mut_comp.uid());
-                }
-            }
-            return Ok(());
-        }
-
         // else create the component
-        let comp = factory.create_component(config)?;
+        let comp = factory.create_component(config, pipeline)?;
 
         // if this component requires main then update the main_id
         if comp.requires_main() {
@@ -77,6 +57,34 @@ impl ComponentLookupHelper for DefaultComponentHelper {
         let rc_comp = Rc::new(RefCell::new(comp));
         self.component_map.insert(comp_id, rc_comp);
         Ok(())
+    }
+
+    fn update(&mut self, config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<()> {
+        // if the component map already contains the key then just update it
+        if let Some(comp) = self.component_map.get(&config.uid()) {
+            let mut mut_comp = comp.borrow_mut();
+            mut_comp.update(config, pipeline)?;
+
+            // if this update affected the main requirements of the component check it.
+            if mut_comp.requires_main() {
+                if let Some(current_id) = self.main_comp_id {
+                    if current_id != mut_comp.uid() {
+                        return Err(Error::msg(
+                            "Component that requires main already exists. Can not have two main components",
+                        ));
+                    }
+                } else {
+                    // if we don't have a main component id then update it
+                    self.main_comp_id = Some(mut_comp.uid());
+                }
+            }
+            Ok(())
+        } else {
+            Err(anyhow!(
+                "Component {} is has not been created yet.",
+                config.uid()
+            ))
+        }
     }
 
     fn lookup_and_setup(
