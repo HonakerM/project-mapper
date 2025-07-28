@@ -2,7 +2,7 @@ use std::{
     any::type_name_of_val,
     collections::{HashMap, HashSet},
     error::Error,
-    fmt::Display,
+    fmt::{Debug, Display},
 };
 
 use serde::{Deserialize, Serialize};
@@ -189,4 +189,27 @@ fn extract_uid_from_value(value: &Value) -> Result<Uid> {
         .as_i64()
         .ok_or(anyhow!("Unable to parse Uid into int"))?;
     Ok(output as Uid)
+}
+
+pub fn ensure_config_bounds<T>(
+    some_val: Option<T>,
+    lower_bound: T,
+    upper_bound: T,
+) -> Result<Option<T>>
+where
+    T: PartialOrd + Debug,
+{
+    if let Some(v) = some_val {
+        if (lower_bound < v) && (v <= upper_bound) {
+            Ok(Some(v))
+        } else {
+            Err(anyhow!(
+                "out of bounds [{:?}, {:?}]",
+                lower_bound,
+                upper_bound
+            ))
+        }
+    } else {
+        Ok(None)
+    }
 }
