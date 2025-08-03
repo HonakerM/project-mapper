@@ -64,11 +64,21 @@ fn run_main() -> Result<()> {
                 name: "comp_1".to_string(),
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Borderless {
+                        name: "Monitor #41022".to_string(),
+                    },
+                }),
+                src_uid: 6,
+            }, /*
+            OutputComponentConfig {
+                uid: 1,
+                name: "comp_1".to_string(),
+                config: Box::new(WindowConfig {
+                    mode: WindowMode::Borderless {
                         name: "\\\\.\\DISPLAY1".to_string(),
                     },
                 }),
                 src_uid: 6,
-            }, /*,
+            }, 
                OutputComponentConfig {
                    uid: 2,
                    name: "comp_2".to_string(),
