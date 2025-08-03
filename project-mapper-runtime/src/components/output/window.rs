@@ -29,31 +29,69 @@ use project_mapper_core::runtime_config::{
 };
 use raw_window_handle::HasWindowHandle;
 use raw_window_handle::RawWindowHandle;
+use winit::application::ApplicationHandler;
 use winit::event::Event;
 use winit::event::WindowEvent;
 use winit::event_loop;
+use winit::event_loop::EventLoop;
 use winit::event_loop::EventLoopBuilder;
 use winit::platform::pump_events::EventLoopExtPumpEvents;
+use winit::platform::macos::WindowExtMacOS;
 use winit::window::Window;
-use winit::window::WindowBuilder;
 
 // helper struct to store information about winit. This
 // will only be held by the main component
 struct WinitState {
+    message_sender: Option<mpsc::Sender<RuntimeMessage>>,
     message_sender_thread: Option<thread::JoinHandle<Result<()>>>,
     event_loop: Option<WinitPMEventLoop>,
     // needed to keep reference to a window
     windows: HashMap<Uid, Window>,
+    pub last_event: Option<RuntimeMessage>,
 }
 impl Default for WinitState {
     fn default() -> Self {
         Self {
+            message_sender: None,
             message_sender_thread: None,
             event_loop: None,
             windows: HashMap::new(),
+            last_event : None,
         }
     }
 }
+
+
+// ————————————————————————————————————————————————————————————————————————
+// ApplicationHandler remains the same, setting `last_event` on user_event
+// ————————————————————————————————————————————————————————————————————————
+
+impl ApplicationHandler<RuntimeMessage> for WinitState {
+    fn resumed(&mut self, event_loop: &event_loop::ActiveEventLoop) {
+        
+    }
+    fn exiting(&mut self, event_loop: &event_loop::ActiveEventLoop) {
+        
+    }
+    fn user_event(&mut self, event_loop: &event_loop::ActiveEventLoop, event: RuntimeMessage) {
+         self.last_event = Some(event);
+    }
+    fn window_event(
+            &mut self,
+            event_loop: &event_loop::ActiveEventLoop,
+            window_id: winit::window::WindowId,
+            event: WindowEvent,
+        ) {
+        if let WindowEvent::CloseRequested = event {
+             let _ = self.message_sender
+                 .as_ref()
+                 .unwrap()
+                 .send(RuntimeMessage::ExitRuntime());
+         }
+
+    }
+}
+
 
 // use thread local window state since we only ever need it on the main thread
 thread_local! {
@@ -94,6 +132,7 @@ pub struct WindowComponent {
     is_main: bool,
 }
 
+
 impl WindowComponent {
     // helper to initialize the global state and detect if this component
     // should be the main one
@@ -132,7 +171,7 @@ impl WindowComponent {
 
     fn initialize_window_elements(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         // construct the event loop and window mapping
-        let event_loop: WinitPMEventLoop = EventLoopBuilder::with_user_event().build()?;
+        let event_loop: WinitPMEventLoop = EventLoop::with_user_event().build()?;
         let mut windows: HashMap<Uid, Window> = HashMap::new();
 
         // ControlFlow::Wait pauses the event loop if no events are available to process.
@@ -152,7 +191,8 @@ impl WindowComponent {
             for window_request in state.window_configs.values() {
                 // start by building the window
                 // ! TODO actually use the window config
-                let window = WindowBuilder::new()
+                let window = event_loop.create_window(window_attributes)
+                WindowBuilder::new()
                     .with_title(window_request.element_name.clone())
                     .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0))
                     .build(&event_loop)?;
@@ -201,9 +241,11 @@ impl WindowComponent {
 
         GLOBAL_WINDOW_STATE.replace(WinitState {
             // don't create the message sender until we have it in run
+            message_sender: None,
             message_sender_thread: None,
             event_loop: Some(event_loop),
             windows: windows,
+            last_event: None,
         });
 
         Ok(())
@@ -264,7 +306,7 @@ impl WindowComponent {
     }
 
     fn run_event_loop(
-        &self,
+        &mut self,
         message_sender: mpsc::Sender<RuntimeMessage>,
         message_receiver: std::sync::Arc<
             std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>,
@@ -283,46 +325,25 @@ impl WindowComponent {
                 thread::spawn(|| WindowComponent::run_event_monitor(message_receiver));
             winit_state.message_sender_thread = Some(event_handle);
         }
+        if winit_state.message_sender.is_none() {
+            winit_state.message_sender = Some(message_sender.clone());
+        }
 
         let mut event_loop = winit_state.event_loop.take().ok_or(anyhow!(
             "Event loop does not exist which should never happen"
         ))?;
 
         let mut exit_event: Option<RuntimeMessage> = None;
-        let mut exit_error: Option<Error> = None;
 
         while exit_event.is_none() {
-            event_loop.pump_events(None, |event, _event_loop_target| {
-                match event {
-                    Event::UserEvent(user_event) => {
-                        exit_event = Some(user_event);
-                    }
-                    Event::WindowEvent {
-                        event: window_event,
-                        ..
-                    } => match window_event {
-                        WindowEvent::CloseRequested => {
-                            // Send a message to stop the event loop
-                            let send_result = message_sender.send(RuntimeMessage::ExitRuntime());
-                            if let Err(err) = send_result {
-                                exit_error = Some(err.into());
-                            }
-                        }
-                        _ => {}
-                    },
-                    _ => {}
-                }
-            });
+            event_loop.pump_app_events(None, &mut winit_state);
+            // if our handler got a user_event, return it
+            exit_event = winit_state.last_event.take();
         }
 
         // after running replace the global state and event loop to retain references to the windows
         winit_state.event_loop = Some(event_loop);
         GLOBAL_WINDOW_STATE.set(winit_state);
-
-        // if there was an exit error return it first
-        if let Some(err) = exit_error {
-            return Err(err);
-        }
 
         // get the exit event if it was created
         if let Some(event) = exit_event {
