@@ -86,7 +86,6 @@ impl Runtime {
         //let local_pipeline = pipeline.clone();
         //thread::spawn(|| Runtime::monitor_pipeline_events(local_pipeline));
 
-
         // Start the pipeline
         pipeline
             .set_state(gst::State::Playing)

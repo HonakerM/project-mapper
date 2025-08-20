@@ -17,6 +17,7 @@ use project_mapper_core::runtime_config::{
 pub struct TestComponent {
     config: InputComponentConfig,
     element: Element,
+    capsfilter: Element,
     branch: BranchControl,
 }
 
@@ -39,7 +40,7 @@ impl Component for TestComponent {
         }?;
 
         // ensure we have a test config
-        match config.config.as_any().downcast_ref::<TestConfig>() {
+        let test_config = match config.config.as_any().downcast_ref::<TestConfig>() {
             Some(b) => Ok(b.clone()),
             None => Err(anyhow!("InputComponentConfig is not TestConfig")),
         }?;
@@ -49,20 +50,34 @@ impl Component for TestComponent {
             .name(config.name())
             .build()?;
 
-        // Add tee to src element to allow multiple linkages
+        // Add a caps filter to ensure correct fps
+        let capsfilter = gst::ElementFactory::make("capsfilter")
+            .name(format!("{}-capsfilter", config.name()))
+            .build()?;
+        let caps = gst::Caps::builder("video/x-raw")
+            .field("framerate", &gst::Fraction::new(test_config.fps, 1))
+            .build();
+        capsfilter.set_property("caps", &caps);
 
         let comp = Self {
             branch: BranchControl::new(config.name(), false, true)?,
             config: config,
             element: element,
+            capsfilter: capsfilter,
         };
 
         // Add elements to the pipelines and sync status
         pipeline.add(&comp.element)?;
+        pipeline.add(&comp.capsfilter)?;
         comp.element.sync_state_with_parent()?;
+        comp.capsfilter.sync_state_with_parent()?;
+
+        // link the element to the capsfilter
+        comp.element.link(&comp.capsfilter)?;
 
         comp.branch.add_to_pipeline(pipeline)?;
-        comp.branch.link_wrapped(&comp.element)?;
+        // link the capsfilter to the branch output
+        comp.capsfilter.link(comp.branch.get_output()?)?;
         Ok(comp)
     }
 

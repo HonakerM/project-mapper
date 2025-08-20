@@ -7,7 +7,6 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-use log::{debug, info};
 use crate::components::branch::BranchControl;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
@@ -23,6 +22,7 @@ use anyhow::{Error, Result};
 use gst::Element;
 use gst::prelude::*;
 use gst_video::prelude::*;
+use log::{debug, info};
 use project_mapper_core::runtime_config::output::window::WindowMode;
 use project_mapper_core::runtime_config::shared::Uid;
 use project_mapper_core::runtime_config::{
@@ -310,7 +310,7 @@ impl WindowComponent {
                             if let Err(err) = send_result {
                                 exit_error = Some(err.into());
                             }
-                        },
+                        }
                         _ => {}
                     },
                     event => {
@@ -321,7 +321,6 @@ impl WindowComponent {
             //info!("Event loop running, waiting for events...");
             //thread::sleep(Duration::from_secs_f64(2.0));
             //info!("Trying events again...");
-
         }
 
         // after running replace the global state and event loop to retain references to the windows

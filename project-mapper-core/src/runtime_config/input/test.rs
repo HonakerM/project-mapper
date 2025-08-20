@@ -5,7 +5,17 @@ use serde::{Deserialize, Serialize};
 use crate::runtime_config::input::common::InputConfigTrait;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TestConfig {}
+#[serde(default)]
+
+pub struct TestConfig {
+    pub fps: i32,
+}
+
+impl Default for TestConfig {
+    fn default() -> Self {
+        TestConfig { fps: 30 }
+    }
+}
 
 // Implement InputConfigTrait for TestConfig
 #[typetag::serde]

@@ -11,7 +11,7 @@ use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
 use log::{debug, info};
 use project_mapper_core::runtime_config::{
-    effect::{fps::FpsConfig, gamma::GammaConfig, EffectComponentConfig},
+    effect::{EffectComponentConfig, fps::FpsConfig, gamma::GammaConfig},
     shared::{ComponentConfig, Uid},
 };
 
@@ -41,10 +41,7 @@ impl FpsComponent {
 impl Component for FpsComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(
-        unknown_config: &dyn ComponentConfig,
-        pipeline: &gst::Pipeline,
-    ) -> Result<FpsComponent> {
+    fn new(unknown_config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<FpsComponent> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig = match unknown_config
             .as_any()

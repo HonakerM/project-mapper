@@ -2,10 +2,10 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
 use project_mapper_core::loader::runtime_loader::export_config_json;
-use project_mapper_core::runtime_config::effect::fps::FpsConfig;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
+use project_mapper_core::runtime_config::effect::fps::FpsConfig;
 use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
@@ -31,7 +31,7 @@ fn run_main() -> Result<()> {
         inputs: vec![InputComponentConfig {
             uid: 0,
             name: "test_comp".to_string(),
-            config: Box::new(TestConfig {}),
+            config: Box::new(TestConfig {fps: 180}),
         },InputComponentConfig {
             uid: 4,
             name: "uri_comp".to_string(),
@@ -60,12 +60,12 @@ fn run_main() -> Result<()> {
             },            EffectComponentConfig {
                 uid: 71,
                 name: "fps_in_1".to_string(),
-                config: Box::new(FpsConfig { max_rate: Some(180) }),
+                config: Box::new(FpsConfig { max_rate: Some(60) }),
                 src_uid: 0
             },            EffectComponentConfig {
                 uid: 72,
                 name: "fps_in_2".to_string(),
-                config: Box::new(FpsConfig { max_rate: Some(180) }),
+                config: Box::new(FpsConfig { max_rate: Some(60) }),
                 src_uid: 0
             },
         ],

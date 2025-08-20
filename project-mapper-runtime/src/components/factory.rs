@@ -1,9 +1,9 @@
 use std::{any::type_name_of_val, default};
 
 use project_mapper_core::runtime_config::{
-    effect::{balance::BalanceConfig, fps::FpsConfig, gamma::GammaConfig, EffectComponentConfig},
-    input::{test::TestConfig, uri::UriConfig, InputComponentConfig},
-    output::{window::WindowConfig, OutputComponentConfig},
+    effect::{EffectComponentConfig, balance::BalanceConfig, fps::FpsConfig, gamma::GammaConfig},
+    input::{InputComponentConfig, test::TestConfig, uri::UriConfig},
+    output::{OutputComponentConfig, window::WindowConfig},
     shared::ComponentConfig,
 };
 
