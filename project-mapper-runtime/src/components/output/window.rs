@@ -5,7 +5,9 @@ use std::sync::LazyLock;
 use std::sync::Mutex;
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 
+use log::{debug, info};
 use crate::components::branch::BranchControl;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
@@ -291,6 +293,7 @@ impl WindowComponent {
         let mut exit_event: Option<RuntimeMessage> = None;
         let mut exit_error: Option<Error> = None;
 
+        let mut last_frame_time = std::time::Instant::now();
         while exit_event.is_none() {
             event_loop.pump_events(None, |event, _event_loop_target| {
                 match event {
@@ -307,12 +310,18 @@ impl WindowComponent {
                             if let Err(err) = send_result {
                                 exit_error = Some(err.into());
                             }
-                        }
+                        },
                         _ => {}
                     },
-                    _ => {}
+                    event => {
+                        println!("Received event: {:?}", event);
+                    }
                 }
             });
+            //info!("Event loop running, waiting for events...");
+            //thread::sleep(Duration::from_secs_f64(2.0));
+            //info!("Trying events again...");
+
         }
 
         // after running replace the global state and event loop to retain references to the windows
@@ -363,7 +372,7 @@ impl Component for WindowComponent {
         let output_element = gst::ElementFactory::make("glimagesink")
             .name(config.name())
             .build()?;
-        output_element.set_property("sync", &false);
+        output_element.set_property("sync", &true);
         let mut window_component = Self {
             config: config,
             window_config: window_config,

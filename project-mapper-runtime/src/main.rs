@@ -60,14 +60,12 @@ fn run_main() -> Result<()> {
             },            EffectComponentConfig {
                 uid: 71,
                 name: "fps_in_1".to_string(),
-                config: Box::new(GammaConfig {
-                    gamma: Some(0.1)
-                }),
+                config: Box::new(FpsConfig { max_rate: Some(180) }),
                 src_uid: 0
             },            EffectComponentConfig {
                 uid: 72,
                 name: "fps_in_2".to_string(),
-                config: Box::new(FpsConfig { max_rate: Some(30) }),
+                config: Box::new(FpsConfig { max_rate: Some(180) }),
                 src_uid: 0
             },
         ],
@@ -119,7 +117,7 @@ fn run_main() -> Result<()> {
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 71,
+                src_uid: 72,
             },
         ],
     };

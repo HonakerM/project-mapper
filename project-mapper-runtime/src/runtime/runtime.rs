@@ -86,8 +86,6 @@ impl Runtime {
         //let local_pipeline = pipeline.clone();
         //thread::spawn(|| Runtime::monitor_pipeline_events(local_pipeline));
 
-        // right before starting the pipeline export it to a file
-        pipeline.debug_to_dot_file(DebugGraphDetails::all(), Path::new("./pipeline.dot"));
 
         // Start the pipeline
         pipeline
@@ -98,6 +96,9 @@ impl Runtime {
         self.component_helper
             .start_or_resume(&pipeline)
             .context("Failed to start or resume components")?;
+
+        // right after starting the pipeline export it to a file
+        pipeline.debug_to_dot_file(DebugGraphDetails::all(), Path::new("./pipeline.dot"));
 
         // Then run the components
         loop {
