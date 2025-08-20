@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
 use project_mapper_core::loader::runtime_loader::export_config_json;
+use project_mapper_core::runtime_config::effect::fps::FpsConfig;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
@@ -56,19 +57,31 @@ fn run_main() -> Result<()> {
                     gamma: Some(0.1)
                 }),
                 src_uid: 0
+            },            EffectComponentConfig {
+                uid: 71,
+                name: "fps_in_1".to_string(),
+                config: Box::new(GammaConfig {
+                    gamma: Some(0.1)
+                }),
+                src_uid: 0
+            },            EffectComponentConfig {
+                uid: 72,
+                name: "fps_in_2".to_string(),
+                config: Box::new(FpsConfig { max_rate: Some(30) }),
+                src_uid: 0
             },
         ],
         outputs: vec![
-            OutputComponentConfig {
-                uid: 1,
-                name: "comp_1".to_string(),
-                config: Box::new(WindowConfig {
-                    mode: WindowMode::Borderless {
-                        name: "Monitor #41022".to_string(),
-                    },
-                }),
-                src_uid: 6,
-            }, /*
+            // OutputComponentConfig {
+            //     uid: 1,
+            //     name: "comp_1".to_string(),
+            //     config: Box::new(WindowConfig {
+            //         mode: WindowMode::Borderless {
+            //             name: "Monitor #41022".to_string(),
+            //         },
+            //     }),
+            //     src_uid: 71,
+            // }, 
             OutputComponentConfig {
                 uid: 1,
                 name: "comp_1".to_string(),
@@ -77,8 +90,8 @@ fn run_main() -> Result<()> {
                         name: "\\\\.\\DISPLAY1".to_string(),
                     },
                 }),
-                src_uid: 6,
-            }, 
+                src_uid: 71,
+            }, /*
                OutputComponentConfig {
                    uid: 2,
                    name: "comp_2".to_string(),
@@ -99,14 +112,14 @@ fn run_main() -> Result<()> {
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 7,
+                src_uid: 72,
             },            OutputComponentConfig {
                 uid: 12,
                 name: "comp_5".to_string(),
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 7,
+                src_uid: 71,
             },
         ],
     };
