@@ -37,7 +37,7 @@ impl DefaultRuntimeComponent {
 }
 
 impl Component for DefaultRuntimeComponent {
-    fn new(_config: &dyn ComponentConfig, _pipeline: &gst::Pipeline) -> Result<Self>
+    fn new(_config: &dyn ComponentConfig) -> Result<Self>
     where
         Self: Sized,
     {
@@ -48,7 +48,6 @@ impl Component for DefaultRuntimeComponent {
         &mut self,
         _pipeline: &gst::Pipeline,
         _message_sender: mpsc::Sender<RuntimeMessage>,
-        _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         Ok(())
     }
@@ -56,7 +55,10 @@ impl Component for DefaultRuntimeComponent {
     fn uid(&self) -> Uid {
         DEFAULT_ID
     }
-    fn element(&self) -> Result<&gst::Element> {
+    fn input_element(&self) -> Result<&gst::Element> {
+        Err(anyhow!("Runtime Component does not have elements"))
+    }    
+    fn output_element(&self) -> Result<&gst::Element> {
         Err(anyhow!("Runtime Component does not have elements"))
     }
     fn requires_main(&self) -> bool {
@@ -74,5 +76,9 @@ impl ComponentConfig for DefaultRuntimeComponent {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+
+    fn dependents(&self)-> Vec<Uid> {
+        return vec![];
     }
 }

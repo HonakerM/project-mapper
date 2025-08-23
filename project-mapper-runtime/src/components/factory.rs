@@ -17,11 +17,10 @@ use anyhow::{Error, Result, anyhow};
 
 pub fn create_default_component(
     config: &dyn ComponentConfig,
-    pipeline: &gst::Pipeline,
 ) -> Result<Box<dyn Component>> {
     if let Some(output_cfg) = config.as_any().downcast_ref::<OutputComponentConfig>() {
         if let Some(_) = output_cfg.config.as_any().downcast_ref::<WindowConfig>() {
-            let comp = WindowComponent::new(config, pipeline)?;
+            let comp = WindowComponent::new(config)?;
             Ok(Box::new(comp))
         } else {
             let unknown_name = type_name_of_val(&output_cfg.config);
@@ -29,10 +28,10 @@ pub fn create_default_component(
         }
     } else if let Some(input_cfg) = config.as_any().downcast_ref::<InputComponentConfig>() {
         if let Some(_) = input_cfg.config.as_any().downcast_ref::<TestConfig>() {
-            let comp = TestComponent::new(config, pipeline)?;
+            let comp = TestComponent::new(config)?;
             Ok(Box::new(comp))
         } else if let Some(_) = input_cfg.config.as_any().downcast_ref::<UriConfig>() {
-            let comp = UriComponent::new(config, pipeline)?;
+            let comp = UriComponent::new(config)?;
             Ok(Box::new(comp))
         } else {
             let unknown_name = type_name_of_val(&input_cfg.config);
@@ -40,13 +39,13 @@ pub fn create_default_component(
         }
     } else if let Some(effect_cfg) = config.as_any().downcast_ref::<EffectComponentConfig>() {
         if let Some(_) = effect_cfg.config.as_any().downcast_ref::<BalanceConfig>() {
-            let comp = BalanceComponent::new(config, pipeline)?;
+            let comp = BalanceComponent::new(config)?;
             Ok(Box::new(comp))
         } else if let Some(_) = effect_cfg.config.as_any().downcast_ref::<GammaConfig>() {
-            let comp = GammaComponent::new(config, pipeline)?;
+            let comp = GammaComponent::new(config)?;
             Ok(Box::new(comp))
         } else if let Some(_) = effect_cfg.config.as_any().downcast_ref::<FpsConfig>() {
-            let comp = FpsComponent::new(config, pipeline)?;
+            let comp = FpsComponent::new(config)?;
             Ok(Box::new(comp))
         } else {
             let unknown_name = type_name_of_val(&effect_cfg.config);
@@ -65,8 +64,7 @@ impl ComponentFactory for DefaultComponentFactory {
     fn create_component(
         &self,
         config: &dyn ComponentConfig,
-        pipeline: &gst::Pipeline,
     ) -> Result<Box<dyn Component>> {
-        create_default_component(config, pipeline)
+        create_default_component(config)
     }
 }

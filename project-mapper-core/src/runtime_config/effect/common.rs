@@ -50,4 +50,8 @@ impl ComponentConfig for EffectComponentConfig {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn dependents(&self)-> Vec<Uid> {
+        return vec![self.src_uid];
+    }
 }

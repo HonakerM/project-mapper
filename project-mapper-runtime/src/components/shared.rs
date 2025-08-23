@@ -18,34 +18,33 @@ pub trait ComponentFactory {
     fn create_component(
         &self,
         config: &dyn ComponentConfig,
-        pipeline: &gst::Pipeline,
     ) -> Result<Box<dyn Component>>;
 }
 
 pub trait ComponentLookupHelper {
     // factory function to create a component and register it with the helper
-    fn create(
+    fn new(
         &mut self,
         config: &dyn ComponentConfig,
-        pipeline: &gst::Pipeline,
         factory: &dyn ComponentFactory,
     ) -> Result<()>;
-    fn update(&mut self, config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<()>;
-    // helper function to return a desired component and run setup if it hasn't already
-    fn lookup_and_setup(
+    fn setup(
         &self,
         uid: Uid,
         pipeline: &gst::Pipeline,
+        factory: &dyn ComponentFactory,
         message_sender: mpsc::Sender<RuntimeMessage>,
-    ) -> Result<Rc<RefCell<Box<dyn Component>>>>;
+    ) -> Result<()>;
+
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()>;
+    // helper function to return a desired component and run setup if it hasn't already
     // start or resume all components. Components must be safe against already initialized
     // state
-    fn start_or_resume(&self, pipeline: &gst::Pipeline) -> Result<()>;
+    fn resume(&self) -> Result<()>;
     // helper to pause all running components
     fn pause(&self) -> Result<()>;
     fn run(
         &self,
-        pipeline: &gst::Pipeline,
         message_broker: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage>;
     fn destroy_comp(&mut self, uid: &Uid) -> Result<()>;
@@ -62,7 +61,7 @@ pub trait ComponentLookupHelper {
 pub trait Component {
     // runtime lifecycle functions
     // Construct object
-    fn new(config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<Self>
+    fn new(config: &dyn ComponentConfig) -> Result<Self>
     where
         Self: Sized;
 
@@ -73,16 +72,16 @@ pub trait Component {
         &mut self,
         pipeline: &gst::Pipeline,
         message_sender: mpsc::Sender<RuntimeMessage>,
-        lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()>;
 
     // accessor functions
-    fn element(&self) -> Result<&Element>;
+    fn input_element(&self) -> Result<&Element>;
+    fn output_element(&self) -> Result<&Element>;
     fn uid(&self) -> Uid;
 
     /* Runtime Functions */
     // Start this component. Should return quickly
-    fn start_or_resume(&mut self, _pipeline: &gst::Pipeline) -> Result<()> {
+    fn resume(&mut self) -> Result<()> {
         Ok(())
     }
     // pause the component while it's running. This should not delete resources
@@ -92,14 +91,15 @@ pub trait Component {
     // run the component! This should only be called if we have a main requirement
     fn run(
         &self,
-        _pipeline: &gst::Pipeline,
         message_receiver: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
         DefaultRuntimeComponent::manage_events(message_receiver)
     }
 
     // update a component based on a new config
-    fn update(&mut self, config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<()> {
+    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
         Ok(())
     }
     // Completely stop and destroy this component

@@ -41,4 +41,8 @@ impl ComponentConfig for InputComponentConfig {
     fn as_any(&self) -> &dyn Any {
         self
     }
+
+    fn dependents(&self)-> Vec<Uid> {
+        return vec![];
+    }
 }
