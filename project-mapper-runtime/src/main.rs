@@ -18,6 +18,7 @@ use project_mapper_runtime::components::comp_helper::DefaultComponentHelper;
 use project_mapper_runtime::components::factory::DefaultComponentFactory;
 use project_mapper_runtime::runtime::runtime::Runtime;
 use simple_logger::SimpleLogger;
+use project_mapper_core::runtime_config::effect::perspective::PerspectiveConfig;
 
 fn run_main() -> Result<()> {
     //configure logger
@@ -73,7 +74,21 @@ fn run_main() -> Result<()> {
                 name: "fps_in_2".to_string(),
                 config: Box::new(FpsConfig { max_rate: Some(60) }),
                 srcs: vec![Box::new(DefaultSrcConfig {
-                    uid: 06
+                    uid: 8
+                })],
+            },
+            EffectComponentConfig {
+                uid: 8,
+                name: "perspective_transform".to_string(),
+                config: Box::new(PerspectiveConfig {
+                    matrix: [
+                        1.0, 0.0, 0.0, // First row
+                        0.0, 1.0, 0.0, // Second row
+                        0.0, 0.0, 1.0, // Third row
+                    ],
+                }),
+                srcs: vec![Box::new(DefaultSrcConfig {
+                    uid: 0,
                 })],
             },
         ],

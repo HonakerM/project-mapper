@@ -1,14 +1,14 @@
 use std::{any::type_name_of_val, default};
 
 use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, balance::BalanceConfig, fps::FpsConfig, gamma::GammaConfig},
-    input::{InputComponentConfig, test::TestConfig, uri::UriConfig},
-    output::{OutputComponentConfig, window::WindowConfig},
+    effect::{balance::BalanceConfig, fps::FpsConfig, gamma::GammaConfig, perspective::PerspectiveConfig, EffectComponentConfig},
+    input::{test::TestConfig, uri::UriConfig, InputComponentConfig},
+    output::{window::WindowConfig, OutputComponentConfig},
     shared::ComponentConfig,
 };
 
 use crate::components::{
-    effect::{balance::BalanceComponent, fps::FpsComponent, gamma::GammaComponent},
+    effect::{balance::BalanceComponent, fps::FpsComponent, gamma::GammaComponent, perspective::PerspectiveComponent},
     input::{test::TestComponent, uri::UriComponent},
     output::window::WindowComponent,
     shared::{Component, ComponentFactory},
@@ -46,6 +46,9 @@ pub fn create_default_component(
             Ok(Box::new(comp))
         } else if let Some(_) = effect_cfg.config.as_any().downcast_ref::<FpsConfig>() {
             let comp = FpsComponent::new(config)?;
+            Ok(Box::new(comp))
+        } else if let Some(_) = effect_cfg.config.as_any().downcast_ref::<PerspectiveConfig>() {
+            let comp = PerspectiveComponent::new(config)?;
             Ok(Box::new(comp))
         } else {
             let unknown_name = type_name_of_val(&effect_cfg.config);
