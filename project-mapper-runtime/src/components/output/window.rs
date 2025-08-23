@@ -450,22 +450,16 @@ impl Component for WindowComponent {
         }
 
         
-        if  let Some(input_sink_pad) = self.input_element()?.static_pad("sink") {
-            if input_sink_pad.is_linked() {
-                if let Some(peer_pad) = input_sink_pad.peer() {
-                    peer_pad.unlink(&input_sink_pad)?;
-                }
-            }
-        }
-
 
         let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
             "Unable to find source component {} for window component {}",
             self.config.src_uid,
             self.config.name()
         ))?;
+        let src_comp_ref = src_comp.borrow();
 
-        src_comp.borrow().output_element()?.link(self.input_element()?)?;
+        let src_element = src_comp_ref.output_element()?;
+        self.branch.link_from(src_element)?;
 
         Ok(())
 

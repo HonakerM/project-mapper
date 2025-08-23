@@ -68,7 +68,6 @@ impl Component for BalanceComponent {
     // Construct object
     fn new(
         unknown_config: &dyn ComponentConfig,
-        pipeline: &gst::Pipeline,
     ) -> Result<BalanceComponent> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig = match unknown_config
@@ -98,13 +97,7 @@ impl Component for BalanceComponent {
             branch: branch,
         };
 
-        // config the elements in the pipeline
-        pipeline.add(&comp.element)?;
-        comp.element.sync_state_with_parent()?;
-
-        // ensure the branch is correctly setup and wrap the parent element
-        comp.branch.add_to_pipeline(pipeline)?;
-        comp.branch.link_wrapped(&comp.element)?;
+       
 
         Ok(comp)
     }
@@ -115,27 +108,24 @@ impl Component for BalanceComponent {
         &mut self,
         pipeline: &gst::Pipeline,
         message_sender: mpsc::Sender<RuntimeMessage>,
-        lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
-        // Fetch the compoennt that should be pointing to us and link it to the
-        // input queue
-        let src_comp =
-            lookup_func.lookup_and_setup(self.config.src_uid, pipeline, message_sender.clone())?;
+        // config the elements in the pipeline
+        pipeline.add(&self.element)?;
+        self.element.sync_state_with_parent()?;
 
-        src_comp
-            .borrow()
-            .element()?
-            .link(self.branch.get_input()?)?;
+        // ensure the branch is correctly setup and wrap the parent element
+        self.branch.add_to_pipeline(pipeline)?;
+        self.branch.link_wrapped(&self.element)?;
+        
 
         Ok(())
     }
-    fn update(
-        &mut self,
-        unknown_config: &dyn ComponentConfig,
-        _pipeline: &gst::Pipeline,
-    ) -> Result<()> {
+
+    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
+            lookup_func: &dyn ComponentLookupHelper,
+        ) -> Result<()> {
         // parse config and ensure it's correct types
-        let config: EffectComponentConfig = match unknown_config
+        let config: EffectComponentConfig = match config
             .as_any()
             .downcast_ref::<EffectComponentConfig>()
         {
@@ -145,19 +135,33 @@ impl Component for BalanceComponent {
             )),
         }?;
 
-        // construct element
+        // update config
         let balance_config = match config.config.as_any().downcast_ref::<BalanceConfig>() {
             Some(b) => Ok(b.clone()),
             None => Err(anyhow!("BalannceComponentConfig is not BalanceConfig")),
         }?;
         BalanceComponent::update_config(&self.element, balance_config)?;
+        
+        let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
+            "Unable to find source component {} for balance component {}",
+            self.config.src_uid,
+            self.config.name()
+        ))?;
+
+        let src_comp_Ref = src_comp.borrow();
+        let src_element = src_comp_Ref.output_element()?;
+        self.branch.link_from(src_element)?;
+
         Ok(())
     }
 
     // accessor functions
-    fn element(&self) -> Result<&Element> {
+    fn input_element(&self) -> Result<&Element> {
         // return the branch output element since that's what people
         // should be linking
+        self.branch.get_input()
+    }
+    fn output_element(&self) -> Result<&Element> {
         self.branch.get_output()
     }
     fn uid(&self) -> Uid {

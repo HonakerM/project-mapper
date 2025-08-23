@@ -41,7 +41,7 @@ impl FpsComponent {
 impl Component for FpsComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(unknown_config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<FpsComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<FpsComponent> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig = match unknown_config
             .as_any()
@@ -70,14 +70,6 @@ impl Component for FpsComponent {
             branch: branch,
         };
 
-        // Add elements to the pipelines and sync status
-        pipeline.add(&comp.element)?;
-        comp.element.sync_state_with_parent()?;
-
-        // ensure the branch is correctly setup and wrap the parent element
-        comp.branch.add_to_pipeline(pipeline)?;
-        comp.branch.link_wrapped(&comp.element)?;
-
         Ok(comp)
     }
 
@@ -86,23 +78,22 @@ impl Component for FpsComponent {
     fn setup(
         &mut self,
         pipeline: &gst::Pipeline,
-        message_sender: mpsc::Sender<RuntimeMessage>,
-        lookup_func: &dyn ComponentLookupHelper,
+        _message_sender: mpsc::Sender<RuntimeMessage>,
     ) -> Result<()> {
-        // Fetch the compoennt that should be pointing to us and link it to the
-        // input queue
-        let src_comp =
-            lookup_func.lookup_and_setup(self.config.src_uid, pipeline, message_sender.clone())?;
+        // Add elements to the pipelines and sync status
+        pipeline.add(&self.element)?;
+        self.element.sync_state_with_parent()?;
 
-        src_comp
-            .borrow()
-            .element()?
-            .link(self.branch.get_input()?)?;
+        // ensure the branch is correctly setup and wrap the parent element
+        self.branch.add_to_pipeline(pipeline)?;
+        self.branch.link_wrapped(&self.element)?;
 
         Ok(())
     }
-    fn update(&mut self, config: &dyn ComponentConfig, _pipeline: &gst::Pipeline) -> Result<()> {
-        // parse config and ensure it's correct types
+    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
+            lookup_func: &dyn ComponentLookupHelper,
+        ) -> Result<()> {
+    // parse config and ensure it's correct types
         let config: EffectComponentConfig =
             match config.as_any().downcast_ref::<EffectComponentConfig>() {
                 Some(b) => Ok(b.clone()),
@@ -120,15 +111,27 @@ impl Component for FpsComponent {
         self.config = config;
         FpsComponent::update_config(&self.element, &fps_config)?;
 
+        let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
+            "Unable to find source component {} for fps component {}",
+            self.config.src_uid,
+            self.config.name()
+        ))?;
+        let src_comp_ref = src_comp.borrow();
+        let src_element = src_comp_ref.output_element()?;
+        self.branch.link_from(src_element)?;
+
         Ok(())
     }
 
     // accessor functions
-    fn element(&self) -> Result<&Element> {
+    fn input_element(&self) -> Result<&Element> {
         // return the branch output element since that's what people
         // should be linking
-        self.branch.get_output()
+        self.branch.get_input()
     }
+    fn output_element(&self) -> Result<&Element> {
+        self.branch.get_output()
+    }   
     fn uid(&self) -> Uid {
         return self.config.uid();
     }
