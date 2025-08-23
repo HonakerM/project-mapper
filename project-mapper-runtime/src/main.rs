@@ -2,6 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
 use project_mapper_core::loader::runtime_loader::export_config_json;
+use project_mapper_core::runtime_config::effect::common::DefaultSrcConfig;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
@@ -48,25 +49,32 @@ fn run_main() -> Result<()> {
                     saturation: None,
                     hue: None,
                 }),
-                src_uid: 0
-            },
+                srcs: vec![Box::new(DefaultSrcConfig {
+                    uid: 0
+                })],            },
             EffectComponentConfig {
                 uid: 7,
                 name: "gamma_bright".to_string(),
                 config: Box::new(GammaConfig {
                     gamma: Some(0.1)
                 }),
-                src_uid: 0
+                srcs: vec![Box::new(DefaultSrcConfig {
+                    uid: 0
+                })],
             },            EffectComponentConfig {
                 uid: 71,
                 name: "fps_in_1".to_string(),
                 config: Box::new(FpsConfig { max_rate: Some(60) }),
-                src_uid: 0
+                srcs: vec![Box::new(DefaultSrcConfig {
+                    uid: 7
+                })],
             },            EffectComponentConfig {
                 uid: 72,
                 name: "fps_in_2".to_string(),
                 config: Box::new(FpsConfig { max_rate: Some(60) }),
-                src_uid: 0
+                srcs: vec![Box::new(DefaultSrcConfig {
+                    uid: 06
+                })],
             },
         ],
         outputs: vec![

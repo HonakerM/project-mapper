@@ -14,6 +14,12 @@ pub trait EffectConfigTrait: std::fmt::Debug + Send + Sync {
     fn as_any(&self) -> &dyn Any;
     fn clone_box(&self) -> Box<dyn EffectConfigTrait>;
 }
+#[typetag::serde(tag = "type")]
+pub trait EffectSrcConfigTrait: std::fmt::Debug + Send + Sync {
+    fn uid(&self) -> Uid;
+    fn as_any(&self) -> &dyn Any;
+    fn clone_box(&self) -> Box<dyn EffectSrcConfigTrait>;
+}
 
 // Clone support for Box<dyn EffectConfigTrait>
 impl Clone for Box<dyn EffectConfigTrait> {
@@ -22,6 +28,11 @@ impl Clone for Box<dyn EffectConfigTrait> {
     }
 }
 
+impl Clone for Box<dyn EffectSrcConfigTrait> {
+    fn clone(&self) -> Box<dyn EffectSrcConfigTrait> {
+        self.clone_box()
+    }
+}
 // EffectComponent is the generic component for
 // all Effect types
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -34,7 +45,7 @@ pub struct EffectComponentConfig {
     pub config: Box<dyn EffectConfigTrait>,
 
     // what source to use for this Effect
-    pub src_uid: Uid,
+    pub srcs: Vec<Box<dyn EffectSrcConfigTrait>>,
 }
 
 // Implmement the Shared component trait to allow name/id fetching
@@ -52,6 +63,28 @@ impl ComponentConfig for EffectComponentConfig {
     }
 
     fn dependents(&self)-> Vec<Uid> {
-        return vec![self.src_uid];
+        return self.srcs.iter().map(|s| s.uid()).collect();
+    }
+}
+
+
+// Implement InputConfigTrait for TestConfig
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+pub struct DefaultSrcConfig {
+    pub uid: Uid,
+}
+
+#[typetag::serde(name = "default")]
+impl EffectSrcConfigTrait for DefaultSrcConfig {
+    fn uid(&self) -> Uid {
+        self.uid
+    }
+    
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_box(&self) -> Box<dyn EffectSrcConfigTrait> {
+        Box::new(self.clone())
     }
 }

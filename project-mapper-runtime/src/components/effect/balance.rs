@@ -141,10 +141,15 @@ impl Component for BalanceComponent {
             None => Err(anyhow!("BalannceComponentConfig is not BalanceConfig")),
         }?;
         BalanceComponent::update_config(&self.element, balance_config)?;
+
+        if self.config.srcs.len() != 1 {
+            return Err(anyhow!("Balance component must have exactly one source"));
+        }
+        let src_config = &self.config.srcs[0];
         
-        let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
+        let src_comp = lookup_func.get_comp(&src_config.uid()).ok_or(anyhow!(
             "Unable to find source component {} for balance component {}",
-            self.config.src_uid,
+            src_config.uid(),
             self.config.name()
         ))?;
 

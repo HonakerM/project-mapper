@@ -111,9 +111,15 @@ impl Component for FpsComponent {
         self.config = config;
         FpsComponent::update_config(&self.element, &fps_config)?;
 
-        let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
+        if self.config.srcs.len() != 1 {
+            return Err(anyhow!("Balance component must have exactly one source"));
+        }
+        let src_config = &self.config.srcs[0];
+        
+
+        let src_comp = lookup_func.get_comp(&src_config.uid()).ok_or(anyhow!(
             "Unable to find source component {} for fps component {}",
-            self.config.src_uid,
+            src_config.uid(),
             self.config.name()
         ))?;
         let src_comp_ref = src_comp.borrow();
