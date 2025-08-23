@@ -19,7 +19,7 @@ pub fn main() {
             InputComponentConfig {
                 uid: 0,
                 name: "in_comp".to_string(),
-                config: Box::new(TestConfig {}),
+                config: Box::new(TestConfig {fps: 5}),
             },
             InputComponentConfig {
                 uid: 1,

@@ -1,12 +1,13 @@
 use core::time;
 use std::any::type_name_of_val;
+use std::collections::HashMap;
 use std::path::Path;
 use std::sync::{Arc, LazyLock, Mutex, mpsc};
 use std::thread;
 
 use anyhow::{Context, Result, anyhow};
 use gst::{DebugGraphDetails, StateChangeSuccess, prelude::*};
-use project_mapper_core::runtime_config::RuntimeConfig;
+use project_mapper_core::runtime_config::{output, RuntimeConfig};
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
@@ -54,9 +55,6 @@ impl Runtime {
 
     // run the given runtime
     pub fn run(mut self, config: Arc<Mutex<RuntimeConfig>>) -> Result<()> {
-        // Before doing literally anything. Initialize GST
-        gst::init().context("Failed to initialize gst")?;
-
         // aquire the global lock to ensure only one runtime can run at a time
         let _unused_lock = GLOBAL_RUNTIME_LOCK
             .lock()
@@ -93,7 +91,7 @@ impl Runtime {
 
         // Next tell the component helper to start all components
         self.component_helper
-            .start_or_resume(&pipeline)
+            .resume()
             .context("Failed to start or resume components")?;
 
         // right after starting the pipeline export it to a file
@@ -103,7 +101,7 @@ impl Runtime {
         loop {
             let message = self
                 .component_helper
-                .run(&pipeline, self.message_reciever.clone())
+                .run(self.message_reciever.clone())
                 .context("failed to run main component")?;
 
             match message {
@@ -220,15 +218,14 @@ impl Runtime {
 
             // create components and then setup them up
             for comp in &components_to_create {
-                self.component_helper.create(
+                self.component_helper.new(
                     comp.as_ref(),
-                    pipeline,
                     self.component_factory.as_ref(),
                 )?;
             }
             // do this in separate loops to ensure all components are created before being setup
             for comp in &components_to_create {
-                self.component_helper.lookup_and_setup(
+                self.component_helper.setup(
                     comp.uid(),
                     pipeline,
                     self.message_sender.clone(),
@@ -237,7 +234,7 @@ impl Runtime {
 
             // for all components that need to be updated run the update after the above setup functions have been called
             for comp in &components_to_update {
-                self.component_helper.update(comp.as_ref(), pipeline)?;
+                self.component_helper.update(comp.as_ref())?;
             }
         }
 
@@ -247,7 +244,10 @@ impl Runtime {
             let default_config = DefaultRuntimeComponent::new_config()
                 .context("Failed to contstruct default runtime component config")?;
             self.component_helper
-                .create(&default_config, pipeline, self.component_factory.as_ref())
+                .new(&default_config, self.component_factory.as_ref())
+                .context(format!("failed to create default runtime component"))?;           
+             self.component_helper
+                .setup(default_config.uid(), pipeline, self.message_sender.clone())
                 .context(format!("failed to create default runtime component"))?;
         }
 
