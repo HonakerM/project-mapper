@@ -26,7 +26,6 @@ impl Component for TestComponent {
     // Construct object
     fn new(
         unknown_config: &dyn ComponentConfig,
-        pipeline: &gst::Pipeline,
     ) -> Result<TestComponent> {
         // parse config and ensure it's correct types
         let config: InputComponentConfig = match unknown_config
@@ -66,18 +65,7 @@ impl Component for TestComponent {
             capsfilter: capsfilter,
         };
 
-        // Add elements to the pipelines and sync status
-        pipeline.add(&comp.element)?;
-        pipeline.add(&comp.capsfilter)?;
-        comp.element.sync_state_with_parent()?;
-        comp.capsfilter.sync_state_with_parent()?;
 
-        // link the element to the capsfilter
-        comp.element.link(&comp.capsfilter)?;
-
-        comp.branch.add_to_pipeline(pipeline)?;
-        // link the capsfilter to the branch output
-        comp.capsfilter.link(comp.branch.get_output()?)?;
         Ok(comp)
     }
 
@@ -85,15 +73,30 @@ impl Component for TestComponent {
     // ! Will probably be removed or edited to have more params
     fn setup(
         &mut self,
-        _pipeline: &gst::Pipeline,
+        pipeline: &gst::Pipeline,
         _message_sender: mpsc::Sender<RuntimeMessage>,
-        _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
+        // Add elements to the pipelines and sync status
+        pipeline.add(&self.element)?;
+        pipeline.add(&self.capsfilter)?;
+        self.element.sync_state_with_parent()?;
+        self.capsfilter.sync_state_with_parent()?;
+
+        // link the element to the capsfilter
+        self.element.link(&self.capsfilter)?;
+
+        self.branch.add_to_pipeline(pipeline)?;
+        // link the capsfilter to the branch output
+        self.capsfilter.link(self.branch.get_output()?)?;
+
         Ok(())
     }
 
     // accessor functions
-    fn element(&self) -> Result<&Element> {
+    fn input_element(&self) -> Result<&Element> {
+        Err(anyhow!("Test component has no input element"))
+    }
+    fn output_element(&self) -> Result<&Element> {
         // return the tee element since that's what people should
         // be linking against
         self.branch.get_output()

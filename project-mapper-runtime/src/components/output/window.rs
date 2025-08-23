@@ -87,6 +87,7 @@ pub struct WindowComponent {
 
     // message sender for runtime events
     message_sender: Option<mpsc::Sender<RuntimeMessage>>,
+    pipeline: Option<gst::Pipeline>,
 
     // gst elements
     branch: BranchControl,
@@ -348,7 +349,6 @@ impl Component for WindowComponent {
     // Construct object
     fn new(
         unknown_config: &dyn ComponentConfig,
-        pipeline: &gst::Pipeline,
     ) -> Result<WindowComponent> {
         // parse config and ensure it's correct types
         let config: OutputComponentConfig = match unknown_config
@@ -380,21 +380,12 @@ impl Component for WindowComponent {
             output_element: output_element,
 
             message_sender: None,
+            pipeline: None,
 
             // default to not main. This will be configured during initialize_global_state
             is_main: false,
         };
         window_component.initialize_global_state()?;
-
-        // Add both elements to the pipelines and sync status
-        pipeline.add(&window_component.output_element)?;
-        window_component.output_element.sync_state_with_parent()?;
-
-        // construct branch and wrap
-        window_component.branch.add_to_pipeline(pipeline)?;
-        window_component
-            .branch
-            .link_wrapped(&window_component.output_element)?;
 
         Ok(window_component)
     }
@@ -404,58 +395,89 @@ impl Component for WindowComponent {
         &mut self,
         pipeline: &gst::Pipeline,
         message_sender: mpsc::Sender<RuntimeMessage>,
-        lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         // copy the message sender into the object
         self.message_sender = Some(message_sender.clone());
+        self.pipeline = Some(pipeline.clone());
 
-        // If we're the main function than recursively call setup on all available window references
-        // this ensures all pipeline elements that require a window have been added to the pipeline
-        // ! Note this must come after adding the components to the pipeline:
-
-        if self.is_main {
-            // only lock global state while gathering components to initialize
-            let mut comp_ids_to_init: Vec<Uid> = vec![];
-            {
-                let proxy_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
-                    "Unable to aquire window proxy lock. Should not happen in normal operation",
-                )))?;
-                if let Some(state) = proxy_state.as_ref() {
-                    for request in state.window_configs.values() {
-                        // we don't want to re-init this component as that can cause issues
-                        if request.element_uid != self.uid() {
-                            comp_ids_to_init.push(request.element_uid);
-                        }
-                    }
-                }
-            }
-            // initialize components outside of locked loop
-            for id in comp_ids_to_init {
-                lookup_func.lookup_and_setup(id, pipeline, message_sender.clone())?;
-            }
-
-            // initialize all the window elements
-            self.initialize_window_elements(pipeline)?;
-        }
-
-        // Fetch the compoennt that should be pointing to us
-        let src_comp =
-            lookup_func.lookup_and_setup(self.config.src_uid, pipeline, message_sender.clone())?;
-
-        // link the desired source with the branch
-        src_comp
-            .borrow()
-            .element()?
-            .link(self.branch.get_input()?)?;
+         // Add both elements to the pipelines and sync status
+         pipeline.add(&self.output_element)?;
+         self.output_element.sync_state_with_parent()?;
+         // construct branch and wrap
+         self.branch.add_to_pipeline(pipeline)?;
+         self
+             .branch
+             .link_wrapped(&self.output_element)?;
 
         // mark setup as complete so as to not rerun
         Ok(())
     }
 
-    // accessor functions
-    fn element(&self) -> Result<&Element> {
-        Ok(&self.output_element)
+    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
+            lookup_func: &dyn ComponentLookupHelper,
+        ) -> Result<()> {
+        // If we're the main function than recursively call setup on all available window references
+        // this ensures all pipeline elements that require a window have been added to the pipeline
+        // ! Note this must come after adding the components to the pipeline:
+            
+        if self.is_main {
+                
+            let mut winit_state = GLOBAL_WINDOW_STATE.take();
+            if let None = winit_state.event_loop {
+                // only lock global state while gathering components to initialize
+                let mut comp_ids_to_init: Vec<Uid> = vec![];
+                {
+                    let proxy_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
+                        "Unable to aquire window proxy lock. Should not happen in normal operation",
+                    )))?;
+                    if let Some(state) = proxy_state.as_ref() {
+                        for request in state.window_configs.values() {
+                            // we don't want to re-init this component as that can cause issues
+                            if request.element_uid != self.uid() {
+                                comp_ids_to_init.push(request.element_uid);
+                            }
+                        }
+                    }
+                }
+
+                // initialize all the window elements
+                let pipeline = self.pipeline.take().ok_or(anyhow!(
+                    "Pipeline does not exist which should never happen"
+                ))?;
+                self.initialize_window_elements(&pipeline)?;
+                self.pipeline.replace(pipeline);
+            }
+        }
+
+        
+        if  let Some(input_sink_pad) = self.input_element()?.static_pad("sink") {
+            if input_sink_pad.is_linked() {
+                if let Some(peer_pad) = input_sink_pad.peer() {
+                    peer_pad.unlink(&input_sink_pad)?;
+                }
+            }
+        }
+
+
+        let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
+            "Unable to find source component {} for window component {}",
+            self.config.src_uid,
+            self.config.name()
+        ))?;
+
+        src_comp.borrow().output_element()?.link(self.input_element()?)?;
+
+        Ok(())
+
     }
+    // accessor functions
+    fn input_element(&self) -> Result<&Element> {
+        Ok(self.branch.get_input()?)
+    }
+    fn output_element(&self) -> Result<&Element> {
+        Err(anyhow!("Window component has no output element"))
+    }
+
     fn uid(&self) -> Uid {
         self.config.uid()
     }
@@ -463,7 +485,6 @@ impl Component for WindowComponent {
     // Run this component
     fn run(
         &self,
-        _pipeline: &gst::Pipeline,
         message_broker: std::sync::Arc<std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>>,
     ) -> Result<RuntimeMessage> {
         if !self.is_main {

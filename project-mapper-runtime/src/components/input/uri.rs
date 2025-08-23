@@ -18,6 +18,7 @@ pub struct UriComponent {
     config: InputComponentConfig,
     element: Element,
     branch: BranchControl,
+    pipeline: Option<gst::Pipeline>,
 }
 
 impl UriComponent {
@@ -135,7 +136,7 @@ impl UriComponent {
 impl Component for UriComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(unknown_config: &dyn ComponentConfig, pipeline: &gst::Pipeline) -> Result<UriComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<UriComponent> {
         // parse config and ensure it's correct types
         let config: InputComponentConfig = match unknown_config
             .as_any()
@@ -163,8 +164,8 @@ impl Component for UriComponent {
             branch: BranchControl::new(config.name(), false, true)?,
             config: config,
             element: element,
+            pipeline: None
         };
-        comp.configure_in_pipeline(pipeline)?;
         Ok(comp)
     }
 
@@ -173,18 +174,18 @@ impl Component for UriComponent {
         &mut self,
         pipeline: &gst::Pipeline,
         _message_sender: mpsc::Sender<RuntimeMessage>,
-        _lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
-        Ok(())
+
+        self.configure_in_pipeline(pipeline)?;
+        self.pipeline = Some(pipeline.clone());
+        Ok((    ))
     }
 
-    fn update(
-        &mut self,
-        unknown_config: &dyn ComponentConfig,
-        _pipeline: &gst::Pipeline,
-    ) -> Result<()> {
+    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
+            lookup_func: &dyn ComponentLookupHelper,
+        ) -> Result<()> {
         // parse config and ensure it's correct types
-        let config: InputComponentConfig = match unknown_config
+        let config: InputComponentConfig = match config
             .as_any()
             .downcast_ref::<InputComponentConfig>()
         {
@@ -205,10 +206,13 @@ impl Component for UriComponent {
     }
 
     // accessor functions
-    fn element(&self) -> Result<&Element> {
+    fn output_element(&self) -> Result<&Element> {
         // return the tee element since that's what people should
         // be linking against
         self.branch.get_output()
+    }
+    fn input_element(&self) -> Result<&Element> {
+        Err(anyhow!("Uri component has no input element"))
     }
     fn uid(&self) -> Uid {
         return self.config.uid();
