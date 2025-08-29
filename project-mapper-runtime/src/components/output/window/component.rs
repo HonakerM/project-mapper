@@ -8,6 +8,11 @@ use std::thread;
 use std::time::Duration;
 
 use crate::components::branch::BranchControl;
+use crate::components::output::window::state::GLOBAL_WINDOW_STATE;
+use crate::components::output::window::state::PROXY_WINDOW_STATE;
+use crate::components::output::window::state::ProxyWindowState;
+use crate::components::output::window::state::WindowRequest;
+use crate::components::output::window::state::WinitState;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
@@ -38,48 +43,6 @@ use winit::event_loop::EventLoopBuilder;
 use winit::platform::pump_events::EventLoopExtPumpEvents;
 use winit::window::Window;
 use winit::window::WindowBuilder;
-
-// helper struct to store information about winit. This
-// will only be held by the main component
-struct WinitState {
-    message_sender_thread: Option<thread::JoinHandle<Result<()>>>,
-    event_loop: Option<WinitPMEventLoop>,
-    // needed to keep reference to a window
-    windows: HashMap<Uid, Window>,
-}
-impl Default for WinitState {
-    fn default() -> Self {
-        Self {
-            message_sender_thread: None,
-            event_loop: None,
-            windows: HashMap::new(),
-        }
-    }
-}
-
-// use thread local window state since we only ever need it on the main thread
-thread_local! {
-    static GLOBAL_WINDOW_STATE: RefCell<WinitState> = RefCell::new(WinitState::default());
-}
-
-// Struct for components to request a window with
-#[derive(Clone)]
-struct WindowRequest {
-    pub element_name: String,
-    pub element_uid: Uid,
-    pub config: WindowConfig,
-}
-
-// setup global state. While this could be done without the Option
-// keep it to allow us to determine which component is the "main" one
-// and will start threads/etc
-#[derive(Clone)]
-struct ProxyWindowState {
-    pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
-    pub window_configs: HashMap<String, WindowRequest>,
-}
-static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
-    LazyLock::new(|| Mutex::new(None));
 
 pub struct WindowComponent {
     config: OutputComponentConfig,
@@ -347,9 +310,7 @@ impl WindowComponent {
 impl Component for WindowComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(
-        unknown_config: &dyn ComponentConfig,
-    ) -> Result<WindowComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<WindowComponent> {
         // parse config and ensure it's correct types
         let config: OutputComponentConfig = match unknown_config
             .as_any()
@@ -400,28 +361,27 @@ impl Component for WindowComponent {
         self.message_sender = Some(message_sender.clone());
         self.pipeline = Some(pipeline.clone());
 
-         // Add both elements to the pipelines and sync status
-         pipeline.add(&self.output_element)?;
-         self.output_element.sync_state_with_parent()?;
-         // construct branch and wrap
-         self.branch.add_to_pipeline(pipeline)?;
-         self
-             .branch
-             .link_wrapped(&self.output_element)?;
+        // Add both elements to the pipelines and sync status
+        pipeline.add(&self.output_element)?;
+        self.output_element.sync_state_with_parent()?;
+        // construct branch and wrap
+        self.branch.add_to_pipeline(pipeline)?;
+        self.branch.link_wrapped(&self.output_element)?;
 
         // mark setup as complete so as to not rerun
         Ok(())
     }
 
-    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
-            lookup_func: &dyn ComponentLookupHelper,
-        ) -> Result<()> {
+    fn update_and_link(
+        &mut self,
+        config: &dyn ComponentConfig,
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
         // If we're the main function than recursively call setup on all available window references
         // this ensures all pipeline elements that require a window have been added to the pipeline
         // ! Note this must come after adding the components to the pipeline:
-            
+
         if self.is_main {
-                
             let mut winit_state = GLOBAL_WINDOW_STATE.take();
             if let None = winit_state.event_loop {
                 // only lock global state while gathering components to initialize
@@ -441,15 +401,14 @@ impl Component for WindowComponent {
                 }
 
                 // initialize all the window elements
-                let pipeline = self.pipeline.take().ok_or(anyhow!(
-                    "Pipeline does not exist which should never happen"
-                ))?;
+                let pipeline = self
+                    .pipeline
+                    .take()
+                    .ok_or(anyhow!("Pipeline does not exist which should never happen"))?;
                 self.initialize_window_elements(&pipeline)?;
                 self.pipeline.replace(pipeline);
             }
         }
-
-        
 
         let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
             "Unable to find source component {} for window component {}",
@@ -462,7 +421,6 @@ impl Component for WindowComponent {
         self.branch.link_from(src_element)?;
 
         Ok(())
-
     }
     // accessor functions
     fn input_element(&self) -> Result<&Element> {

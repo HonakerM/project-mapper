@@ -66,9 +66,7 @@ impl BalanceComponent {
 impl Component for BalanceComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(
-        unknown_config: &dyn ComponentConfig,
-    ) -> Result<BalanceComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<BalanceComponent> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig = match unknown_config
             .as_any()
@@ -97,8 +95,6 @@ impl Component for BalanceComponent {
             branch: branch,
         };
 
-       
-
         Ok(comp)
     }
 
@@ -116,24 +112,23 @@ impl Component for BalanceComponent {
         // ensure the branch is correctly setup and wrap the parent element
         self.branch.add_to_pipeline(pipeline)?;
         self.branch.link_wrapped(&self.element)?;
-        
 
         Ok(())
     }
 
-    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
-            lookup_func: &dyn ComponentLookupHelper,
-        ) -> Result<()> {
+    fn update_and_link(
+        &mut self,
+        config: &dyn ComponentConfig,
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
         // parse config and ensure it's correct types
-        let config: EffectComponentConfig = match config
-            .as_any()
-            .downcast_ref::<EffectComponentConfig>()
-        {
-            Some(b) => Ok(b.clone()),
-            None => Err(Error::msg(
-                "ComponentConfig can not be typed to EffectComponentConfig",
-            )),
-        }?;
+        let config: EffectComponentConfig =
+            match config.as_any().downcast_ref::<EffectComponentConfig>() {
+                Some(b) => Ok(b.clone()),
+                None => Err(Error::msg(
+                    "ComponentConfig can not be typed to EffectComponentConfig",
+                )),
+            }?;
 
         // update config
         let balance_config = match config.config.as_any().downcast_ref::<BalanceConfig>() {
@@ -146,7 +141,7 @@ impl Component for BalanceComponent {
             return Err(anyhow!("Balance component must have exactly one source"));
         }
         let src_config = &self.config.srcs[0];
-        
+
         let src_comp = lookup_func.get_comp(&src_config.uid()).ok_or(anyhow!(
             "Unable to find source component {} for balance component {}",
             src_config.uid(),

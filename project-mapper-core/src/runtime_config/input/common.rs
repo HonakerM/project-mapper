@@ -42,7 +42,7 @@ impl ComponentConfig for InputComponentConfig {
         self
     }
 
-    fn dependents(&self)-> Vec<Uid> {
+    fn dependents(&self) -> Vec<Uid> {
         return vec![];
     }
 }

@@ -24,9 +24,7 @@ pub struct TestComponent {
 impl Component for TestComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(
-        unknown_config: &dyn ComponentConfig,
-    ) -> Result<TestComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<TestComponent> {
         // parse config and ensure it's correct types
         let config: InputComponentConfig = match unknown_config
             .as_any()
@@ -64,7 +62,6 @@ impl Component for TestComponent {
             element: element,
             capsfilter: capsfilter,
         };
-
 
         Ok(comp)
     }

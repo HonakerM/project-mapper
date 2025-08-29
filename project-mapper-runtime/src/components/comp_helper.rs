@@ -33,11 +33,7 @@ impl DefaultComponentHelper {
 }
 
 impl ComponentLookupHelper for DefaultComponentHelper {
-    fn new(
-        &mut self,
-        config: &dyn ComponentConfig,
-        factory: &dyn ComponentFactory,
-    ) -> Result<()> {
+    fn new(&mut self, config: &dyn ComponentConfig, factory: &dyn ComponentFactory) -> Result<()> {
         // else create the component
         let comp = factory.create_component(config)?;
 
@@ -58,7 +54,7 @@ impl ComponentLookupHelper for DefaultComponentHelper {
         Ok(())
     }
 
-    fn update(&mut self,       config: &dyn ComponentConfig, ) -> Result<()> {
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
         // if the component map already contains the key then just update it
         if let Some(comp) = self.component_map.get(&config.uid()) {
             let mut mut_comp = comp.borrow_mut();

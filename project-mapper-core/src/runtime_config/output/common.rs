@@ -49,7 +49,7 @@ impl ComponentConfig for OutputComponentConfig {
         self
     }
 
-    fn dependents(&self)-> Vec<Uid> {
+    fn dependents(&self) -> Vec<Uid> {
         return vec![self.src_uid];
     }
 }

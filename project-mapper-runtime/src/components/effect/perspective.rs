@@ -33,9 +33,7 @@ impl PerspectiveComponent {
 impl Component for PerspectiveComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(
-        unknown_config: &dyn ComponentConfig,
-    ) -> Result<PerspectiveComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<PerspectiveComponent> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig = match unknown_config
             .as_any()
@@ -50,7 +48,9 @@ impl Component for PerspectiveComponent {
         // construct element
         let perspective_config = match config.config.as_any().downcast_ref::<PerspectiveConfig>() {
             Some(b) => Ok(b.clone()),
-            None => Err(anyhow!("PerspectiveComponentConfig is not PerspectiveConfig")),
+            None => Err(anyhow!(
+                "PerspectiveComponentConfig is not PerspectiveConfig"
+            )),
         }?;
         let element = gst::ElementFactory::make("perspective")
             .name(config.name())
@@ -84,32 +84,36 @@ impl Component for PerspectiveComponent {
         Ok(())
     }
 
-    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
-            lookup_func: &dyn ComponentLookupHelper,
-        ) -> Result<()> {
+    fn update_and_link(
+        &mut self,
+        config: &dyn ComponentConfig,
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
         // parse config and ensure it's correct types
-        let config: EffectComponentConfig = match config
-            .as_any()
-            .downcast_ref::<EffectComponentConfig>()
-        {
-            Some(b) => Ok(b.clone()),
-            None => Err(Error::msg(
-                "ComponentConfig can not be typed to EffectComponentConfig",
-            )),
-        }?;
+        let config: EffectComponentConfig =
+            match config.as_any().downcast_ref::<EffectComponentConfig>() {
+                Some(b) => Ok(b.clone()),
+                None => Err(Error::msg(
+                    "ComponentConfig can not be typed to EffectComponentConfig",
+                )),
+            }?;
 
         // update config
         let perspective_config = match config.config.as_any().downcast_ref::<PerspectiveConfig>() {
             Some(b) => Ok(b.clone()),
-            None => Err(anyhow!("PerspectiveComponentConfig is not PerspectiveConfig")),
+            None => Err(anyhow!(
+                "PerspectiveComponentConfig is not PerspectiveConfig"
+            )),
         }?;
         PerspectiveComponent::update_config(&self.element, perspective_config)?;
 
         if self.config.srcs.len() != 1 {
-            return Err(anyhow!("Perspective component must have exactly one source"));
+            return Err(anyhow!(
+                "Perspective component must have exactly one source"
+            ));
         }
         let src_config = &self.config.srcs[0];
-        
+
         let src_comp = lookup_func.get_comp(&src_config.uid()).ok_or(anyhow!(
             "Unable to find source component {} for perspective component {}",
             src_config.uid(),

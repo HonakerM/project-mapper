@@ -2,12 +2,13 @@ use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
 use project_mapper_core::loader::runtime_loader::export_config_json;
-use project_mapper_core::runtime_config::effect::common::DefaultSrcConfig;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
+use project_mapper_core::runtime_config::effect::common::DefaultSrcConfig;
 use project_mapper_core::runtime_config::effect::fps::FpsConfig;
 use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
+use project_mapper_core::runtime_config::effect::perspective::PerspectiveConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::input::test::TestConfig;
 use project_mapper_core::runtime_config::input::uri::UriConfig;
@@ -18,7 +19,6 @@ use project_mapper_runtime::components::comp_helper::DefaultComponentHelper;
 use project_mapper_runtime::components::factory::DefaultComponentFactory;
 use project_mapper_runtime::runtime::runtime::Runtime;
 use simple_logger::SimpleLogger;
-use project_mapper_core::runtime_config::effect::perspective::PerspectiveConfig;
 
 fn run_main() -> Result<()> {
     //configure logger

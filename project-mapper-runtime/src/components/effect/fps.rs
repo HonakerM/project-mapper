@@ -90,10 +90,12 @@ impl Component for FpsComponent {
 
         Ok(())
     }
-    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
-            lookup_func: &dyn ComponentLookupHelper,
-        ) -> Result<()> {
-    // parse config and ensure it's correct types
+    fn update_and_link(
+        &mut self,
+        config: &dyn ComponentConfig,
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
+        // parse config and ensure it's correct types
         let config: EffectComponentConfig =
             match config.as_any().downcast_ref::<EffectComponentConfig>() {
                 Some(b) => Ok(b.clone()),
@@ -115,7 +117,6 @@ impl Component for FpsComponent {
             return Err(anyhow!("Balance component must have exactly one source"));
         }
         let src_config = &self.config.srcs[0];
-        
 
         let src_comp = lookup_func.get_comp(&src_config.uid()).ok_or(anyhow!(
             "Unable to find source component {} for fps component {}",
@@ -137,7 +138,7 @@ impl Component for FpsComponent {
     }
     fn output_element(&self) -> Result<&Element> {
         self.branch.get_output()
-    }   
+    }
     fn uid(&self) -> Uid {
         return self.config.uid();
     }

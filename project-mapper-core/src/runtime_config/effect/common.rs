@@ -62,11 +62,10 @@ impl ComponentConfig for EffectComponentConfig {
         self
     }
 
-    fn dependents(&self)-> Vec<Uid> {
+    fn dependents(&self) -> Vec<Uid> {
         return self.srcs.iter().map(|s| s.uid()).collect();
     }
 }
-
 
 // Implement InputConfigTrait for TestConfig
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
@@ -79,7 +78,7 @@ impl EffectSrcConfigTrait for DefaultSrcConfig {
     fn uid(&self) -> Uid {
         self.uid
     }
-    
+
     fn as_any(&self) -> &dyn Any {
         self
     }

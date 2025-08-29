@@ -1,2 +1,2 @@
-#[path = "./window.rs"]
+#[path = "./window/mod.rs"]
 pub mod window;

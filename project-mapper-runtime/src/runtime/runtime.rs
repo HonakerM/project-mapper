@@ -7,9 +7,9 @@ use std::thread;
 
 use anyhow::{Context, Result, anyhow};
 use gst::{DebugGraphDetails, StateChangeSuccess, prelude::*};
-use project_mapper_core::runtime_config::{output, RuntimeConfig};
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
+use project_mapper_core::runtime_config::{RuntimeConfig, output};
 
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
@@ -56,8 +56,7 @@ impl Runtime {
     // run the given runtime
     pub fn run(mut self, config: Arc<Mutex<RuntimeConfig>>) -> Result<()> {
         // initialize gstreamer
-        gst::init()?;   
-
+        gst::init()?;
 
         // aquire the global lock to ensure only one runtime can run at a time
         let _unused_lock = GLOBAL_RUNTIME_LOCK
@@ -223,19 +222,14 @@ impl Runtime {
             // create components and then setup them up
             for comp in &components_to_create {
                 info!("Creating component: {:?}", config);
-                self.component_helper.new(
-                    comp.as_ref(),
-                    self.component_factory.as_ref(),
-                )?;
+                self.component_helper
+                    .new(comp.as_ref(), self.component_factory.as_ref())?;
             }
             // do this in separate loops to ensure all components are created before being setup
             for comp in &components_to_create {
                 info!("Setting up component: {:?}", config);
-                self.component_helper.setup(
-                    comp.uid(),
-                    pipeline,
-                    self.message_sender.clone(),
-                )?;
+                self.component_helper
+                    .setup(comp.uid(), pipeline, self.message_sender.clone())?;
             }
 
             // for all components that need to be updated run the update after the above setup functions have been called
@@ -243,9 +237,7 @@ impl Runtime {
                 self.component_helper.update(comp.as_ref())?;
             }
             for comp in &components_to_create {
-                self.component_helper.update(
-                    comp.as_ref(),
-                )?;
+                self.component_helper.update(comp.as_ref())?;
             }
         }
 
@@ -256,8 +248,8 @@ impl Runtime {
                 .context("Failed to contstruct default runtime component config")?;
             self.component_helper
                 .new(&default_config, self.component_factory.as_ref())
-                .context(format!("failed to create default runtime component"))?;           
-             self.component_helper
+                .context(format!("failed to create default runtime component"))?;
+            self.component_helper
                 .setup(default_config.uid(), pipeline, self.message_sender.clone())
                 .context(format!("failed to create default runtime component"))?;
         }

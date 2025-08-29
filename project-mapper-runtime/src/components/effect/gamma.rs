@@ -40,9 +40,7 @@ impl GammaComponent {
 impl Component for GammaComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(
-        unknown_config: &dyn ComponentConfig,
-    ) -> Result<GammaComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<GammaComponent> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig = match unknown_config
             .as_any()
@@ -71,7 +69,6 @@ impl Component for GammaComponent {
             branch: branch,
         };
 
-
         Ok(comp)
     }
 
@@ -92,10 +89,11 @@ impl Component for GammaComponent {
 
         Ok(())
     }
-    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
-            lookup_func: &dyn ComponentLookupHelper,
-        ) -> Result<()> {
-        
+    fn update_and_link(
+        &mut self,
+        config: &dyn ComponentConfig,
+        lookup_func: &dyn ComponentLookupHelper,
+    ) -> Result<()> {
         let config: EffectComponentConfig =
             match config.as_any().downcast_ref::<EffectComponentConfig>() {
                 Some(b) => Ok(b.clone()),
@@ -117,7 +115,6 @@ impl Component for GammaComponent {
             return Err(anyhow!("Balance component must have exactly one source"));
         }
         let src_config = &self.config.srcs[0];
-        
 
         let src_comp = lookup_func.get_comp(&src_config.uid()).ok_or(anyhow!(
             "Unable to find source component {} for gamma component {}",
@@ -125,7 +122,7 @@ impl Component for GammaComponent {
             self.config.name()
         ))?;
         let src_comp_ref = src_comp.borrow();
-        let src_element = src_comp_ref.output_element()?;       
+        let src_element = src_comp_ref.output_element()?;
         self.branch.link_from(src_element)?;
 
         Ok(())

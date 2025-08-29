@@ -1,23 +1,27 @@
 use std::{any::type_name_of_val, default};
 
 use project_mapper_core::runtime_config::{
-    effect::{balance::BalanceConfig, fps::FpsConfig, gamma::GammaConfig, perspective::PerspectiveConfig, EffectComponentConfig},
-    input::{test::TestConfig, uri::UriConfig, InputComponentConfig},
-    output::{window::WindowConfig, OutputComponentConfig},
+    effect::{
+        EffectComponentConfig, balance::BalanceConfig, fps::FpsConfig, gamma::GammaConfig,
+        perspective::PerspectiveConfig,
+    },
+    input::{InputComponentConfig, test::TestConfig, uri::UriConfig},
+    output::{OutputComponentConfig, window::WindowConfig},
     shared::ComponentConfig,
 };
 
 use crate::components::{
-    effect::{balance::BalanceComponent, fps::FpsComponent, gamma::GammaComponent, perspective::PerspectiveComponent},
+    effect::{
+        balance::BalanceComponent, fps::FpsComponent, gamma::GammaComponent,
+        perspective::PerspectiveComponent,
+    },
     input::{test::TestComponent, uri::UriComponent},
     output::window::WindowComponent,
     shared::{Component, ComponentFactory},
 };
 use anyhow::{Error, Result, anyhow};
 
-pub fn create_default_component(
-    config: &dyn ComponentConfig,
-) -> Result<Box<dyn Component>> {
+pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
     if let Some(output_cfg) = config.as_any().downcast_ref::<OutputComponentConfig>() {
         if let Some(_) = output_cfg.config.as_any().downcast_ref::<WindowConfig>() {
             let comp = WindowComponent::new(config)?;
@@ -47,7 +51,11 @@ pub fn create_default_component(
         } else if let Some(_) = effect_cfg.config.as_any().downcast_ref::<FpsConfig>() {
             let comp = FpsComponent::new(config)?;
             Ok(Box::new(comp))
-        } else if let Some(_) = effect_cfg.config.as_any().downcast_ref::<PerspectiveConfig>() {
+        } else if let Some(_) = effect_cfg
+            .config
+            .as_any()
+            .downcast_ref::<PerspectiveConfig>()
+        {
             let comp = PerspectiveComponent::new(config)?;
             Ok(Box::new(comp))
         } else {
@@ -64,10 +72,7 @@ pub fn create_default_component(
 pub struct DefaultComponentFactory {}
 
 impl ComponentFactory for DefaultComponentFactory {
-    fn create_component(
-        &self,
-        config: &dyn ComponentConfig,
-    ) -> Result<Box<dyn Component>> {
+    fn create_component(&self, config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
         create_default_component(config)
     }
 }

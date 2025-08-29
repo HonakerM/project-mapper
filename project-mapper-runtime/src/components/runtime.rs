@@ -57,7 +57,7 @@ impl Component for DefaultRuntimeComponent {
     }
     fn input_element(&self) -> Result<&gst::Element> {
         Err(anyhow!("Runtime Component does not have elements"))
-    }    
+    }
     fn output_element(&self) -> Result<&gst::Element> {
         Err(anyhow!("Runtime Component does not have elements"))
     }
@@ -78,7 +78,7 @@ impl ComponentConfig for DefaultRuntimeComponent {
         self
     }
 
-    fn dependents(&self)-> Vec<Uid> {
+    fn dependents(&self) -> Vec<Uid> {
         return vec![];
     }
 }

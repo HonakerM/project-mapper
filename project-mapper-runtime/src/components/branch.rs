@@ -76,8 +76,11 @@ impl BranchControl {
     }
 
     pub fn link_from(&self, element: &Element) -> Result<()> {
-        let input_element = self.input_element.as_ref().ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))?;
-        if  let Some(input_sink_pad) = input_element.static_pad("sink") {
+        let input_element = self
+            .input_element
+            .as_ref()
+            .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))?;
+        if let Some(input_sink_pad) = input_element.static_pad("sink") {
             if input_sink_pad.is_linked() {
                 if let Some(peer_pad) = input_sink_pad.peer() {
                     peer_pad.unlink(&input_sink_pad)?;
@@ -98,8 +101,11 @@ impl BranchControl {
     }
 
     pub fn link_to(&self, element: &Element) -> Result<()> {
-        let output_element = self.output_element.as_ref().ok_or_else(|| anyhow!("Output element does not exist for branch: {}", self.name))?;
-        if  let Some(output_src_pad) = output_element.static_pad("src") {
+        let output_element = self
+            .output_element
+            .as_ref()
+            .ok_or_else(|| anyhow!("Output element does not exist for branch: {}", self.name))?;
+        if let Some(output_src_pad) = output_element.static_pad("src") {
             if output_src_pad.is_linked() {
                 if let Some(peer_pad) = output_src_pad.peer() {
                     peer_pad.unlink(&output_src_pad)?;

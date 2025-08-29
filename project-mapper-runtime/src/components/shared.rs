@@ -15,19 +15,12 @@ use crate::{components::runtime::DefaultRuntimeComponent, types::message::Runtim
 
 // trait to aid in the creation of new components
 pub trait ComponentFactory {
-    fn create_component(
-        &self,
-        config: &dyn ComponentConfig,
-    ) -> Result<Box<dyn Component>>;
+    fn create_component(&self, config: &dyn ComponentConfig) -> Result<Box<dyn Component>>;
 }
 
 pub trait ComponentLookupHelper {
     // factory function to create a component and register it with the helper
-    fn new(
-        &mut self,
-        config: &dyn ComponentConfig,
-        factory: &dyn ComponentFactory,
-    ) -> Result<()>;
+    fn new(&mut self, config: &dyn ComponentConfig, factory: &dyn ComponentFactory) -> Result<()>;
     fn setup(
         &self,
         uid: Uid,
@@ -97,7 +90,9 @@ pub trait Component {
     }
 
     // update a component based on a new config
-    fn update_and_link(&mut self, config: &dyn ComponentConfig, 
+    fn update_and_link(
+        &mut self,
+        config: &dyn ComponentConfig,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         Ok(())
