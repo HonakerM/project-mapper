@@ -8,6 +8,8 @@ use std::thread;
 use std::time::Duration;
 
 use crate::components::branch::BranchControl;
+use crate::components::output::window::app;
+use crate::components::output::window::app::WindowAppHandler;
 use crate::components::output::window::state::GLOBAL_WINDOW_STATE;
 use crate::components::output::window::state::PROXY_WINDOW_STATE;
 use crate::components::output::window::state::ProxyWindowState;
@@ -39,10 +41,10 @@ use raw_window_handle::RawWindowHandle;
 use winit::event::Event;
 use winit::event::WindowEvent;
 use winit::event_loop;
+use winit::event_loop::EventLoop;
 use winit::event_loop::EventLoopBuilder;
 use winit::platform::pump_events::EventLoopExtPumpEvents;
 use winit::window::Window;
-use winit::window::WindowBuilder;
 
 pub struct WindowComponent {
     config: OutputComponentConfig,
@@ -96,10 +98,9 @@ impl WindowComponent {
         Ok(())
     }
 
-    fn initialize_window_elements(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn initialize_event_loop(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         // construct the event loop and window mapping
-        let event_loop: WinitPMEventLoop = EventLoopBuilder::with_user_event().build()?;
-        let mut windows: HashMap<Uid, Window> = HashMap::new();
+        let event_loop: WinitPMEventLoop = EventLoop::with_user_event().build()?;
 
         // ControlFlow::Wait pauses the event loop if no events are available to process.
         // This is ideal for non-game applications that only update in response to user
@@ -113,86 +114,20 @@ impl WindowComponent {
         if let Some(state) = global_state.as_mut() {
             // update state with proxy
             state.event_loop_proxy = Some(event_loop.create_proxy());
-
-            // while we have the lock setup all windows
-            for window_request in state.window_configs.values() {
-                // start by building the window
-                // ! TODO actually use the window config
-                let window = WindowBuilder::new()
-                    .with_title(window_request.element_name.clone())
-                    .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0))
-                    .build(&event_loop)?;
-
-                // get the gst element as a video overlay
-                let element = pipeline
-                    .by_name(&window_request.element_name)
-                    .with_context(|| {
-                        format!(
-                            "Element with name '{}' not found in pipeline",
-                            window_request.element_name
-                        )
-                    })?;
-                let overlay = element
-                    .dynamic_cast::<gst_video::VideoOverlay>()
-                    .map_err(|_| anyhow::anyhow!("Failed to cast element to VideoOverlay"))?;
-
-                // Obtain the raw window handle from winit
-                let raw_handle = window.window_handle().unwrap().as_raw();
-
-                // Extract platform-specific handle ID
-                let handle_id = match raw_handle {
-                    RawWindowHandle::Xlib(h) => h.window as usize,
-                    RawWindowHandle::Wayland(h) => h.surface.as_ptr() as usize,
-                    RawWindowHandle::Win32(h) => h.hwnd.get() as usize,
-                    RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
-                    _ => panic!("Unsupported platform: cannot get raw window handle"),
-                };
-
-                // set the gstreamer element to output to this handle!
-                unsafe {
-                    overlay.set_window_handle(handle_id);
-                }
-
-                // configure the window based on the config
-                WindowComponent::configure_window(
-                    &event_loop,
-                    &window,
-                    window_request.config.clone(),
-                )?;
-
-                // hold onto window ref
-                windows.insert(window_request.element_uid, window);
-            }
         }
 
-        GLOBAL_WINDOW_STATE.replace(WinitState {
-            // don't create the message sender until we have it in run
-            message_sender_thread: None,
-            event_loop: Some(event_loop),
-            windows: windows,
-        });
-
-        Ok(())
-    }
-
-    fn configure_window(
-        event_loop: &WinitPMEventLoop,
-        window: &Window,
-        config: WindowConfig,
-    ) -> Result<()> {
-        match &config.mode {
-            WindowMode::Windowed {} => {}
-            WindowMode::Borderless { name } => {
-                let monitor_handle = get_monitor_by_name(event_loop, name.clone())?;
-                window.set_fullscreen(Some(winit::window::Fullscreen::Borderless(Some(
-                    monitor_handle,
-                ))));
-            }
-            WindowMode::Exclusive { config } => {
-                let video_mode = get_video_mode_for_config(event_loop, config)?;
-                window.set_fullscreen(Some(winit::window::Fullscreen::Exclusive(video_mode)));
-            }
+        if let Some(message_sender) = &self.message_sender {
+            GLOBAL_WINDOW_STATE.replace(WinitState {
+                handler: Some(WindowAppHandler::new(pipeline.clone(), message_sender.clone())),
+                // don't create the message sender until we have it in run
+                message_sender_thread: None,
+                event_loop: Some(event_loop),
+            });
+        } else {
+            return Err(anyhow!("Unable to find message sender at update point"));
         }
+
+
 
         Ok(())
     }
@@ -253,51 +188,28 @@ impl WindowComponent {
         let mut event_loop = winit_state.event_loop.take().ok_or(anyhow!(
             "Event loop does not exist which should never happen"
         ))?;
+        let mut app_handler = winit_state.handler.take().ok_or(anyhow!(
+            "App Handler does not exist which should never happen"
+        ))?;
 
-        let mut exit_event: Option<RuntimeMessage> = None;
-        let mut exit_error: Option<Error> = None;
-
-        let mut last_frame_time = std::time::Instant::now();
-        while exit_event.is_none() {
-            event_loop.pump_events(None, |event, _event_loop_target| {
-                match event {
-                    Event::UserEvent(user_event) => {
-                        exit_event = Some(user_event);
-                    }
-                    Event::WindowEvent {
-                        event: window_event,
-                        ..
-                    } => match window_event {
-                        WindowEvent::CloseRequested => {
-                            // Send a message to stop the event loop
-                            let send_result = message_sender.send(RuntimeMessage::ExitRuntime());
-                            if let Err(err) = send_result {
-                                exit_error = Some(err.into());
-                            }
-                        }
-                        _ => {}
-                    },
-                    event => {
-                        println!("Received event: {:?}", event);
-                    }
-                }
-            });
-            //info!("Event loop running, waiting for events...");
-            //thread::sleep(Duration::from_secs_f64(2.0));
-            //info!("Trying events again...");
+        while app_handler.last_event.is_none() {
+            event_loop.pump_app_events(None, &mut app_handler);
         }
+        info!("Exiting event loop");
 
         // after running replace the global state and event loop to retain references to the windows
         winit_state.event_loop = Some(event_loop);
         GLOBAL_WINDOW_STATE.set(winit_state);
 
         // if there was an exit error return it first
-        if let Some(err) = exit_error {
+        if let Some(err) = app_handler.exit_err {
+            app_handler.exit_err = None;
+            app_handler.last_event = None;
             return Err(err);
         }
 
         // get the exit event if it was created
-        if let Some(event) = exit_event {
+        if let Some(event) = app_handler.last_event {
             Ok(event)
         } else {
             Err(anyhow!(
@@ -384,28 +296,12 @@ impl Component for WindowComponent {
         if self.is_main {
             let mut winit_state = GLOBAL_WINDOW_STATE.take();
             if let None = winit_state.event_loop {
-                // only lock global state while gathering components to initialize
-                let mut comp_ids_to_init: Vec<Uid> = vec![];
-                {
-                    let proxy_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
-                        "Unable to aquire window proxy lock. Should not happen in normal operation",
-                    )))?;
-                    if let Some(state) = proxy_state.as_ref() {
-                        for request in state.window_configs.values() {
-                            // we don't want to re-init this component as that can cause issues
-                            if request.element_uid != self.uid() {
-                                comp_ids_to_init.push(request.element_uid);
-                            }
-                        }
-                    }
-                }
-
                 // initialize all the window elements
                 let pipeline = self
                     .pipeline
                     .take()
                     .ok_or(anyhow!("Pipeline does not exist which should never happen"))?;
-                self.initialize_window_elements(&pipeline)?;
+                self.initialize_event_loop(&pipeline)?;
                 self.pipeline.replace(pipeline);
             }
         }
@@ -469,11 +365,8 @@ impl Component for WindowComponent {
 
         // else destroy/drop all windows
         let mut winit_state = GLOBAL_WINDOW_STATE.take();
-        winit_state.windows.clear();
-
-        // exit the event loop
-        if let Some(event_loop) = winit_state.event_loop {
-            event_loop.exit();
+        if let Some(handler) = &mut winit_state.handler {
+            handler.destory();
         }
 
         // ensure we destory/join the event listener thread

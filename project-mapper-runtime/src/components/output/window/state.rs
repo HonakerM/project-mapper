@@ -8,6 +8,7 @@ use std::thread;
 use std::time::Duration;
 
 use crate::components::branch::BranchControl;
+use crate::components::output::window::app::WindowAppHandler;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
@@ -37,22 +38,20 @@ use winit::event_loop;
 use winit::event_loop::EventLoopBuilder;
 use winit::platform::pump_events::EventLoopExtPumpEvents;
 use winit::window::Window;
-use winit::window::WindowBuilder;
 
 // helper struct to store information about winit. This
 // will only be held by the main component
 pub(super) struct WinitState {
     pub message_sender_thread: Option<thread::JoinHandle<Result<()>>>,
     pub event_loop: Option<WinitPMEventLoop>,
-    // needed to keep reference to a window
-    pub windows: HashMap<Uid, Window>,
+    pub handler: Option<WindowAppHandler>,
 }
 impl Default for WinitState {
     fn default() -> Self {
         Self {
             message_sender_thread: None,
             event_loop: None,
-            windows: HashMap::new(),
+            handler: None,
         }
     }
 }
