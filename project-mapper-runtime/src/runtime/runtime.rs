@@ -84,6 +84,11 @@ impl Runtime {
 
         // start the receiver threads
         let mut receiver_handle = start_receiver(self.message_sender.clone(), config.clone())?;
+
+        let cloned_pipeline = pipeline.clone();
+        let mut pipeline_monitor_handle = thread::spawn(move||{Runtime::monitor_pipeline_events(cloned_pipeline)});
+        
+
         //let local_pipeline = pipeline.clone();
         //thread::spawn(|| Runtime::monitor_pipeline_events(local_pipeline));
 
@@ -262,28 +267,28 @@ impl Runtime {
         for msg in bus.iter_timed(gst::ClockTime::NONE) {
             match msg.view() {
                 gst::MessageView::Error(err) => {
-                    info!(
-                        "Error from {}: {} ({:?})",
-                        err.src()
-                            .map(|s| s.path_string())
-                            .unwrap_or_else(|| "None".to_string().into()),
-                        err.error(),
-                        err.debug()
-                    );
+                    // info!(
+                    //     "Error from {}: {} ({:?})",
+                    //     err.src()
+                    //         .map(|s| s.path_string())
+                    //         .unwrap_or_else(|| "None".to_string().into()),
+                    //     err.error(),
+                    //     err.debug()
+                    // );
                 }
                 gst::MessageView::StateChanged(state) => {
-                    info!(
-                        "State changed: {} -> {:?}",
-                        state.src().map(|s| s.path_string()).unwrap(),
-                        state.current()
-                    );
+                    // info!(
+                        // "State changed: {} -> {:?}",
+                        // state.src().map(|s| s.path_string()).unwrap(),
+                        // state.current()
+                    // );
                 }
                 msg => {
-                    info!(
-                        "Receieved unknown message (type: {}): {:?}",
-                        type_name_of_val(&msg),
-                        msg
-                    )
+                    //info!(
+                    //    "Receieved unknown message (type: {}): {:?}",
+                    //    type_name_of_val(&msg),
+                    //    msg
+                    //)
                 }
                 _ => {}
             }

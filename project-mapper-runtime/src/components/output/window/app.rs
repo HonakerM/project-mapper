@@ -11,7 +11,7 @@ use project_mapper_core::runtime_config::shared::Uid;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::window::{Window, WindowAttributes};
+use winit::window::{Window, WindowAttributes, WindowId};
 use winit::application::ApplicationHandler;
 
 use crate::components::output::window::state::PROXY_WINDOW_STATE;
@@ -32,6 +32,7 @@ pub(super) struct WindowAppHandler {
     
     // needed to keep reference to a window
     windows: HashMap<Uid, Window>,
+    window_lookup: HashMap<WindowId, Uid>,
 }
 
 impl WindowAppHandler {
@@ -39,7 +40,7 @@ impl WindowAppHandler {
         self.windows.clear();
     }
     pub fn new(pipeline: Pipeline, message_sender: mpsc::Sender<RuntimeMessage>) -> Self {
-        return Self { pipeline: pipeline, message_sender: message_sender, last_event: None, exit_err: None, windows: HashMap::new() }
+        return Self { pipeline: pipeline, message_sender: message_sender, last_event: None, exit_err: None, windows: HashMap::new() , window_lookup: HashMap::new()}
     }
 
     fn configure_window(
@@ -107,6 +108,7 @@ impl ApplicationHandler<RuntimeMessage> for WindowAppHandler {
                     RawWindowHandle::Xlib(h) => h.window as usize,
                     RawWindowHandle::Wayland(h) => h.surface.as_ptr() as usize,
                     RawWindowHandle::Win32(h) => h.hwnd.get() as usize,
+                    RawWindowHandle::WinRt(h) => h.core_window.as_ptr() as usize,
                     RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
                     _ => panic!("Unsupported platform: cannot get raw window handle"),
                 };
@@ -123,9 +125,11 @@ impl ApplicationHandler<RuntimeMessage> for WindowAppHandler {
                     window_request.config.clone(),
                 ).unwrap();
 
-                // hold onto window ref
-                self.windows.insert(window_request.element_uid, window);
+                window.request_redraw();
 
+                // hold onto window ref
+                self.window_lookup.insert(window.id(), window_request.element_uid);
+                self.windows.insert(window_request.element_uid, window);
                 info!("Created window for output element {}", window_request.element_uid)
             }
         }
@@ -146,7 +150,9 @@ impl ApplicationHandler<RuntimeMessage> for WindowAppHandler {
                         self.exit_err = Some(err.into());
                     }
                 }
-                _ => {}
+                other_event => {
+//                    info!("Recieved event: {:?}", other_event);
+                }
             }
     }
 

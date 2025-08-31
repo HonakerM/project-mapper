@@ -244,6 +244,7 @@ impl Component for WindowComponent {
         let output_element = gst::ElementFactory::make("glimagesink")
             .name(config.name())
             .build()?;
+        
         output_element.set_property("sync", &true);
         let mut window_component = Self {
             config: config,
