@@ -86,8 +86,8 @@ impl Runtime {
         let mut receiver_handle = start_receiver(self.message_sender.clone(), config.clone())?;
 
         let cloned_pipeline = pipeline.clone();
-        let mut pipeline_monitor_handle = thread::spawn(move||{Runtime::monitor_pipeline_events(cloned_pipeline)});
-        
+        let mut pipeline_monitor_handle =
+            thread::spawn(move || Runtime::monitor_pipeline_events(cloned_pipeline));
 
         //let local_pipeline = pipeline.clone();
         //thread::spawn(|| Runtime::monitor_pipeline_events(local_pipeline));
@@ -278,9 +278,9 @@ impl Runtime {
                 }
                 gst::MessageView::StateChanged(state) => {
                     // info!(
-                        // "State changed: {} -> {:?}",
-                        // state.src().map(|s| s.path_string()).unwrap(),
-                        // state.current()
+                    // "State changed: {} -> {:?}",
+                    // state.src().map(|s| s.path_string()).unwrap(),
+                    // state.current()
                     // );
                 }
                 msg => {

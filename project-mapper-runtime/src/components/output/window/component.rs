@@ -100,7 +100,7 @@ impl WindowComponent {
 
     fn initialize_event_loop(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
         // construct the event loop and window mapping
-        let event_loop: WinitPMEventLoop = EventLoop::with_user_event().build()?;
+        let mut event_loop: WinitPMEventLoop = EventLoop::with_user_event().build()?;
 
         // ControlFlow::Wait pauses the event loop if no events are available to process.
         // This is ideal for non-game applications that only update in response to user
@@ -108,17 +108,22 @@ impl WindowComponent {
         event_loop.set_control_flow(winit::event_loop::ControlFlow::Wait);
 
         // create all the required windows and update the global state
-        let mut global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
-            "Unable to aquire window proxy lock. Should not happen in normal operation",
-        )))?;
-        if let Some(state) = global_state.as_mut() {
-            // update state with proxy
-            state.event_loop_proxy = Some(event_loop.create_proxy());
+        {
+            let mut global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
+                "Unable to aquire window proxy lock. Should not happen in normal operation",
+            )))?;
+            if let Some(state) = global_state.as_mut() {
+                // update state with proxy
+                state.event_loop_proxy = Some(event_loop.create_proxy());
+            }
         }
 
         if let Some(message_sender) = &self.message_sender {
+            let mut handler = WindowAppHandler::new(pipeline.clone(), message_sender.clone());
+            event_loop.pump_app_events(None, &mut handler);
+
             GLOBAL_WINDOW_STATE.replace(WinitState {
-                handler: Some(WindowAppHandler::new(pipeline.clone(), message_sender.clone())),
+                handler: Some(handler),
                 // don't create the message sender until we have it in run
                 message_sender_thread: None,
                 event_loop: Some(event_loop),
@@ -126,8 +131,6 @@ impl WindowComponent {
         } else {
             return Err(anyhow!("Unable to find message sender at update point"));
         }
-
-
 
         Ok(())
     }
@@ -244,7 +247,7 @@ impl Component for WindowComponent {
         let output_element = gst::ElementFactory::make("glimagesink")
             .name(config.name())
             .build()?;
-        
+
         output_element.set_property("sync", &true);
         let mut window_component = Self {
             config: config,
