@@ -63,7 +63,6 @@ thread_local! {
     pub(super) static GLOBAL_WINDOW_STATE: RefCell<WinitState> = RefCell::new(WinitState::default());
 }
 
-
 // setup global state. While this could be done without the Option
 // keep it to allow us to determine which component is the "main" one
 // and will start threads/etc
@@ -71,11 +70,10 @@ thread_local! {
 pub(super) struct ProxyWindowState {
     pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
     pub window_comps: HashSet<Uid>,
-    pub has_main: bool
+    pub has_main: bool,
 }
 pub(super) static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
     LazyLock::new(|| Mutex::new(None));
-
 
 // Struct for components to request a window with
 #[derive(Clone, Debug)]

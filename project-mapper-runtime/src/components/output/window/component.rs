@@ -406,9 +406,12 @@ impl Component for WindowComponent {
         });
 
         // destory our proxy reference
-        let mut proxy_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
-            "Unable to aquire window proxy lock. Should not happen in normal operation",
-        ))).unwrap();
+        let mut proxy_state = PROXY_WINDOW_STATE
+            .lock()
+            .or(Err(Error::msg(
+                "Unable to aquire window proxy lock. Should not happen in normal operation",
+            )))
+            .unwrap();
         if let Some(proxy_state) = proxy_state.as_mut() {
             proxy_state.window_comps.remove(&self.config.uid);
             if self.is_main {
@@ -423,11 +426,14 @@ impl Component for WindowComponent {
         if self.is_main {
             return true;
         } else {
-            let mut global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
-                "Unable to aquire window proxy lock. Should not happen in normal operation",
-            ))).unwrap();
+            let mut global_state = PROXY_WINDOW_STATE
+                .lock()
+                .or(Err(Error::msg(
+                    "Unable to aquire window proxy lock. Should not happen in normal operation",
+                )))
+                .unwrap();
             if let Some(proxy_state) = global_state.as_mut() {
-                if ! proxy_state.has_main {
+                if !proxy_state.has_main {
                     self.is_main = true;
                     return true;
                 }
