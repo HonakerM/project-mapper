@@ -159,8 +159,8 @@ impl Runtime {
 
             // ensure we destory the components before running create/update
             let change_tracker = locked_current_config.gather_config_changes(&new_config)?;
-            for deleted_configs in &change_tracker.deletes {
-                self.component_helper.destroy_comp(&deleted_configs.uid())?;
+            for deleted_uid in &change_tracker.deletes {
+                self.component_helper.destroy_comp(deleted_uid)?;
             }
 
             // update the stored config

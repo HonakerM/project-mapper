@@ -64,7 +64,7 @@ pub(crate) fn gather_validation_helper_data(
 #[derive(Debug)]
 pub struct RuntimeConfigChangeTracker {
     pub updates: Vec<Box<dyn ComponentConfig>>,
-    pub deletes: Vec<Box<dyn ComponentConfig>>,
+    pub deletes: Vec<Uid>,
 }
 
 pub fn gather_config_changes(
@@ -78,7 +78,7 @@ pub fn gather_config_changes(
     }
 
     let mut updates: Vec<Box<dyn ComponentConfig>> = vec![];
-    let mut deletes: Vec<Box<dyn ComponentConfig>> = vec![];
+    let mut deletes: Vec<Uid> = vec![];
 
     // track updates for inputs
     gather_config_helper(
@@ -116,7 +116,7 @@ pub fn gather_config_changes(
 fn gather_config_helper(
     lookup_helper: &mut HashMap<Uid, Box<dyn ComponentConfig>>,
     updates: &mut Vec<Box<dyn ComponentConfig>>,
-    deletes: &mut Vec<Box<dyn ComponentConfig>>,
+    deletes: &mut Vec<Uid>,
     org: Value,
     updated: Value,
 ) -> Result<()> {
@@ -124,18 +124,14 @@ fn gather_config_helper(
         && let Value::Array(updated_vec) = updated
     {
         let input_helper = compare_config_vecs(org_vec, updated_vec)?;
+        println!("Current helper {:?}", input_helper);
         for uid in input_helper.updated {
             let config = lookup_helper.remove(&uid).ok_or(anyhow!(
                 "Somehow discovered change in component that doesn't exit"
             ))?;
             updates.push(config)
         }
-        for uid in input_helper.deleted {
-            let config = lookup_helper.remove(&uid).ok_or(anyhow!(
-                "Somehow discovered change in component that doesn't exit"
-            ))?;
-            deletes.push(config)
-        }
+        deletes.extend(input_helper.deleted);
         Ok(())
     } else {
         Err(anyhow!(
@@ -144,6 +140,7 @@ fn gather_config_helper(
     }
 }
 
+#[derive(Debug)]
 struct RuntimeConfigChangeHelper {
     pub updated: Vec<Uid>,
     pub deleted: Vec<Uid>,

@@ -195,30 +195,26 @@ impl WindowComponent {
             "App Handler does not exist which should never happen"
         ))?;
 
-        while app_handler.last_event.is_none() {
+        while app_handler.last_events.is_empty() {
             event_loop.pump_app_events(None, &mut app_handler);
         }
         info!("Exiting event loop");
 
-        // after running replace the global state and event loop to retain references to the windows
-        winit_state.event_loop = Some(event_loop);
-        GLOBAL_WINDOW_STATE.set(winit_state);
+        let last_event = app_handler.last_events.pop().unwrap();
 
         // if there was an exit error return it first
         if let Some(err) = app_handler.exit_err {
             app_handler.exit_err = None;
-            app_handler.last_event = None;
             return Err(err);
         }
 
+        // after running replace the global state and event loop to retain references to the windows
+        winit_state.event_loop = Some(event_loop);
+        winit_state.handler = Some(app_handler);
+        GLOBAL_WINDOW_STATE.set(winit_state);
+
         // get the exit event if it was created
-        if let Some(event) = app_handler.last_event {
-            Ok(event)
-        } else {
-            Err(anyhow!(
-                "Event loop exited without event. Should never happen due to loop conditions"
-            ))
-        }
+        Ok(last_event)
     }
 
     fn update_window(&self, config: &WindowConfig, force_creation: bool) -> Result<()> {
@@ -404,8 +400,13 @@ impl Component for WindowComponent {
 
     // Stop this component
     fn destroy(&mut self) -> Result<()> {
-        // if we're not main then do nothing
+        // if we're not main then just destory the window if it exists
         if !self.is_main {
+            let mut winit_state = GLOBAL_WINDOW_STATE.take();
+            if let Some(handler) = &mut winit_state.handler {
+                handler.destory();
+            }
+            GLOBAL_WINDOW_STATE.set(winit_state);
             return Ok(());
         }
 

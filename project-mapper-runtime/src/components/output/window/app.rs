@@ -25,28 +25,32 @@ pub(super) struct WindowAppHandler {
     pipeline: Pipeline,
     message_sender: mpsc::Sender<RuntimeMessage>,
 
-    pub last_event: Option<RuntimeMessage>,
+    pub last_events: Vec<RuntimeMessage>,
     pub exit_err: Option<Error>,
 
     // needed to keep reference to a window
     windows: HashMap<Uid, Window>,
     window_lookup: HashMap<WindowId, Uid>,
-    window_requests: Vec<WindowRequest>,
 }
 
 impl WindowAppHandler {
+    pub fn destory_window(&mut self, uid: &Uid) {
+        if let Some(window) = self.windows.remove(uid) {
+            self.window_lookup.remove(&window.id());
+        }
+    }
     pub fn destory(&mut self) {
         self.windows.clear();
+        self.window_lookup.clear();
     }
     pub fn new(pipeline: Pipeline, message_sender: mpsc::Sender<RuntimeMessage>) -> Self {
         return Self {
             pipeline: pipeline,
             message_sender: message_sender,
-            last_event: None,
+            last_events: vec![],
             exit_err: None,
             windows: HashMap::new(),
             window_lookup: HashMap::new(),
-            window_requests: vec![],
         };
     }
 
@@ -74,9 +78,6 @@ impl WindowAppHandler {
 
     pub fn has_window(&self, id: &Uid) -> bool {
         self.windows.contains_key(id)
-    }
-    pub fn request_window(&mut self, window_request: WindowRequest) {
-        self.window_requests.push(window_request);
     }
 
     pub fn process_window_request(
@@ -175,7 +176,7 @@ impl ApplicationHandler<WinitMessage> for WindowAppHandler {
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: WinitMessage) {
         match event {
             WinitMessage::Runtime(runtime_event) => {
-                self.last_event = Some(runtime_event);
+                self.last_events.push(runtime_event);
             }
             WinitMessage::UpdateWindow(request) => {
                 self.process_window_request(event_loop, request);
