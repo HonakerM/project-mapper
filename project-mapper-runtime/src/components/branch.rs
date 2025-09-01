@@ -69,13 +69,24 @@ impl BranchControl {
         Ok(())
     }
 
+    pub fn destory(&self, pipeline: &gst::Pipeline) -> Result<()> {
+        if let Some(input_element) = &self.input_element {
+            BranchControl::unlink_element(input_element)?;
+            pipeline.remove(input_element)?;
+        }
+        if let Some(output_element) = &self.output_element {
+            BranchControl::unlink_element(output_element)?;
+            pipeline.remove(output_element)?;
+        }
+        Ok(())
+    }
     pub fn get_output(&self) -> Result<&Element> {
         self.output_element
             .as_ref()
             .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))
     }
 
-    pub fn link_from(&self, element: &Element) -> Result<()> {
+    pub fn unlink_from_input(&self) -> Result<()> {
         let input_element = self
             .input_element
             .as_ref()
@@ -87,8 +98,16 @@ impl BranchControl {
                 }
             }
         }
+        Ok(())
+    }
+    pub fn link_from(&self, element: &Element) -> Result<()> {
+        self.unlink_from_input()?;
 
         // Link the provided element to the input element of the branch
+        let input_element = self
+            .input_element
+            .as_ref()
+            .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))?;
         element.link(input_element)?;
 
         Ok(())
@@ -100,19 +119,29 @@ impl BranchControl {
             .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))
     }
 
+    pub fn unlink_element(element: &Element) -> Result<()> {
+        for sink_pad in element.sink_pads() {
+            if sink_pad.is_linked() {
+                if let Some(peer_pad) = sink_pad.peer() {
+                    peer_pad.unlink(&sink_pad)?;
+                }
+            }
+        }
+        for src_pad in element.src_pads() {
+            if src_pad.is_linked() {
+                if let Some(peer_pad) = src_pad.peer() {
+                    peer_pad.unlink(&src_pad)?;
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn link_to(&self, element: &Element) -> Result<()> {
         let output_element = self
             .output_element
             .as_ref()
             .ok_or_else(|| anyhow!("Output element does not exist for branch: {}", self.name))?;
-        if let Some(output_src_pad) = output_element.static_pad("src") {
-            if output_src_pad.is_linked() {
-                if let Some(peer_pad) = output_src_pad.peer() {
-                    peer_pad.unlink(&output_src_pad)?;
-                }
-            }
-        }
-
         // Link the output element of the branch to the provided element
         output_element.link(element)?;
 
