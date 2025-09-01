@@ -12,8 +12,6 @@ use crate::components::output::window::app::WindowAppHandler;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
-use crate::utils::winit::WinitPMEventLoop;
-use crate::utils::winit::WinitPMEventLoopProxy;
 use crate::utils::winit::get_monitor_by_name;
 use crate::utils::winit::get_video_mode_for_config;
 use anyhow::Context;
@@ -35,12 +33,15 @@ use raw_window_handle::RawWindowHandle;
 use winit::event::Event;
 use winit::event::WindowEvent;
 use winit::event_loop;
+use winit::event_loop::EventLoop;
 use winit::event_loop::EventLoopBuilder;
+use winit::event_loop::EventLoopProxy;
 use winit::platform::pump_events::EventLoopExtPumpEvents;
 use winit::window::Window;
 
 // helper struct to store information about winit. This
 // will only be held by the main component
+#[derive(Debug)]
 pub(super) struct WinitState {
     pub message_sender_thread: Option<thread::JoinHandle<Result<()>>>,
     pub event_loop: Option<WinitPMEventLoop>,
@@ -62,12 +63,21 @@ thread_local! {
 }
 
 // Struct for components to request a window with
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct WindowRequest {
     pub element_name: String,
     pub element_uid: Uid,
     pub config: WindowConfig,
 }
+
+#[derive(Clone)]
+pub enum WinitMessage {
+    Runtime(RuntimeMessage),
+    UpdateWindow(WindowRequest),
+}
+
+pub type WinitPMEventLoop = EventLoop<WinitMessage>;
+pub type WinitPMEventLoopProxy = EventLoopProxy<WinitMessage>;
 
 // setup global state. While this could be done without the Option
 // keep it to allow us to determine which component is the "main" one
@@ -75,7 +85,6 @@ pub(super) struct WindowRequest {
 #[derive(Clone)]
 pub(super) struct ProxyWindowState {
     pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
-    pub window_configs: HashMap<String, WindowRequest>,
 }
 pub(super) static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
     LazyLock::new(|| Mutex::new(None));

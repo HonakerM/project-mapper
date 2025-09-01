@@ -14,11 +14,12 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowAttributes, WindowId};
 
-use crate::components::output::window::state::PROXY_WINDOW_STATE;
+use crate::components::output::window::state::{PROXY_WINDOW_STATE, WindowRequest, WinitMessage};
 use crate::types::message::RuntimeMessage;
-use crate::utils::winit::{WinitPMEventLoop, get_monitor_by_name, get_video_mode_for_config};
+use crate::utils::winit::{get_monitor_by_name, get_video_mode_for_config};
 use anyhow::{Context as _, Error, Result};
 
+#[derive(Debug)]
 pub(super) struct WindowAppHandler {
     // need to know about the pipeline for linking
     pipeline: Pipeline,
@@ -30,6 +31,7 @@ pub(super) struct WindowAppHandler {
     // needed to keep reference to a window
     windows: HashMap<Uid, Window>,
     window_lookup: HashMap<WindowId, Uid>,
+    window_requests: Vec<WindowRequest>,
 }
 
 impl WindowAppHandler {
@@ -44,6 +46,7 @@ impl WindowAppHandler {
             exit_err: None,
             windows: HashMap::new(),
             window_lookup: HashMap::new(),
+            window_requests: vec![],
         };
     }
 
@@ -68,85 +71,86 @@ impl WindowAppHandler {
 
         Ok(())
     }
+
+    pub fn has_window(&self, id: &Uid) -> bool {
+        self.windows.contains_key(id)
+    }
+    pub fn request_window(&mut self, window_request: WindowRequest) {
+        self.window_requests.push(window_request);
+    }
+
+    pub fn process_window_request(
+        &mut self,
+        event_loop: &ActiveEventLoop,
+        window_request: WindowRequest,
+    ) {
+        // skip windows we've already created
+        if let Some(window) = self.windows.get(&window_request.element_uid) {
+            WindowAppHandler::configure_window(event_loop, window, window_request.config);
+            return;
+        }
+
+        let window = event_loop
+            .create_window(
+                WindowAttributes::default()
+                    .with_title(window_request.element_name.clone())
+                    .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0)),
+            )
+            .unwrap();
+
+        // get the gst element as a video overlay
+        let element = self
+            .pipeline
+            .by_name(&window_request.element_name)
+            .with_context(|| {
+                format!(
+                    "Element with name '{}' not found in pipeline",
+                    window_request.element_name
+                )
+            })
+            .unwrap();
+        let overlay = element
+            .dynamic_cast::<gst_video::VideoOverlay>()
+            .map_err(|_| anyhow::anyhow!("Failed to cast element to VideoOverlay"))
+            .unwrap();
+
+        // Obtain the raw window handle from winit
+        let raw_handle = window.window_handle().unwrap().as_raw();
+
+        // Extract platform-specific handle ID
+        let handle_id = match raw_handle {
+            RawWindowHandle::Xlib(h) => h.window as usize,
+            RawWindowHandle::Wayland(h) => h.surface.as_ptr() as usize,
+            RawWindowHandle::Win32(h) => h.hwnd.get() as usize,
+            RawWindowHandle::WinRt(h) => h.core_window.as_ptr() as usize,
+            RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
+            _ => panic!("Unsupported platform: cannot get raw window handle"),
+        };
+
+        // set the gstreamer element to output to this handle!
+        unsafe {
+            overlay.set_window_handle(handle_id);
+        }
+
+        // configure the window based on the config
+        WindowAppHandler::configure_window(&event_loop, &window, window_request.config.clone())
+            .unwrap();
+
+        window.request_redraw();
+
+        // hold onto window ref
+        self.window_lookup
+            .insert(window.id(), window_request.element_uid);
+        self.windows.insert(window_request.element_uid, window);
+        info!(
+            "Created window for output element {}",
+            window_request.element_uid
+        );
+    }
 }
 
-impl ApplicationHandler<RuntimeMessage> for WindowAppHandler {
-    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {
-        // create all the required windows and update the global state
-        let mut global_state = PROXY_WINDOW_STATE
-            .lock()
-            .expect("Unable to aquire window proxy lock. Should not happen in normal operation");
-        if let Some(state) = global_state.as_mut() {
-            // while we have the lock setup all windows
-            for window_request in state.window_configs.values() {
-                // skip windows we've already created
-                if self.windows.contains_key(&window_request.element_uid) {
-                    continue;
-                }
-
-                let window = event_loop
-                    .create_window(
-                        WindowAttributes::default()
-                            .with_title(window_request.element_name.clone())
-                            .with_inner_size(winit::dpi::LogicalSize::new(800.0, 600.0)),
-                    )
-                    .unwrap();
-
-                // get the gst element as a video overlay
-                let element = self
-                    .pipeline
-                    .by_name(&window_request.element_name)
-                    .with_context(|| {
-                        format!(
-                            "Element with name '{}' not found in pipeline",
-                            window_request.element_name
-                        )
-                    })
-                    .unwrap();
-                let overlay = element
-                    .dynamic_cast::<gst_video::VideoOverlay>()
-                    .map_err(|_| anyhow::anyhow!("Failed to cast element to VideoOverlay"))
-                    .unwrap();
-
-                // Obtain the raw window handle from winit
-                let raw_handle = window.window_handle().unwrap().as_raw();
-
-                // Extract platform-specific handle ID
-                let handle_id = match raw_handle {
-                    RawWindowHandle::Xlib(h) => h.window as usize,
-                    RawWindowHandle::Wayland(h) => h.surface.as_ptr() as usize,
-                    RawWindowHandle::Win32(h) => h.hwnd.get() as usize,
-                    RawWindowHandle::WinRt(h) => h.core_window.as_ptr() as usize,
-                    RawWindowHandle::AppKit(h) => h.ns_view.as_ptr() as usize,
-                    _ => panic!("Unsupported platform: cannot get raw window handle"),
-                };
-
-                // set the gstreamer element to output to this handle!
-                unsafe {
-                    overlay.set_window_handle(handle_id);
-                }
-
-                // configure the window based on the config
-                WindowAppHandler::configure_window(
-                    &event_loop,
-                    &window,
-                    window_request.config.clone(),
-                )
-                .unwrap();
-
-                window.request_redraw();
-
-                // hold onto window ref
-                self.window_lookup
-                    .insert(window.id(), window_request.element_uid);
-                self.windows.insert(window_request.element_uid, window);
-                info!(
-                    "Created window for output element {}",
-                    window_request.element_uid
-                )
-            }
-        }
-    }
+impl ApplicationHandler<WinitMessage> for WindowAppHandler {
+    fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {}
 
     fn window_event(
         &mut self,
@@ -168,7 +172,14 @@ impl ApplicationHandler<RuntimeMessage> for WindowAppHandler {
         }
     }
 
-    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: RuntimeMessage) {
-        self.last_event = Some(event);
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: WinitMessage) {
+        match event {
+            WinitMessage::Runtime(runtime_event) => {
+                self.last_event = Some(runtime_event);
+            }
+            WinitMessage::UpdateWindow(request) => {
+                self.process_window_request(event_loop, request);
+            }
+        }
     }
 }

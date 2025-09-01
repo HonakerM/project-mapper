@@ -7,9 +7,6 @@ use winit::{
 
 use crate::types::message::RuntimeMessage;
 
-pub type WinitPMEventLoop = EventLoop<RuntimeMessage>;
-pub type WinitPMEventLoopProxy = EventLoopProxy<RuntimeMessage>;
-
 pub fn get_monitor_by_name(event_loop: &ActiveEventLoop, name: String) -> Result<MonitorHandle> {
     for monitor in event_loop.available_monitors() {
         if let Some(monitor_name) = monitor.name() {

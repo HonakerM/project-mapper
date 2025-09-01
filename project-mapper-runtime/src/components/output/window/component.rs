@@ -14,12 +14,11 @@ use crate::components::output::window::state::GLOBAL_WINDOW_STATE;
 use crate::components::output::window::state::PROXY_WINDOW_STATE;
 use crate::components::output::window::state::ProxyWindowState;
 use crate::components::output::window::state::WindowRequest;
+use crate::components::output::window::state::WinitMessage;
 use crate::components::output::window::state::WinitState;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{Component, ComponentLookupHelper};
 use crate::types::message::RuntimeMessage;
-use crate::utils::winit::WinitPMEventLoop;
-use crate::utils::winit::WinitPMEventLoopProxy;
 use crate::utils::winit::get_monitor_by_name;
 use crate::utils::winit::get_video_mode_for_config;
 use anyhow::Context;
@@ -75,7 +74,6 @@ impl WindowComponent {
         if let None = *global_state {
             let new_global_state: ProxyWindowState = ProxyWindowState {
                 event_loop_proxy: None,
-                window_configs: HashMap::new(),
             };
 
             // update the global state with a new value
@@ -83,24 +81,28 @@ impl WindowComponent {
             self.is_main = true;
         }
 
-        // make sure the global state has our window config
-        if let Some(state) = global_state.as_mut() {
-            state.window_configs.insert(
-                self.config.name(),
-                WindowRequest {
-                    element_uid: self.config.uid(),
-                    element_name: self.config.name(),
-                    config: self.window_config.clone(),
-                },
-            );
-        }
+        // // make sure the global state has our window config
+        // if let Some(state) = global_state.as_mut() {
+        //     state.window_configs.insert(
+        //         self.config.name(),
+        //         WindowRequest {
+        //             element_uid: self.config.uid(),
+        //             element_name: self.config.name(),
+        //             config: self.window_config.clone(),
+        //         },
+        //     );
+        // }
 
         Ok(())
     }
 
-    fn initialize_event_loop(&mut self, pipeline: &gst::Pipeline) -> Result<()> {
+    fn initialize_event_loop(
+        &mut self,
+        pipeline: &gst::Pipeline,
+        message_sender: mpsc::Sender<RuntimeMessage>,
+    ) -> Result<()> {
         // construct the event loop and window mapping
-        let mut event_loop: WinitPMEventLoop = EventLoop::with_user_event().build()?;
+        let mut event_loop: EventLoop<WinitMessage> = EventLoop::with_user_event().build()?;
 
         // ControlFlow::Wait pauses the event loop if no events are available to process.
         // This is ideal for non-game applications that only update in response to user
@@ -118,19 +120,15 @@ impl WindowComponent {
             }
         }
 
-        if let Some(message_sender) = &self.message_sender {
-            let mut handler = WindowAppHandler::new(pipeline.clone(), message_sender.clone());
-            event_loop.pump_app_events(None, &mut handler);
-
-            GLOBAL_WINDOW_STATE.replace(WinitState {
-                handler: Some(handler),
-                // don't create the message sender until we have it in run
-                message_sender_thread: None,
-                event_loop: Some(event_loop),
-            });
-        } else {
-            return Err(anyhow!("Unable to find message sender at update point"));
-        }
+        GLOBAL_WINDOW_STATE.replace(WinitState {
+            handler: Some(WindowAppHandler::new(
+                pipeline.clone(),
+                message_sender.clone(),
+            )),
+            // don't create the message sender until we have it in run
+            message_sender_thread: None,
+            event_loop: Some(event_loop),
+        });
 
         Ok(())
     }
@@ -153,9 +151,11 @@ impl WindowComponent {
                         && let Some(proxy) = &state.event_loop_proxy
                     {
                         let is_exit = matches!(event, RuntimeMessage::ExitRuntime());
-                        proxy.send_event(event).map_err(|_| {
-                            anyhow!("Unable to send message to event loop. It must be closed")
-                        })?;
+                        proxy
+                            .send_event(WinitMessage::Runtime(event))
+                            .map_err(|_| {
+                                anyhow!("Unable to send message to event loop. It must be closed")
+                            })?;
                         if is_exit {
                             return Ok(());
                         }
@@ -219,6 +219,32 @@ impl WindowComponent {
                 "Event loop exited without event. Should never happen due to loop conditions"
             ))
         }
+    }
+
+    fn update_window(&self, config: &WindowConfig, force_creation: bool) -> Result<()> {
+        let mut winit_state_option = PROXY_WINDOW_STATE.lock().unwrap();
+        if let Some(winit_state) = winit_state_option.as_ref() {
+            if let Some(proxy) = &winit_state.event_loop_proxy {
+                proxy.send_event(WinitMessage::UpdateWindow(WindowRequest {
+                    element_name: self.config.name(),
+                    element_uid: self.config.uid(),
+                    config: config.clone(),
+                }));
+            }
+        }
+
+        if force_creation {
+            println!("Updating window in {}", self.config.name());
+            let mut global_state = GLOBAL_WINDOW_STATE.take();
+            if let Some(event_loop) = &mut global_state.event_loop {
+                if let Some(handler) = &mut global_state.handler {
+                    event_loop.pump_app_events(None, handler);
+                }
+            }
+            GLOBAL_WINDOW_STATE.set(global_state);
+        }
+
+        Ok(())
     }
 }
 
@@ -284,6 +310,18 @@ impl Component for WindowComponent {
         self.branch.add_to_pipeline(pipeline)?;
         self.branch.link_wrapped(&self.output_element)?;
 
+        {
+            let mut winit_state = GLOBAL_WINDOW_STATE.take();
+            if let None = winit_state.event_loop {
+                // initialize all the window elements
+                println!("Initializing event loop in {}", self.config.name());
+                self.initialize_event_loop(&pipeline, message_sender.clone())?;
+            } else {
+                GLOBAL_WINDOW_STATE.set(winit_state);
+            }
+        }
+        self.update_window(&self.window_config, true)?;
+
         // mark setup as complete so as to not rerun
         Ok(())
     }
@@ -293,23 +331,27 @@ impl Component for WindowComponent {
         config: &dyn ComponentConfig,
         lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
+        // parse config and ensure it's correct types
+        let config: OutputComponentConfig =
+            match config.as_any().downcast_ref::<OutputComponentConfig>() {
+                Some(b) => Ok(b.clone()),
+                None => Err(Error::msg(
+                    "ComponentConfig can not be typed to OutputComponentConfig",
+                )),
+            }?;
+
+        // load the config
+        let window_config = match config.config.as_any().downcast_ref::<WindowConfig>() {
+            Some(b) => Ok(b.clone()),
+            None => Err(anyhow!("WindowComponentConfig is not WindowConfig")),
+        }?;
+        self.config = config;
+        self.window_config = window_config;
+        self.update_window(&self.window_config, false)?;
+
         // If we're the main function than recursively call setup on all available window references
         // this ensures all pipeline elements that require a window have been added to the pipeline
         // ! Note this must come after adding the components to the pipeline:
-
-        if self.is_main {
-            let mut winit_state = GLOBAL_WINDOW_STATE.take();
-            if let None = winit_state.event_loop {
-                // initialize all the window elements
-                let pipeline = self
-                    .pipeline
-                    .take()
-                    .ok_or(anyhow!("Pipeline does not exist which should never happen"))?;
-                self.initialize_event_loop(&pipeline)?;
-                self.pipeline.replace(pipeline);
-            }
-        }
-
         let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
             "Unable to find source component {} for window component {}",
             self.config.src_uid,
