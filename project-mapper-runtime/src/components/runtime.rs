@@ -61,7 +61,7 @@ impl Component for DefaultRuntimeComponent {
     fn output_element(&self) -> Result<&gst::Element> {
         Err(anyhow!("Runtime Component does not have elements"))
     }
-    fn requires_main(&self) -> bool {
+    fn requires_main(&mut self) -> bool {
         true
     }
 }

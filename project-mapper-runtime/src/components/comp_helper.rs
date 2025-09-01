@@ -35,7 +35,7 @@ impl DefaultComponentHelper {
 impl ComponentLookupHelper for DefaultComponentHelper {
     fn new(&mut self, config: &dyn ComponentConfig, factory: &dyn ComponentFactory) -> Result<()> {
         // else create the component
-        let comp = factory.create_component(config)?;
+        let mut comp = factory.create_component(config)?;
 
         // if this component requires main then update the main_id
         if comp.requires_main() {

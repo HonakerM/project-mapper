@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
@@ -72,26 +73,19 @@ impl WindowComponent {
         )))?;
 
         if let None = *global_state {
-            let new_global_state: ProxyWindowState = ProxyWindowState {
+            let mut new_global_state: ProxyWindowState = ProxyWindowState {
                 event_loop_proxy: None,
+                window_comps: HashSet::new(),
+                has_main: true,
             };
+            new_global_state.window_comps.insert(self.config.uid());
 
             // update the global state with a new value
             *global_state = Some(new_global_state.clone());
             self.is_main = true;
+        } else if let Some(proxy_state) = global_state.as_mut() {
+            proxy_state.window_comps.insert(self.config.uid());
         }
-
-        // // make sure the global state has our window config
-        // if let Some(state) = global_state.as_mut() {
-        //     state.window_configs.insert(
-        //         self.config.name(),
-        //         WindowRequest {
-        //             element_uid: self.config.uid(),
-        //             element_name: self.config.name(),
-        //             config: self.window_config.clone(),
-        //         },
-        //     );
-        // }
 
         Ok(())
     }
@@ -400,47 +394,45 @@ impl Component for WindowComponent {
 
     // Stop this component
     fn destroy(&mut self) -> Result<()> {
-        // if we're not main then just destory the window if it exists
-        if !self.is_main {
-            let mut winit_state = GLOBAL_WINDOW_STATE.take();
-            if let Some(handler) = &mut winit_state.handler {
-                handler.destory();
+        // Unlink our components and destory them
+        BranchControl::unlink_and_destory(&self.output_element)?;
+        self.branch.destory()?;
+
+        // Start by destorying our window
+        GLOBAL_WINDOW_STATE.with_borrow_mut(|state| {
+            if let Some(handler) = &mut state.handler {
+                handler.destory_window(&self.config.uid());
             }
-            GLOBAL_WINDOW_STATE.set(winit_state);
-            return Ok(());
-        }
+        });
 
-        // else destroy/drop all windows
-        let mut winit_state = GLOBAL_WINDOW_STATE.take();
-        if let Some(handler) = &mut winit_state.handler {
-            handler.destory();
+        // destory our proxy reference
+        let mut proxy_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
+            "Unable to aquire window proxy lock. Should not happen in normal operation",
+        ))).unwrap();
+        if let Some(proxy_state) = proxy_state.as_mut() {
+            proxy_state.window_comps.remove(&self.config.uid);
+            if self.is_main {
+                proxy_state.has_main = false;
+            }
         }
-
-        // ensure we destory/join the event listener thread
-        if let Some(event_handle) = winit_state.message_sender_thread {
-            let possible_error = if event_handle.is_finished() {
-                event_handle.join().map_err(|panic_err| {
-                    // Try to extract a meaningful panic message
-                    if let Some(s) = panic_err.downcast_ref::<&'static str>() {
-                        anyhow!("Thread panicked: {}", s)
-                    } else if let Some(s) = panic_err.downcast_ref::<String>() {
-                        anyhow!("Thread panicked: {}", s)
-                    } else {
-                        anyhow!("Thread panicked with non-string payload")
-                    }
-                })
-            } else {
-                Err(anyhow!(
-                    "Event watcher thread not finished even though event is done"
-                ))
-            }?;
-            possible_error?;
-        }
-
         Ok(())
     }
+
     // only the main window requires the main thread
-    fn requires_main(&self) -> bool {
+    fn requires_main(&mut self) -> bool {
+        if self.is_main {
+            return true;
+        } else {
+            let mut global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
+                "Unable to aquire window proxy lock. Should not happen in normal operation",
+            ))).unwrap();
+            if let Some(proxy_state) = global_state.as_mut() {
+                if ! proxy_state.has_main {
+                    self.is_main = true;
+                    return true;
+                }
+            }
+        }
         return self.is_main;
     }
 }

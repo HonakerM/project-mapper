@@ -5,7 +5,7 @@ use crate::{
 use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
-use std::sync::mpsc;
+use std::{sync::mpsc, thread};
 
 /// Controls optional insertion of a queue and/or tee element into a pipeline branch.
 pub struct BranchControl {
@@ -69,14 +69,12 @@ impl BranchControl {
         Ok(())
     }
 
-    pub fn destory(&self, pipeline: &gst::Pipeline) -> Result<()> {
+    pub fn destory(&self) -> Result<()> {
         if let Some(input_element) = &self.input_element {
-            BranchControl::unlink_element(input_element)?;
-            pipeline.remove(input_element)?;
+            BranchControl::unlink_and_destory(input_element)?;
         }
         if let Some(output_element) = &self.output_element {
-            BranchControl::unlink_element(output_element)?;
-            pipeline.remove(output_element)?;
+            BranchControl::unlink_and_destory(output_element)?;
         }
         Ok(())
     }
@@ -130,10 +128,15 @@ impl BranchControl {
         for src_pad in element.src_pads() {
             if src_pad.is_linked() {
                 if let Some(peer_pad) = src_pad.peer() {
-                    peer_pad.unlink(&src_pad)?;
+                    src_pad.unlink(&peer_pad)?;
                 }
             }
         }
+        Ok(())
+    }
+    pub fn unlink_and_destory(element: &Element) -> Result<()> {
+        BranchControl::unlink_element(element)?;
+        element.set_state(gst::State::Null)?;
         Ok(())
     }
 

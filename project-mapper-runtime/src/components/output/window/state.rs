@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::sync::Arc;
 use std::sync::LazyLock;
 use std::sync::Mutex;
@@ -62,9 +63,23 @@ thread_local! {
     pub(super) static GLOBAL_WINDOW_STATE: RefCell<WinitState> = RefCell::new(WinitState::default());
 }
 
+
+// setup global state. While this could be done without the Option
+// keep it to allow us to determine which component is the "main" one
+// and will start threads/etc
+#[derive(Clone)]
+pub(super) struct ProxyWindowState {
+    pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
+    pub window_comps: HashSet<Uid>,
+    pub has_main: bool
+}
+pub(super) static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
+    LazyLock::new(|| Mutex::new(None));
+
+
 // Struct for components to request a window with
 #[derive(Clone, Debug)]
-pub(super) struct WindowRequest {
+pub struct WindowRequest {
     pub element_name: String,
     pub element_uid: Uid,
     pub config: WindowConfig,
@@ -78,13 +93,3 @@ pub enum WinitMessage {
 
 pub type WinitPMEventLoop = EventLoop<WinitMessage>;
 pub type WinitPMEventLoopProxy = EventLoopProxy<WinitMessage>;
-
-// setup global state. While this could be done without the Option
-// keep it to allow us to determine which component is the "main" one
-// and will start threads/etc
-#[derive(Clone)]
-pub(super) struct ProxyWindowState {
-    pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
-}
-pub(super) static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
-    LazyLock::new(|| Mutex::new(None));

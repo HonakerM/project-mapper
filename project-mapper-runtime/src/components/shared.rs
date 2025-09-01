@@ -105,7 +105,7 @@ pub trait Component {
     // ! Warning: only one component can mark this as true. If multiple
     // components require main then we will raise an error.
     // ! Note: This needs to be correctly set after setup()
-    fn requires_main(&self) -> bool {
+    fn requires_main(&mut self) -> bool {
         false
     }
 }
