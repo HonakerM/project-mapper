@@ -3,7 +3,7 @@ use crate::{
     types::message::RuntimeMessage,
 };
 use anyhow::{Error, Result, anyhow};
-use gst::{Element, prelude::*};
+use gst::{prelude::*, Element, Event};
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 use std::{sync::mpsc, thread};
 
@@ -84,23 +84,7 @@ impl BranchControl {
             .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))
     }
 
-    pub fn unlink_from_input(&self) -> Result<()> {
-        let input_element = self
-            .input_element
-            .as_ref()
-            .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))?;
-        if let Some(input_sink_pad) = input_element.static_pad("sink") {
-            if input_sink_pad.is_linked() {
-                if let Some(peer_pad) = input_sink_pad.peer() {
-                    peer_pad.unlink(&input_sink_pad)?;
-                }
-            }
-        }
-        Ok(())
-    }
     pub fn link_from(&self, element: &Element) -> Result<()> {
-        self.unlink_from_input()?;
-
         // Link the provided element to the input element of the branch
         let input_element = self
             .input_element
@@ -117,25 +101,65 @@ impl BranchControl {
             .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))
     }
 
-    pub fn unlink_element(element: &Element) -> Result<()> {
-        for sink_pad in element.sink_pads() {
-            if sink_pad.is_linked() {
-                if let Some(peer_pad) = sink_pad.peer() {
-                    peer_pad.unlink(&sink_pad)?;
-                }
-            }
-        }
-        for src_pad in element.src_pads() {
-            if src_pad.is_linked() {
-                if let Some(peer_pad) = src_pad.peer() {
-                    src_pad.unlink(&peer_pad)?;
-                }
+    pub fn unlink_element(element: &Element, pipeline: &gst::Pipeline) -> Result<()> {
+        for input_sink_pad in element.sink_pads() {
+            if let Some(input_src_pad) = input_sink_pad.peer() {
+
+                input_src_pad.probes
+                let local_element = element.clone();
+                let local_pipeline = pipeline.clone();
+                input_src_pad.add_probe(gst::PadProbeType::BLOCK, move |pad, info| {
+                    if let Some(input_element) = pad.parent_element() {
+                        input_element.set_state(gst::State::Paused).unwrap();
+                    }
+                    pad.unlink(&input_sink_pad).unwrap();
+                    
+                    let (sender, receiver) = mpsc::channel();
+                    let mut total_count = 0;
+                    // look for a src and then wait for eos event
+                    for src_element in local_element.src_pads() {
+                        total_count+=1;
+                        // Add a probe to the pad
+                        let eos_local_element = local_element.clone();
+                        let local_sender = sender.clone();
+                        let current_count = total_count.clone();
+                        src_element.add_probe(gst::PadProbeType::EVENT_DOWNSTREAM, move |src_pad, probe_info| {
+                            if let Some(event) = probe_info.event() {
+                                // Filter for the specific event type
+                                if event.type_() == gst::EventType::Eos {
+                                    println!("Received EOS event on the main sink pad!");
+
+                                    if let Some(peer_sink) = &src_pad.peer() {
+                                        src_pad.unlink(peer_sink);
+                                    }
+                                    local_sender.send(current_count);
+                                    return gst::PadProbeReturn::Remove; // Remove the probe after the event
+                                }
+                            }
+                            gst::PadProbeReturn::Pass // Pass the event downstream
+                        });
+                    }
+
+                    let eos_event = gst::event::Eos::new();
+                    local_element.send_event(eos_event);
+                    // once all eos's have been received stop and remove the element
+                    for _ in receiver.iter() {
+                        total_count-=1;
+                        if total_count <= 0 {
+                            break;
+                        }
+                    }
+                    local_element.set_state(gst::State::Null);
+                    local_pipeline.remove(&local_element);
+
+                    gst::PadProbeReturn::Ok
+                });
             }
         }
         Ok(())
     }
-    pub fn unlink_and_destory(element: &Element) -> Result<()> {
-        BranchControl::unlink_element(element)?;
+    pub fn unlink_and_destory(element: &Element, pipeline: &gst::Pipeline) -> Result<()> {
+        BranchControl::unlink_element(element, pipeline)?;
         element.set_state(gst::State::Null)?;
         Ok(())
     }
