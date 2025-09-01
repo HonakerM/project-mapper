@@ -3,7 +3,7 @@ use crate::{
     types::message::RuntimeMessage,
 };
 use anyhow::{Error, Result, anyhow};
-use gst::{Element, prelude::*};
+use gst::{Element, Event, PadProbeType, event::Eos, prelude::*};
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 use std::{sync::mpsc, thread};
 
@@ -30,6 +30,7 @@ impl BranchControl {
             let t = gst::ElementFactory::make("tee")
                 .name(&format!("tee-{}", name))
                 .build()?;
+            t.set_property("allow-not-linked", true);
             Some(t)
         } else {
             None
@@ -92,7 +93,34 @@ impl BranchControl {
         if let Some(input_sink_pad) = input_element.static_pad("sink") {
             if input_sink_pad.is_linked() {
                 if let Some(peer_pad) = input_sink_pad.peer() {
-                    peer_pad.unlink(&input_sink_pad)?;
+                    peer_pad.add_probe(PadProbeType::BLOCK, move |pad, probe_info| {
+                        // send and wait for a eos event
+                        let (eos_sender, eos_rec) = mpsc::channel();
+                        input_sink_pad.add_probe(
+                            PadProbeType::EVENT_DOWNSTREAM,
+                            move |sink_pad, sink_probe_inf| {
+                                if let Some(event) = sink_probe_inf.event() {
+                                    if event.type_() == gst::EventType::Eos {
+                                        eos_sender.send(true);
+                                        gst::PadProbeReturn::Remove
+                                    } else {
+                                        gst::PadProbeReturn::Ok
+                                    }
+                                } else {
+                                    gst::PadProbeReturn::Ok
+                                }
+                            },
+                        );
+                        eos_rec.recv();
+                        // unlink
+                        pad.unlink(&input_sink_pad);
+
+                        // get pad's parent element
+                        if let Some(parent_src_element) = pad.parent_element() {
+                            parent_src_element.release_request_pad(pad);
+                        }
+                        gst::PadProbeReturn::Remove
+                    });
                 }
             }
         }
