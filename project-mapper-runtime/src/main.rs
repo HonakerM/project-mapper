@@ -29,7 +29,7 @@ fn run_main() -> Result<()> {
         height: 1080,
     };
 
-    let config = RuntimeConfig {
+    let mut config = RuntimeConfig {
         inputs: vec![InputComponentConfig {
             uid: 0,
             name: "test_comp".to_string(),
@@ -92,29 +92,7 @@ fn run_main() -> Result<()> {
                 })],
             },
         ],
-        outputs: vec![
-             /*
-             OutputComponentConfig {
-                 uid: 1,
-                 name: "comp_1".to_string(),
-                 config: Box::new(WindowConfig {
-                     mode: WindowMode::Borderless {
-                         name: "Monitor #41022".to_string(),
-                     },
-                 }),
-                 src_uid: 71,
-             }, 
-           */
-            OutputComponentConfig {
-                uid: 1,
-                name: "comp_1".to_string(),
-                config: Box::new(WindowConfig {
-                    mode: WindowMode::Borderless {
-                        name: "\\\\.\\DISPLAY1".to_string(),
-                    },
-                }),
-                src_uid: 71,
-            }, 
+        outputs: vec![ 
             /* 
                OutputComponentConfig {
                    uid: 2,
@@ -147,6 +125,33 @@ fn run_main() -> Result<()> {
             },
         ],
     };
+
+     #[cfg(target_os = "macos")]
+     config.outputs.push(
+        OutputComponentConfig {
+            uid: 1,
+            name: "comp_1".to_string(),
+            config: Box::new(WindowConfig {
+                mode: WindowMode::Borderless {
+                    name: "Monitor #41022".to_string(),
+                },
+            }),
+            src_uid: 71,
+        });
+    #[cfg(target_os = "windows")]
+     config.outputs.push(
+        OutputComponentConfig {
+            uid: 1,
+            name: "comp_1".to_string(),
+            config: Box::new(WindowConfig {
+                mode: WindowMode::Borderless {
+                    name: "\\\\.\\DISPLAY1".to_string(),
+                },
+            }),
+            src_uid: 71,
+        }
+     );
+
     config
         .validate()
         .context("Failed to validate runtime config")?;

@@ -3,6 +3,8 @@ use std::sync::mpsc;
 use gst::{prelude::*, Element, Pad, PadProbeType, Pipeline};
 use anyhow::{Result};
 
+use crate::components::bin_wrapper::BinWrapper;
+
 const NULL_ELEMENT_NAME: &str = "null_element_name";
 
 
@@ -13,9 +15,14 @@ pub fn get_or_create_null_element(pipeline: &Pipeline)->Result<Element> {
         let element = gst::ElementFactory::make("fakesink")
             .name(NULL_ELEMENT_NAME)
             .build()?;
-        pipeline.add_many([&element])?;
-        element.sync_state_with_parent()?;
-        element
+        let funnel = gst::ElementFactory::make("funnel")
+            .name(format!("{}-funnel", NULL_ELEMENT_NAME))
+            .build()?;
+        let bin_element = BinWrapper::new(&[&funnel, &element], false, false);
+        
+        pipeline.add_many([&bin_element])?;
+        bin_element.sync_state_with_parent()?;
+        bin_element.upcast()
     };
     Ok(element)
 

@@ -7,7 +7,7 @@ use crate::{
     types::message::RuntimeMessage, utils::gstreamer::unlink_element,
 };
 use anyhow::{Error, Result, anyhow};
-use gst::{Element, prelude::*};
+use gst::{prelude::*, Element, Pipeline};
 use log::{debug, info};
 use project_mapper_core::runtime_config::{
     effect::{EffectComponentConfig, fps::FpsConfig, gamma::GammaConfig},
@@ -18,6 +18,7 @@ pub struct FpsComponent {
     config: EffectComponentConfig,
     rate_element: Element,
     bin_element: BinWrapper,
+    pipeline: Option<Pipeline>,
 }
 
 impl FpsComponent {
@@ -68,6 +69,7 @@ impl Component for FpsComponent {
             config: config,
             rate_element: rate_element,
             bin_element: bin_wrapper,
+            pipeline: None,
         };
 
         Ok(comp)
@@ -81,6 +83,7 @@ impl Component for FpsComponent {
         _message_sender: mpsc::Sender<RuntimeMessage>,
     ) -> Result<()> {
         // Add elements to the pipelines and sync status
+        self.pipeline = Some(pipeline.clone());
         pipeline.add(&self.bin_element)?;
         self.bin_element.sync_state_with_parent()?;
 
@@ -122,9 +125,10 @@ impl Component for FpsComponent {
         let src_comp_ref = src_comp.borrow();
         let src_element = src_comp_ref.output_element()?;
 
-        if let Some(pipeline) = self.pipeline {
-            unlink_element(self.input_element()?, pipeline);
+        if let Some(pipeline) = &self.pipeline {
+            unlink_element(self.input_element()?, pipeline)?;
         }
+        src_element.link(self.input_element()?)?;
         
 
         Ok(())
