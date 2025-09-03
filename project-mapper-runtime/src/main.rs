@@ -1,6 +1,9 @@
 use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 
 use anyhow::{Context, Result};
+use gst::prelude::{ElementExt, ElementExtManual, GstBinExtManual};
 use project_mapper_core::loader::runtime_loader::export_config_json;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
@@ -171,8 +174,55 @@ fn run_main() -> Result<()> {
         .context("Failed to run runtime due to error")
 }
 
+
+fn test_main() -> Result<()> {
+    gst::init()?;
+
+    let pipeline = gst::Pipeline::new();
+
+    // construct test gstreamer element
+    let test_element = gst::ElementFactory::make("videotestsrc")
+        .name("test-in")
+        .build()?;
+    let effect_element = gst::ElementFactory::make("twirl")
+        .name("test-effect")
+        .build()?;
+    let output = gst::ElementFactory::make("fakesink")
+        .name("test-output")
+        .build()?;
+
+    pipeline.add_many([&test_element, &effect_element, &output])?;
+    test_element.sync_state_with_parent()?;
+    effect_element.sync_state_with_parent()?;
+    output.sync_state_with_parent()?;
+    test_element.link(&effect_element)?;
+    effect_element.link(&output)?;
+
+    
+    // Start the pipeline
+    pipeline
+        .set_state(gst::State::Playing)
+        .context("Failed to start pipeline")?;
+
+    loop {
+        thread::sleep(Duration::from_secs(2));
+
+        effect_element.unlink(&output);
+        test_element.unlink(&effect_element);
+        test_element.link(&output)?;
+
+        thread::sleep(Duration::from_secs(2));
+        test_element.unlink(&output);
+        effect_element.link(&output)?;
+        test_element.link(&effect_element)?;
+    }
+    
+    Ok(())
+
+}
+
 fn main() {
-    if let Err(error) = run_main() {
+    if let Err(error) = test_main() {
         panic!("{:#}", error);
     }
 }
