@@ -12,6 +12,8 @@ pub mod factory;
 
 #[path = "./branch.rs"]
 pub mod branch;
+#[path = "./bin_wrapper.rs"]
+pub mod bin_wrapper;
 
 // Default runtime component for handling events
 #[path = "./runtime.rs"]

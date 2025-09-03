@@ -93,6 +93,7 @@ fn run_main() -> Result<()> {
             },
         ],
         outputs: vec![
+             /*
              OutputComponentConfig {
                  uid: 1,
                  name: "comp_1".to_string(),
@@ -103,7 +104,7 @@ fn run_main() -> Result<()> {
                  }),
                  src_uid: 71,
              }, 
-            /*
+           */
             OutputComponentConfig {
                 uid: 1,
                 name: "comp_1".to_string(),
@@ -114,6 +115,7 @@ fn run_main() -> Result<()> {
                 }),
                 src_uid: 71,
             }, 
+            /* 
                OutputComponentConfig {
                    uid: 2,
                    name: "comp_2".to_string(),

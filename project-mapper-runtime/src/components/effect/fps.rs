@@ -2,10 +2,9 @@ use std::sync::mpsc;
 
 use crate::{
     components::{
-        branch::BranchControl,
-        shared::{Component, ComponentLookupHelper},
+        bin_wrapper::BinWrapper, branch::BranchControl, shared::{Component, ComponentLookupHelper}
     },
-    types::message::RuntimeMessage,
+    types::message::RuntimeMessage, utils::gstreamer::unlink_element,
 };
 use anyhow::{Error, Result, anyhow};
 use gst::{Element, prelude::*};
@@ -17,8 +16,8 @@ use project_mapper_core::runtime_config::{
 
 pub struct FpsComponent {
     config: EffectComponentConfig,
-    element: Element,
-    branch: BranchControl,
+    rate_element: Element,
+    bin_element: BinWrapper,
 }
 
 impl FpsComponent {
@@ -58,16 +57,17 @@ impl Component for FpsComponent {
             Some(b) => Ok(b.clone()),
             None => Err(anyhow!("GammaComponent is not GammaConfig")),
         }?;
-        let element = gst::ElementFactory::make("videorate")
+        let rate_element = gst::ElementFactory::make("videorate")
             .name(config.name())
             .build()?;
-        FpsComponent::update_config(&element, &fps_config)?;
+        FpsComponent::update_config(&rate_element, &fps_config)?;
 
-        let branch = BranchControl::new(config.name(), true, true)?;
+        let bin_wrapper = BinWrapper::new(&[&rate_element], true, true);
+
         let comp = Self {
             config: config,
-            element: element,
-            branch: branch,
+            rate_element: rate_element,
+            bin_element: bin_wrapper,
         };
 
         Ok(comp)
@@ -81,12 +81,8 @@ impl Component for FpsComponent {
         _message_sender: mpsc::Sender<RuntimeMessage>,
     ) -> Result<()> {
         // Add elements to the pipelines and sync status
-        pipeline.add(&self.element)?;
-        self.element.sync_state_with_parent()?;
-
-        // ensure the branch is correctly setup and wrap the parent element
-        self.branch.add_to_pipeline(pipeline)?;
-        self.branch.link_wrapped(&self.element)?;
+        pipeline.add(&self.bin_element)?;
+        self.bin_element.sync_state_with_parent()?;
 
         Ok(())
     }
@@ -111,7 +107,7 @@ impl Component for FpsComponent {
         }?;
 
         self.config = config;
-        FpsComponent::update_config(&self.element, &fps_config)?;
+        FpsComponent::update_config(&self.rate_element, &fps_config)?;
 
         if self.config.srcs.len() != 1 {
             return Err(anyhow!("Balance component must have exactly one source"));
@@ -125,7 +121,11 @@ impl Component for FpsComponent {
         ))?;
         let src_comp_ref = src_comp.borrow();
         let src_element = src_comp_ref.output_element()?;
-        self.branch.link_from(src_element)?;
+
+        if let Some(pipeline) = self.pipeline {
+            unlink_element(self.input_element()?, pipeline);
+        }
+        
 
         Ok(())
     }
@@ -134,10 +134,10 @@ impl Component for FpsComponent {
     fn input_element(&self) -> Result<&Element> {
         // return the branch output element since that's what people
         // should be linking
-        self.branch.get_input()
+        Ok(&self.bin_element.upcast_ref::<gst::Element>())
     }
     fn output_element(&self) -> Result<&Element> {
-        self.branch.get_output()
+        Ok(&self.bin_element.upcast_ref::<gst::Element>())
     }
     fn uid(&self) -> Uid {
         return self.config.uid();

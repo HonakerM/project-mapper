@@ -1,11 +1,7 @@
 use std::sync::mpsc;
 
-use gst::{prelude::{ElementExt, ElementExtManual, GstBinExt, GstBinExtManual}, Element, Pad, Pipeline};
+use gst::{prelude::*, Element, Pad, PadProbeType, Pipeline};
 use anyhow::{Result};
-
-pub fn unlink_pads(src_pad: Pad, sink_pad: Pad){
-    
-}
 
 const NULL_ELEMENT_NAME: &str = "null_element_name";
 
@@ -23,6 +19,57 @@ pub fn get_or_create_null_element(pipeline: &Pipeline)->Result<Element> {
     };
     Ok(element)
 
+}
+
+
+pub fn unlink_element(element: &Element, pipeline: &Pipeline) -> Result<()> {
+    let null_element = get_or_create_null_element(pipeline)?;
+
+    let (unlink_sender, unlink_rec) = mpsc::channel();
+    let mut total_count = 0;
+    for input_sink_pad in element.sink_pads() {
+        if input_sink_pad.is_linked() {
+            if let Some(peer_pad) = input_sink_pad.peer() {
+                total_count += 1;
+                let local_unlink_sender = unlink_sender.clone();
+                let local_null_element = null_element.clone();
+                peer_pad.add_probe(PadProbeType::BLOCK, move |pad, _probe_info| {
+                    // send and wait for a eos event
+                    let (eos_sender, eos_rec) = mpsc::channel();
+                    input_sink_pad.add_probe(
+                        PadProbeType::EVENT_DOWNSTREAM,
+                        move |sink_pad, sink_probe_inf| {
+                            if let Some(event) = sink_probe_inf.event() {
+                                if event.type_() == gst::EventType::Eos {
+                                    eos_sender.send(true);
+                                    gst::PadProbeReturn::Remove
+                                } else {
+                                    gst::PadProbeReturn::Ok
+                                }
+                            } else {
+                                gst::PadProbeReturn::Ok
+                            }
+                        },
+                    );
+                    eos_rec.recv();
+                    // unlink
+                    pad.unlink(&input_sink_pad);
+
+                    local_unlink_sender.send(true);
+
+                    gst::PadProbeReturn::Remove
+                });
+            }
+        }
+    }
+
+    for _ in unlink_rec {
+        total_count-=1;
+        if total_count < 0  {
+            break
+        }
+    }
+    Ok(())
 }
 pub fn remove_element(element: &Element, pipeline: &Pipeline)->Result<()>{
     // get null element
