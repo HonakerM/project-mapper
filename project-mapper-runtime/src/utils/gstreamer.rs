@@ -38,6 +38,7 @@ pub fn unlink_element(element: &Element, pipeline: &Pipeline) -> Result<()> {
         if input_sink_pad.is_linked() {
             if let Some(peer_pad) = input_sink_pad.peer() {
                 total_count += 1;
+                
                 let local_unlink_sender = unlink_sender.clone();
                 let local_null_element = null_element.clone();
                 peer_pad.add_probe(PadProbeType::BLOCK, move |pad, _probe_info| {
@@ -59,6 +60,7 @@ pub fn unlink_element(element: &Element, pipeline: &Pipeline) -> Result<()> {
                         },
                     );
                     eos_rec.recv();
+
                     // unlink
                     pad.unlink(&input_sink_pad);
 
@@ -70,11 +72,9 @@ pub fn unlink_element(element: &Element, pipeline: &Pipeline) -> Result<()> {
         }
     }
 
-    for _ in unlink_rec {
-        total_count-=1;
-        if total_count < 0  {
-            break
-        }
+    while total_count > 0 {
+        unlink_rec.recv()?;
+        total_count -=1;
     }
     Ok(())
 }

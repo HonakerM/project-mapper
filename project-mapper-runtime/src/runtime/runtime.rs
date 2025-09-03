@@ -226,13 +226,13 @@ impl Runtime {
 
             // create components and then setup them up
             for comp in &components_to_create {
-                info!("Creating component: {:?}", config);
+                info!("Creating component: {:?}", comp.name());
                 self.component_helper
                     .new(comp.as_ref(), self.component_factory.as_ref())?;
             }
             // do this in separate loops to ensure all components are created before being setup
             for comp in &components_to_create {
-                info!("Setting up component: {:?}", config);
+                info!("Setting up component: {:?}", comp.name());
                 self.component_helper
                     .setup(comp.uid(), pipeline, self.message_sender.clone())?;
             }

@@ -7,7 +7,7 @@ use crate::{
     types::message::RuntimeMessage, utils::gstreamer::unlink_element,
 };
 use anyhow::{Error, Result, anyhow};
-use gst::{prelude::*, Element, Pipeline};
+use gst::{prelude::*, Element, Pipeline, State};
 use log::{debug, info};
 use project_mapper_core::runtime_config::{
     effect::{EffectComponentConfig, fps::FpsConfig, gamma::GammaConfig},
@@ -125,7 +125,8 @@ impl Component for FpsComponent {
         let src_comp_ref = src_comp.borrow();
         let src_element = src_comp_ref.output_element()?;
 
-        if let Some(pipeline) = &self.pipeline {
+        //if  self.input_element()?.current_state() == State::Playing  && let Some(pipeline) = &self.pipeline {
+        if  let Some(pipeline) = &self.pipeline {
             unlink_element(self.input_element()?, pipeline)?;
         }
         src_element.link(self.input_element()?)?;
