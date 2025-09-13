@@ -113,10 +113,10 @@ impl Component for PerspectiveComponent {
     }
 
     // accessor functions
-    fn input_element(&self) -> Result<&Element> {
+    fn input_element(&self) -> Option<&Element> {
         self.branch.get_input()
     }
-    fn output_element(&self) -> Result<&Element> {
+    fn output_element(&self) -> Option<&Element> {
         self.branch.get_output()
     }
     fn uid(&self) -> Uid {

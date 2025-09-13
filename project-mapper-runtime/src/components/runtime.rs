@@ -55,11 +55,11 @@ impl Component for DefaultRuntimeComponent {
     fn uid(&self) -> Uid {
         DEFAULT_ID
     }
-    fn input_element(&self) -> Result<&gst::Element> {
-        Err(anyhow!("Runtime Component does not have elements"))
+    fn input_element(&self) -> Option<&gst::Element> {
+        None
     }
-    fn output_element(&self) -> Result<&gst::Element> {
-        Err(anyhow!("Runtime Component does not have elements"))
+    fn output_element(&self) -> Option<&gst::Element> {
+        None
     }
     fn requires_main(&mut self) -> bool {
         true

@@ -338,11 +338,11 @@ impl Component for WindowComponent {
         Ok(())
     }
     // accessor functions
-    fn input_element(&self) -> Result<&Element> {
-        Ok(self.branch.get_input()?)
+    fn input_element(&self) -> Option<&Element> {
+        self.branch.get_input()
     }
-    fn output_element(&self) -> Result<&Element> {
-        Err(anyhow!("Window component has no output element"))
+    fn output_element(&self) -> Option<&Element> {
+        None
     }
 
     fn uid(&self) -> Uid {

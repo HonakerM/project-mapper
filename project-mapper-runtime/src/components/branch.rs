@@ -79,10 +79,9 @@ impl BranchControl {
         }
         Ok(())
     }
-    pub fn get_output(&self) -> Result<&Element> {
+    pub fn get_output(&self) -> Option<&Element> {
         self.output_element
             .as_ref()
-            .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))
     }
 
     pub fn unlink_from_input(&self) -> Result<()> {
@@ -139,10 +138,9 @@ impl BranchControl {
         Ok(())
     }
 
-    pub fn get_input(&self) -> Result<&Element> {
+    pub fn get_input(&self) -> Option<&Element> {
         self.input_element
             .as_ref()
-            .ok_or_else(|| anyhow!("Input element does not exist for branch: {}", self.name))
     }
 
     pub fn unlink_element(element: &Element) -> Result<()> {

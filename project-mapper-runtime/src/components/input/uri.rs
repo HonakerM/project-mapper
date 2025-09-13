@@ -40,7 +40,7 @@ impl UriComponent {
         let pipeline_weak = pipeline.downgrade();
 
         // Clone sink element so it can be refenced in a callback
-        let sink_element = self.branch.get_output()?.clone();
+        let sink_element = self.branch.get_output().unwrap().clone();
 
         // Connect to decodebin's pad-added signal, that is emitted whenever
         // it found another stream from the input file and found a way to decode it to its raw format.
@@ -201,13 +201,13 @@ impl Component for UriComponent {
     }
 
     // accessor functions
-    fn output_element(&self) -> Result<&Element> {
+    fn output_element(&self) -> Option<&Element> {
         // return the tee element since that's what people should
         // be linking against
         self.branch.get_output()
     }
-    fn input_element(&self) -> Result<&Element> {
-        Err(anyhow!("Uri component has no input element"))
+    fn input_element(&self) -> Option<&Element> {
+        None
     }
     fn uid(&self) -> Uid {
         return self.config.uid();

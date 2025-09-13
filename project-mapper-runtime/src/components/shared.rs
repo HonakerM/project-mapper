@@ -68,8 +68,8 @@ pub trait Component {
     ) -> Result<()>;
 
     // accessor functions
-    fn input_element(&self) -> Result<&Element>;
-    fn output_element(&self) -> Result<&Element>;
+    fn input_element(&self) -> Option<&Element>;
+    fn output_element(&self) -> Option<&Element>;
     fn uid(&self) -> Uid;
 
     /* Runtime Functions */

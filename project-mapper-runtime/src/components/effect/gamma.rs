@@ -115,12 +115,12 @@ impl Component for GammaComponent {
     }
 
     // accessor functions
-    fn input_element(&self) -> Result<&Element> {
+    fn input_element(&self) -> Option<&Element> {
         // return the branch output element since that's what people
         // should be linking
         self.branch.get_input()
     }
-    fn output_element(&self) -> Result<&Element> {
+    fn output_element(&self) -> Option<&Element> {
         self.branch.get_output()
     }
     fn uid(&self) -> Uid {

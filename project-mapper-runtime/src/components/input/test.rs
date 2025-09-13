@@ -84,16 +84,16 @@ impl Component for TestComponent {
 
         self.branch.add_to_pipeline(pipeline)?;
         // link the capsfilter to the branch output
-        self.capsfilter.link(self.branch.get_output()?)?;
+        self.capsfilter.link(self.branch.get_output().unwrap())?;
 
         Ok(())
     }
 
     // accessor functions
-    fn input_element(&self) -> Result<&Element> {
-        Err(anyhow!("Test component has no input element"))
+    fn input_element(&self) -> Option<&Element> {
+        None
     }
-    fn output_element(&self) -> Result<&Element> {
+    fn output_element(&self) -> Option<&Element> {
         // return the tee element since that's what people should
         // be linking against
         self.branch.get_output()
