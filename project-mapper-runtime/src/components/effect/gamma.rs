@@ -89,10 +89,7 @@ impl Component for GammaComponent {
 
         Ok(())
     }
-    fn update(
-        &mut self,
-        config: &dyn ComponentConfig,
-    ) -> Result<()> {
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
         let config: EffectComponentConfig =
             match config.as_any().downcast_ref::<EffectComponentConfig>() {
                 Some(b) => Ok(b.clone()),
@@ -113,7 +110,7 @@ impl Component for GammaComponent {
         if self.config.srcs.len() != 1 {
             return Err(anyhow!("Balance component must have exactly one source"));
         }
-        
+
         Ok(())
     }
 

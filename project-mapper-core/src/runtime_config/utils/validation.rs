@@ -61,8 +61,6 @@ pub fn gather_validation_helper_data(
     map
 }
 
-
-
 pub fn ensure_config_bounds<T>(
     some_val: Option<T>,
     lower_bound: T,

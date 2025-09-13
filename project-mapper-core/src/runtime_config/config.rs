@@ -13,8 +13,8 @@ use crate::{
         input::InputComponentConfig,
         output::OutputComponentConfig,
         shared::{ComponentConfig, Uid},
-        utils::changes::{RuntimeConfigChangeTracker, gather_config_changes},
-        utils::validation::{gather_validation_helper_data},
+        utils::changes::RuntimeConfigChangeTracker,
+        utils::validation::gather_validation_helper_data,
     },
     types::errors::RuntimeConfigValidationError,
 };
@@ -50,7 +50,7 @@ impl RuntimeConfig {
         &self,
         new_config: &RuntimeConfig,
     ) -> AnyhowResult<RuntimeConfigChangeTracker> {
-        gather_config_changes(self, new_config)
+        RuntimeConfigChangeTracker::gather_changes(self, new_config)
     }
 
     // validate if a new config is a valid update of the existing config

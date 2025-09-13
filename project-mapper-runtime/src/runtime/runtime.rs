@@ -80,7 +80,7 @@ impl Runtime {
         let pipeline = gst::Pipeline::new();
 
         // configure all components
-        self.configure_components(&config, &pipeline, component_configs)?;
+        self.configure_components(&config, &pipeline)?;
 
         // start the receiver threads
         let mut receiver_handle = start_receiver(self.message_sender.clone(), config.clone())?;
@@ -173,7 +173,7 @@ impl Runtime {
         info!("Deleted configs {:?}", change_tracker.deletes);
 
         // Create or update the remaining components
-        self.configure_components(current_config, pipeline, change_tracker.updates)?;
+        self.configure_components(current_config, pipeline)?;
 
         Ok(())
     }
@@ -182,7 +182,6 @@ impl Runtime {
         &mut self,
         config: &Arc<Mutex<RuntimeConfig>>,
         pipeline: &gst::Pipeline,
-        component_configs: Vec<Box<dyn ComponentConfig>>,
     ) -> Result<()> {
         // if the component helper contains the default component then remove it before creating
         // or updating components. This ensures if we add a component that could be main the default

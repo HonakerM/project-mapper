@@ -1,17 +1,17 @@
 use std::sync::mpsc;
 
-use gst::{prelude::{ElementExt, ElementExtManual, GstBinExt, GstBinExtManual}, Element, Pad, Pipeline};
-use anyhow::{Result};
+use anyhow::Result;
+use gst::{
+    Element, Pad, Pipeline,
+    prelude::{ElementExt, ElementExtManual, GstBinExt, GstBinExtManual},
+};
 
-pub fn unlink_pads(src_pad: Pad, sink_pad: Pad){
-    
-}
+pub fn unlink_pads(src_pad: Pad, sink_pad: Pad) {}
 
 const NULL_ELEMENT_NAME: &str = "null_element_name";
 
-
-pub fn get_or_create_null_element(pipeline: &Pipeline)->Result<Element> {
-    let element = if let Some(element) = pipeline.by_name(NULL_ELEMENT_NAME){
+pub fn get_or_create_null_element(pipeline: &Pipeline) -> Result<Element> {
+    let element = if let Some(element) = pipeline.by_name(NULL_ELEMENT_NAME) {
         element
     } else {
         let element = gst::ElementFactory::make("fakesink")
@@ -22,9 +22,8 @@ pub fn get_or_create_null_element(pipeline: &Pipeline)->Result<Element> {
         element
     };
     Ok(element)
-
 }
-pub fn remove_element(element: &Element, pipeline: &Pipeline)->Result<()>{
+pub fn remove_element(element: &Element, pipeline: &Pipeline) -> Result<()> {
     // get null element
     let null_element = get_or_create_null_element(pipeline)?;
 

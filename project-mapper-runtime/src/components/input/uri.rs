@@ -180,10 +180,7 @@ impl Component for UriComponent {
         Ok(())
     }
 
-    fn update(
-        &mut self,
-        config: &dyn ComponentConfig,
-    ) -> Result<()> {
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
         // parse config and ensure it's correct types
         let config: InputComponentConfig =
             match config.as_any().downcast_ref::<InputComponentConfig>() {

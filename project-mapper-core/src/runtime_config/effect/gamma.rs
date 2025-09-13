@@ -2,7 +2,9 @@ use std::any::Any;
 
 use serde::{Deserialize, Deserializer, Serialize, de};
 
-use crate::runtime_config::{effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds};
+use crate::runtime_config::{
+    effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
+};
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(default)]

@@ -16,4 +16,4 @@ petgraph = {version = "0.8.2", optional = true}
 
 
 [features]
-graph = ["petgraph"]
+change-tracking = ["petgraph"]

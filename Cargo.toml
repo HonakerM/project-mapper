@@ -17,7 +17,7 @@ rust-version = "1.88"
 [workspace.dependencies]
 # Core workspace dependencies
 project-mapper-runtime = { path = "project-mapper-runtime" }
-project-mapper-core = { path = "project-mapper-core", features = ["graph"]}
+project-mapper-core = { path = "project-mapper-core", features = ["change-tracking"]}
 
 # Shared dependencies for all projects
 anyhow = "1.0.98"

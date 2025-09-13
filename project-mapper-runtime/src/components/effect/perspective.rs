@@ -84,10 +84,7 @@ impl Component for PerspectiveComponent {
         Ok(())
     }
 
-    fn update(
-        &mut self,
-        config: &dyn ComponentConfig,
-    ) -> Result<()> {
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig =
             match config.as_any().downcast_ref::<EffectComponentConfig>() {

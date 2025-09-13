@@ -90,10 +90,7 @@ pub trait Component {
     }
 
     // update a component based on a new config
-    fn update(
-        &mut self,
-        config: &dyn ComponentConfig,
-    ) -> Result<()> {
+    fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
         Ok(())
     }
     // Completely stop and destroy this component
