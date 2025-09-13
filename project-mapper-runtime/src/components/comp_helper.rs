@@ -58,7 +58,7 @@ impl ComponentLookupHelper for DefaultComponentHelper {
         // if the component map already contains the key then just update it
         if let Some(comp) = self.component_map.get(&config.uid()) {
             let mut mut_comp = comp.borrow_mut();
-            mut_comp.update_and_link(config, self)?;
+            mut_comp.update(config)?;
 
             // if this update affected the main requirements of the component check it.
             if mut_comp.requires_main() {

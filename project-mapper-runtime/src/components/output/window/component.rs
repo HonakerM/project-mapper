@@ -189,12 +189,12 @@ impl WindowComponent {
             "App Handler does not exist which should never happen"
         ))?;
 
-        while app_handler.last_events.is_empty() {
+        while !app_handler.has_event() {
             event_loop.pump_app_events(None, &mut app_handler);
         }
         info!("Exiting event loop");
 
-        let last_event = app_handler.last_events.pop().unwrap();
+        let last_event = app_handler.get_next_event().unwrap();
 
         // if there was an exit error return it first
         if let Some(err) = app_handler.exit_err {
@@ -316,10 +316,9 @@ impl Component for WindowComponent {
         Ok(())
     }
 
-    fn update_and_link(
+    fn update(
         &mut self,
         config: &dyn ComponentConfig,
-        lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         // parse config and ensure it's correct types
         let config: OutputComponentConfig =
@@ -338,19 +337,6 @@ impl Component for WindowComponent {
         self.config = config;
         self.window_config = window_config;
         self.update_window(&self.window_config, false)?;
-
-        // If we're the main function than recursively call setup on all available window references
-        // this ensures all pipeline elements that require a window have been added to the pipeline
-        // ! Note this must come after adding the components to the pipeline:
-        let src_comp = lookup_func.get_comp(&self.config.src_uid).ok_or(anyhow!(
-            "Unable to find source component {} for window component {}",
-            self.config.src_uid,
-            self.config.name()
-        ))?;
-        let src_comp_ref = src_comp.borrow();
-
-        let src_element = src_comp_ref.output_element()?;
-        self.branch.link_from(src_element)?;
 
         Ok(())
     }

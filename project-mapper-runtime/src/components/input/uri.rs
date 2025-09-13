@@ -180,10 +180,9 @@ impl Component for UriComponent {
         Ok(())
     }
 
-    fn update_and_link(
+    fn update(
         &mut self,
         config: &dyn ComponentConfig,
-        lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         // parse config and ensure it's correct types
         let config: InputComponentConfig =

@@ -90,10 +90,9 @@ pub trait Component {
     }
 
     // update a component based on a new config
-    fn update_and_link(
+    fn update(
         &mut self,
         config: &dyn ComponentConfig,
-        lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         Ok(())
     }

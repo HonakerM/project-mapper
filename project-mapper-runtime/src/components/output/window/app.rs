@@ -76,6 +76,13 @@ impl WindowAppHandler {
         Ok(())
     }
 
+    pub fn has_event(&mut self) -> bool {
+        !self.last_events.is_empty()
+    }
+    pub fn get_next_event(&mut self) -> Option<RuntimeMessage> {
+        self.last_events.pop()
+    }
+
     pub fn has_window(&self, id: &Uid) -> bool {
         self.windows.contains_key(id)
     }

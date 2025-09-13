@@ -116,10 +116,9 @@ impl Component for BalanceComponent {
         Ok(())
     }
 
-    fn update_and_link(
+    fn update(
         &mut self,
         config: &dyn ComponentConfig,
-        lookup_func: &dyn ComponentLookupHelper,
     ) -> Result<()> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig =
@@ -137,21 +136,11 @@ impl Component for BalanceComponent {
         }?;
         BalanceComponent::update_config(&self.element, balance_config)?;
 
-        if self.config.srcs.len() != 1 {
+        if config.srcs.len() != 1 {
             return Err(anyhow!("Balance component must have exactly one source"));
         }
-        let src_config = &self.config.srcs[0];
 
-        let src_comp = lookup_func.get_comp(&src_config.uid()).ok_or(anyhow!(
-            "Unable to find source component {} for balance component {}",
-            src_config.uid(),
-            self.config.name()
-        ))?;
-
-        let src_comp_Ref = src_comp.borrow();
-        let src_element = src_comp_Ref.output_element()?;
-        self.branch.link_from(src_element)?;
-
+        self.config = config;
         Ok(())
     }
 
