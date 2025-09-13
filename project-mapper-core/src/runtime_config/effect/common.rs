@@ -65,6 +65,10 @@ impl ComponentConfig for EffectComponentConfig {
     fn dependents(&self) -> Vec<Uid> {
         return self.srcs.iter().map(|s| s.uid()).collect();
     }
+
+    fn clone_box(&self) -> Box<dyn ComponentConfig> {
+        Box::new(self.clone())
+    }
 }
 
 // Implement InputConfigTrait for TestConfig

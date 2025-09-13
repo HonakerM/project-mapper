@@ -12,12 +12,12 @@ members = ["project-mapper-core", "project-mapper-runtime"]
 version = "0.1.0"
 categories = ["multimedia"]
 edition = "2024"
-rust-version = "1.85"
+rust-version = "1.88"
 
 [workspace.dependencies]
 # Core workspace dependencies
 project-mapper-runtime = { path = "project-mapper-runtime" }
-project-mapper-core = { path = "project-mapper-core" }
+project-mapper-core = { path = "project-mapper-core", features = ["graph"]}
 
 # Shared dependencies for all projects
 anyhow = "1.0.98"

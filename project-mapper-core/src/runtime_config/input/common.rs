@@ -45,4 +45,8 @@ impl ComponentConfig for InputComponentConfig {
     fn dependents(&self) -> Vec<Uid> {
         return vec![];
     }
+
+    fn clone_box(&self) -> Box<dyn ComponentConfig> {
+        Box::new(self.clone())
+    }
 }

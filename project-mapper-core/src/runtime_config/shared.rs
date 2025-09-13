@@ -8,4 +8,11 @@ pub trait ComponentConfig: Debug {
     fn uid(&self) -> Uid;
     fn as_any(&self) -> &dyn Any;
     fn dependents(&self) -> Vec<Uid>;
+    fn clone_box(&self) -> Box<dyn ComponentConfig>;
+}
+
+impl Clone for Box<dyn ComponentConfig> {
+    fn clone(&self) -> Box<dyn ComponentConfig> {
+        self.clone_box()
+    }
 }

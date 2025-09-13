@@ -15,7 +15,7 @@ pub static DEFAULT_NAME: &str = "DefaultRuntimeComponent";
 
 // The default runtime component is used when there is no other
 // component that requires main
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DefaultRuntimeComponent {}
 
 impl DefaultRuntimeComponent {
@@ -80,5 +80,9 @@ impl ComponentConfig for DefaultRuntimeComponent {
 
     fn dependents(&self) -> Vec<Uid> {
         return vec![];
+    }
+
+    fn clone_box(&self) -> Box<dyn ComponentConfig> {
+        Box::new(self.clone())
     }
 }

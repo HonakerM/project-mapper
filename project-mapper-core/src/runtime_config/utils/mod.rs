@@ -1,3 +1,4 @@
+#[cfg(feature = "graph")]
 #[path = "./graph.rs"]
 pub mod graph;
 #[path = "./validation.rs"]

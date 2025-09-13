@@ -12,3 +12,8 @@ typetag = "0.1"
 
 # Inherit dependencies from workspace
 anyhow = {workspace = true}
+petgraph = {version = "0.8.2", optional = true}
+
+
+[features]
+graph = ["petgraph"]
