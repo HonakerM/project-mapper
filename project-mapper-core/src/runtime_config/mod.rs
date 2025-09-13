@@ -8,7 +8,7 @@ pub mod input;
 pub mod output;
 #[path = "./shared.rs"]
 pub mod shared;
-#[path = "./utils.rs"]
+#[path = "./utils/mod.rs"]
 pub mod utils;
 
 pub use config::RuntimeConfig;

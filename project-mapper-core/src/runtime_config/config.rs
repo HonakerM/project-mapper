@@ -13,7 +13,8 @@ use crate::{
         input::InputComponentConfig,
         output::OutputComponentConfig,
         shared::{ComponentConfig, Uid},
-        utils::{RuntimeConfigChangeTracker, gather_config_changes, gather_validation_helper_data},
+        utils::changes::{RuntimeConfigChangeTracker, gather_config_changes},
+        utils::validation::{gather_validation_helper_data},
     },
     types::errors::RuntimeConfigValidationError,
 };
