@@ -34,7 +34,14 @@ pub trait ComponentLookupHelper {
     // state
     fn resume(&self) -> Result<()>;
     // helper to pause all running components
-    fn pause(&self) -> Result<()>;
+    fn pause(&self) -> Result<()> {
+        for comp in self.components() {
+            let mut local_comp = comp.borrow_mut();
+            local_comp.pause()?;
+        }
+        Ok(())
+    }
+    fn pause_comp(&mut self, uid: &Uid) -> Result<()>;
     fn run(
         &self,
         message_broker: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
@@ -42,13 +49,20 @@ pub trait ComponentLookupHelper {
     fn destroy_comp(&mut self, uid: &Uid) -> Result<()>;
 
     // Special function called when exiting the application
-    fn destory(&mut self) -> Result<()>;
+    fn destory(&mut self) -> Result<()> {
+        for comp in self.components() {
+            let mut local_comp = comp.borrow_mut();
+            local_comp.destroy()?;
+        }
+        Ok(())
+    }
 
     // if this helper has a component that requires the main thread to run. ! This must be valid after running
     // setup
     fn has_main_requirement(&self) -> bool;
     fn contains_comp(&self, uid: &Uid) -> bool;
     fn get_comp(&self, uid: &Uid) -> Option<Rc<RefCell<Box<dyn Component>>>>;
+    fn components(&self)->Vec<Rc<RefCell<Box<dyn Component>>>>;
 }
 
 pub trait Component {

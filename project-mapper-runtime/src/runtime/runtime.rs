@@ -14,6 +14,7 @@ use project_mapper_core::runtime_config::{RuntimeConfig, output};
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::receivers::receiver::start_receiver;
+use crate::runtime::configure::{configure_components, update_components};
 use crate::types::message::RuntimeMessage;
 use log::{info, warn};
 
@@ -68,13 +69,6 @@ impl Runtime {
                 )
             })
             .context("Failed to aquire global runtime lock")?;
-
-        let component_configs = {
-            config
-                .lock()
-                .map_err(|e| anyhow!("Unable to aquire config lock due to poison: {:#}", e))?
-                .gather_configs()
-        };
 
         // create the pipeline
         let pipeline = gst::Pipeline::new();
@@ -145,6 +139,13 @@ impl Runtime {
         }
     }
 
+
+    fn configure_components(&mut self, current_config: &Arc<Mutex<RuntimeConfig>>, pipeline: &gst::Pipeline) -> Result<()> {
+        let local_config = current_config.lock().unwrap();
+        configure_components(&local_config, pipeline, &mut self.component_helper, &self.component_factory, self.message_sender.clone())?;
+        Ok(())
+    }
+    
     fn update_runtime(
         &mut self,
         pipeline: &gst::Pipeline,
@@ -168,95 +169,7 @@ impl Runtime {
 
             change_tracker
         };
-
-        info!("Updated configs {:?}", change_tracker.updates);
-        info!("Deleted configs {:?}", change_tracker.deletes);
-
-        // Create or update the remaining components
-        self.configure_components(current_config, pipeline)?;
-
-        Ok(())
-    }
-
-    fn configure_components(
-        &mut self,
-        config: &Arc<Mutex<RuntimeConfig>>,
-        pipeline: &gst::Pipeline,
-    ) -> Result<()> {
-        // if the component helper contains the default component then remove it before creating
-        // or updating components. This ensures if we add a component that could be main the default
-        // runtime doesn't affect it
-        if self
-            .component_helper
-            .contains_comp(&DefaultRuntimeComponent::get_default_uid())
-        {
-            self.component_helper
-                .destroy_comp(&DefaultRuntimeComponent::get_default_uid())?;
-        }
-
-        // setup all the components based on the config
-        {
-            let local_config = config
-                .lock()
-                .map_err(|e| {
-                    anyhow!(
-                        "Recieved poision error while aquireing config lock: {}",
-                        e.to_string()
-                    )
-                })
-                .context("Failed to aquire config lock")?;
-
-            // ensure the config is generally valid
-            local_config
-                .validate()
-                .context("Failed to validate runtime config")?;
-
-            // start by gathering all components we need to create. These should be created before doing the updates to
-            // ensure all elements have been created
-            let mut components_to_create = vec![];
-            let mut components_to_update = vec![];
-            for config in component_configs {
-                if !self.component_helper.contains_comp(&config.uid()) {
-                    components_to_create.push(config);
-                } else {
-                    components_to_update.push(config);
-                }
-            }
-
-            // create components and then setup them up
-            for comp in &components_to_create {
-                info!("Creating component: {:?}", config);
-                self.component_helper
-                    .new(comp.as_ref(), self.component_factory.as_ref())?;
-            }
-            // do this in separate loops to ensure all components are created before being setup
-            for comp in &components_to_create {
-                info!("Setting up component: {:?}", config);
-                self.component_helper
-                    .setup(comp.uid(), pipeline, self.message_sender.clone())?;
-            }
-
-            // for all components that need to be updated run the update after the above setup functions have been called
-            for comp in &components_to_update {
-                self.component_helper.update(comp.as_ref())?;
-            }
-            for comp in &components_to_create {
-                self.component_helper.update(comp.as_ref())?;
-            }
-        }
-
-        // if there is no component that requires main then add the default runtime component.
-        // this keeps the logic the same
-        if !self.component_helper.has_main_requirement() {
-            let default_config = DefaultRuntimeComponent::new_config()
-                .context("Failed to contstruct default runtime component config")?;
-            self.component_helper
-                .new(&default_config, self.component_factory.as_ref())
-                .context(format!("failed to create default runtime component"))?;
-            self.component_helper
-                .setup(default_config.uid(), pipeline, self.message_sender.clone())
-                .context(format!("failed to create default runtime component"))?;
-        }
+        update_components(change_tracker, pipeline, &mut self.component_helper, &self.component_factory, self.message_sender.clone())?;
 
         Ok(())
     }

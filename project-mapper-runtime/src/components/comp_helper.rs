@@ -115,15 +115,13 @@ impl ComponentLookupHelper for DefaultComponentHelper {
         }
         Ok(())
     }
-    fn pause(&self) -> Result<()> {
-        for comp in self.component_map.values() {
-            let mut mutable_comp = comp.borrow_mut();
-            // start all components
-            mutable_comp.pause()?;
+    fn pause_comp(&mut self, uid: &Uid) -> Result<()> {
+        if let Some(comp) = self.get_comp(uid) {
+            let mut local_comp = comp.borrow_mut();
+            local_comp.pause();
         }
         Ok(())
     }
-
     fn run(
         &self,
         message_broker: std::sync::Arc<
@@ -178,5 +176,8 @@ impl ComponentLookupHelper for DefaultComponentHelper {
     }
     fn get_comp(&self, uid: &Uid) -> Option<Rc<RefCell<Box<dyn Component>>>> {
         self.component_map.get(uid).cloned()
+    }
+    fn components(&self)->Vec<Rc<RefCell<Box<dyn Component>>>> {
+        Vec::from_iter(self.component_map.values().map(|x|{x.clone()}).into_iter())
     }
 }
