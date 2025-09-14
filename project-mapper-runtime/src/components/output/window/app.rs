@@ -109,6 +109,40 @@ impl WindowAppHandler {
             )
             .unwrap();
 
+            // After creating the window, but before set_window_handle:
+            #[cfg(target_os = "windows")]
+            {
+                use raw_window_handle::RawWindowHandle;
+                use windows_sys::Win32::Graphics::Gdi::*;
+                use windows_sys::Win32::Foundation::*;
+                use windows_sys::Win32::Graphics::OpenGL::*;
+
+                let raw_handle = window.window_handle().unwrap().as_raw();
+                if let RawWindowHandle::Win32(h) = raw_handle {
+                    let hwnd = h.hwnd.get() as HWND;
+                    unsafe {
+                        let hdc =  GetDC(hwnd);
+                        let pfd = PIXELFORMATDESCRIPTOR {
+                            nSize: std::mem::size_of::<PIXELFORMATDESCRIPTOR>() as u16,
+                            nVersion: 1,
+                            dwFlags: PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+                            iPixelType: PFD_TYPE_RGBA,
+                            cColorBits: 32,
+                            cAlphaBits: 8,
+                            cDepthBits: 24,
+                            cStencilBits: 8,
+                            iLayerType: PFD_MAIN_PLANE as u8,
+                            ..std::mem::zeroed()
+                        };
+                        let pf = ChoosePixelFormat(hdc, &pfd);
+                        let result = SetPixelFormat(hdc, pf, &pfd);
+                        println!("Got result {} from pixel format", result);
+                        ReleaseDC(hwnd, hdc);
+                    }
+                }
+            }
+
+            
         // get the gst element as a video overlay
         let element = self
             .pipeline
@@ -120,6 +154,7 @@ impl WindowAppHandler {
                 )
             })
             .unwrap();
+
         let overlay = element
             .dynamic_cast::<gst_video::VideoOverlay>()
             .map_err(|_| anyhow::anyhow!("Failed to cast element to VideoOverlay"))
@@ -148,6 +183,8 @@ impl WindowAppHandler {
             .unwrap();
 
         window.request_redraw();
+
+
 
         // hold onto window ref
         self.window_lookup
