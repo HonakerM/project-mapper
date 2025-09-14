@@ -3,7 +3,7 @@ use crate::runtime_config::{
     shared::{ComponentConfig, Uid},
 };
 use anyhow::{Result, anyhow};
-use petgraph::{acyclic::Acyclic, adj::Neighbors, visit::{Bfs, IntoNeighbors}, Direction};
+use petgraph::{acyclic::Acyclic, adj::Neighbors, visit::{Bfs, IntoNeighbors, Topo}, Direction};
 use petgraph::data::Build;
 use petgraph::graph::{Graph, NodeIndex};
 use std::collections::{HashMap, HashSet};
@@ -126,16 +126,11 @@ impl RuntimeConfigGraph {
     }
 
 
-	pub fn bfs_traverse(&self) -> Vec<Box<dyn ComponentConfig>> {
-		let mut visited = HashSet::new();
+	pub fn traverse(&self) -> Vec<Box<dyn ComponentConfig>> {
 		let mut output_vec = Vec::new();
-		for root in &self.root_nodes {
-        	let mut bfs = Bfs::new(&self.graph, *root);
-			while let Some(next_node) = bfs.next(&self.graph) {
-				if visited.contains(&next_node) {continue}
-				visited.insert(next_node);
-				output_vec.push(self.graph[next_node].clone_box());
-			}
+    	let mut bfs = Topo::new(&self.graph);
+		while let Some(next_node) = bfs.next(&self.graph) {
+			output_vec.push(self.graph[next_node].clone_box());
 		}
 		output_vec
 	}

@@ -75,6 +75,7 @@ impl Runtime {
 
         // configure all components
         self.configure_components(&config, &pipeline)?;
+        info!("Configured components");
 
         // start the receiver threads
         let mut receiver_handle = start_receiver(self.message_sender.clone(), config.clone())?;

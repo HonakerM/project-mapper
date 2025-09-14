@@ -98,6 +98,9 @@ impl WindowAppHandler {
             return;
         }
 
+        for monitor_handle in event_loop.available_monitors() {
+            println!("We have monitor {:?}", monitor_handle.name());
+        }
         let window = event_loop
             .create_window(
                 WindowAttributes::default()

@@ -101,21 +101,23 @@ fn internal_configure_components(
 
     // construct all compontns that don't exist
     let mut comps_to_setup = vec![];
-    for comp_config in graph.bfs_traverse() {
+    for comp_config in graph.traverse() {
         // get the component or construct it if needed
          if let None = component_helper.get_comp(&comp_config.uid()) {
+            info!("Constructed component {:?}", comp_config.uid());
             component_helper.new(comp_config.as_ref(), component_factory.as_ref())?;
             comps_to_setup.push(comp_config.uid());
         }
     }
     for uid in comps_to_setup {
         // get the component or construct it if needed
+        info!("Setup component {:?}", uid);
         component_helper.setup(uid, pipeline, message_sender.clone())?;
     }
 
 
     // For each component in order
-    for comp_config in graph.bfs_traverse() {
+    for comp_config in graph.traverse() {
         // get the component or construct it if needed
         let comp = if let Some(comp) = component_helper.get_comp(&comp_config.uid()) {
             comp
@@ -127,7 +129,8 @@ fn internal_configure_components(
         let mut local_comp = comp.borrow_mut();
 
         // perform normal update
-        local_comp.update(comp_config.as_ref());
+        info!("Update component {:?}", comp_config.uid());
+        local_comp.update(comp_config.as_ref())?;
 
         if let Some(output_comp) = local_comp.output_element() {
             // get the set of names we're expecting to be linked up to
@@ -136,7 +139,6 @@ fn internal_configure_components(
             for expected_cfg in graph.get_downstream_components(comp_config.uid()) {
                 if let Some(expected_comp_ref) = component_helper.get_comp(&expected_cfg.uid()) {
                     let expected_comp = expected_comp_ref.borrow_mut();
-                    println!("Trying to get existing component for {} in link from {} to {}",expected_cfg.uid(), comp_config.uid(), expected_cfg.uid());
                     let name = expected_comp.input_element().unwrap().name();
                     expected_upstreams.insert(name.clone());
                     name_to_uid.insert(name, expected_cfg.uid());
@@ -153,8 +155,8 @@ fn internal_configure_components(
                     if !expected_upstreams.remove(&linked_element_name) {
                         let local_sender = sender.clone();
                         output_pad.add_probe(gst::PadProbeType::IDLE, move |pad, info| {
-                            pad.unlink(&linked_input_pad);
-                            local_sender.send(true);
+                            pad.unlink(&linked_input_pad).unwrap();
+                            local_sender.send(true).unwrap();
                             gst::PadProbeReturn::Remove
                         });
                         total_probes+=1;
@@ -163,7 +165,8 @@ fn internal_configure_components(
             }
             // wait for all probes to complete
             while total_probes > 0 {
-                recv.recv();
+                recv.recv()?;
+                total_probes-=1;
             }
 
 
@@ -172,7 +175,8 @@ fn internal_configure_components(
                 if let Some(comp_uid) = name_to_uid.get(&comp_name) {
                     if let Some(expected_comp_ref) = component_helper.get_comp(&comp_uid) {
                         let expected_comp = expected_comp_ref.borrow_mut();
-                        output_comp.link(expected_comp.input_element().unwrap());
+                        output_comp.link(expected_comp.input_element().unwrap())?;
+                        info!("Linking comp {:?} to {:?}", comp_config.uid(), comp_uid);
                     }
                 }
             }
