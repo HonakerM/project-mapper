@@ -180,14 +180,14 @@ impl Runtime {
         for msg in bus.iter_timed(gst::ClockTime::NONE) {
             match msg.view() {
                 gst::MessageView::Error(err) => {
-                    // info!(
-                    //     "Error from {}: {} ({:?})",
-                    //     err.src()
-                    //         .map(|s| s.path_string())
-                    //         .unwrap_or_else(|| "None".to_string().into()),
-                    //     err.error(),
-                    //     err.debug()
-                    // );
+                    warn!(
+                        "Error from {}: {} ({:?})",
+                        err.src()
+                            .map(|s| s.path_string())
+                            .unwrap_or_else(|| "None".to_string().into()),
+                        err.error(),
+                        err.debug()
+                    );
                 }
                 gst::MessageView::StateChanged(state) => {
                     // info!(
