@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{Error, Result, anyhow};
-use gst::Element;
+use gst::{prelude::ElementExt, Element};
 use project_mapper_core::runtime_config::{
     RuntimeConfig,
     shared::{ComponentConfig, Uid},
@@ -93,6 +93,12 @@ pub trait Component {
     }
     // pause the component while it's running. This should not delete resources
     fn pause(&mut self) -> Result<()> {
+        //if let Some(input_comp) = self.input_element() {
+        //    input_comp.set_state(gst::State::Paused)?;
+        //}
+        //if let Some(output_comp) = self.output_element() {
+        //    output_comp.set_state(gst::State::Paused)?;
+        //}
         Ok(())
     }
     // run the component! This should only be called if we have a main requirement

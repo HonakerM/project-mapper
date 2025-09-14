@@ -70,7 +70,7 @@ impl RuntimeConfigGraph {
             }
             for dep_uid in dependents {
                 if let (Some(&from), Some(&to)) =
-                    (uid_to_index.get(&dep_uid), uid_to_index.get(&uid))
+                    (uid_to_index.get(&uid), uid_to_index.get(&dep_uid))
                 {
                     if graph.try_add_edge(from, to, ()).is_err() {
                         return Err(anyhow!(

@@ -98,6 +98,22 @@ fn internal_configure_components(
         }
     }
 
+
+    // construct all compontns that don't exist
+    let mut comps_to_setup = vec![];
+    for comp_config in graph.bfs_traverse() {
+        // get the component or construct it if needed
+         if let None = component_helper.get_comp(&comp_config.uid()) {
+            component_helper.new(comp_config.as_ref(), component_factory.as_ref())?;
+            comps_to_setup.push(comp_config.uid());
+        }
+    }
+    for uid in comps_to_setup {
+        // get the component or construct it if needed
+        component_helper.setup(uid, pipeline, message_sender.clone())?;
+    }
+
+
     // For each component in order
     for comp_config in graph.bfs_traverse() {
         // get the component or construct it if needed
@@ -120,6 +136,7 @@ fn internal_configure_components(
             for expected_cfg in graph.get_downstream_components(comp_config.uid()) {
                 if let Some(expected_comp_ref) = component_helper.get_comp(&expected_cfg.uid()) {
                     let expected_comp = expected_comp_ref.borrow_mut();
+                    println!("Trying to get existing component for {} in link from {} to {}",expected_cfg.uid(), comp_config.uid(), expected_cfg.uid());
                     let name = expected_comp.input_element().unwrap().name();
                     expected_upstreams.insert(name.clone());
                     name_to_uid.insert(name, expected_cfg.uid());
