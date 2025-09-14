@@ -196,6 +196,21 @@ impl Runtime {
                     // state.current()
                     // );
                 }
+                gst::MessageView::NeedContext(need_context_msg) => {
+                    println!("got need context message {:?}", need_context_msg);
+                    // if need_context_msg.context_type() == "gst.gl.GLDisplay" {
+                    //     let obj: &gst::Object = msg.src().unwrap(); // element requesting the GLDisplay
+                    //     // Match to the right GLDisplay
+                    //     if obj.name() == local_element_name {
+                    //         println!("Has name match {:?}", local_element_name);
+                    //         if let Ok(element) = obj.clone().dynamic_cast::<Element>() {
+                    //             println!("Setting context in {:?}", local_element_name);
+                    //             element.set_context(&context);
+                    //         }
+                    //     }
+                    // }
+                }
+                _ => {}
                 msg => {
                     //info!(
                     //    "Receieved unknown message (type: {}): {:?}",

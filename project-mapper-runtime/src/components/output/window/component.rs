@@ -24,9 +24,9 @@ use crate::utils::gstreamer;
 use crate::utils::winit::get_monitor_by_name;
 use crate::utils::winit::get_video_mode_for_config;
 use anyhow::Context;
-use anyhow::Ok;
 use anyhow::anyhow;
 use anyhow::{Error, Result};
+use gst::bus::BusWatchGuard;
 use gst::Element;
 use gst::prelude::*;
 use gst_gl::prelude::ContextGLExt;
@@ -60,6 +60,7 @@ pub struct WindowComponent {
     branch: BranchControl,
     output_element: Element,
     display: gst_gl::GLDisplay,
+    context: gst::Context,
 
     // winit state
     is_main: bool,
@@ -268,6 +269,18 @@ impl Component for WindowComponent {
             .build()?;
 
         output_element.set_property("sync", &true);
+
+
+        let display = gst_gl::GLDisplay::new();
+        // 2. Create a GstContext.
+        let mut context = gst::Context::new("gst.gl.display", true);
+        // 3. Set the GLDisplay inside the context's structure, using `to_value`.
+        {
+            let mut s = context.set_gl_display(&display);
+            // Pass the owned `Value` by moving it
+        }
+
+
         let mut window_component = Self {
             config: config,
             window_config: window_config,
@@ -277,7 +290,8 @@ impl Component for WindowComponent {
 
             message_sender: None,
             pipeline: None,
-            display: gst_gl::GLDisplay::new(),
+            display: display,
+            context: context,
 
             // default to not main. This will be configured during initialize_global_state
             is_main: false,
@@ -315,42 +329,6 @@ impl Component for WindowComponent {
             }
         }
         self.update_window(&self.window_config, true)?;
-
-        // 2. Create a GstContext.
-        let mut context = gst::Context::new("gst.gl.display", true);
-        // 3. Set the GLDisplay inside the context's structure, using `to_value`.
-        {
-            let mut s = context.set_gl_display(&self.display);
-            // Pass the owned `Value` by moving it
-        }
-        self.output_element.set_context(&context);
-
-    // let bus = pipeline.bus().unwrap();
-        // bus.add_watch(move |_, msg| {
-        //     use gst::MessageView;
-
-        //     match msg.view() {
-        //         MessageView::NeedContext(need_context_msg) => {
-        //             if need_context_msg.context_type() == "gst.gl.GLDisplay" {
-        //                 let element = msg.src().unwrap(); // element requesting the GLDisplay
-        //                 // Match to the right GLDisplay
-        //                 if element.name() == local_element.name() {
-        //                     let context = gst::Context::new("gst.gl.GLDisplay", true);
-        //                     {
-        //                         let mut s = context.structure_mut();
-        //                         s.set_value("gldisplay", local_display);
-        //                     }
-        //                     // Use context here
-        //                     pipeline.set_context(context);
-        //                 }
-
-        //             }
-        //         }
-        //         _ => {}
-        //     }
-
-        //     gst::glib::ControlFlow::Continue
-        // }).unwrap();
 
         // mark setup as complete so as to not rerun
         Ok(())
