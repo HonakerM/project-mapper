@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::mpsc;
 
 use gst::Pipeline;
-use gst::glib::object::Cast;
+use gst::glib::object::{Cast, ObjectExt};
 use gst::prelude::{ElementExt, GstBinExt};
 use gst_video::prelude::VideoOverlayExtManual;
 use log::info;
@@ -127,16 +127,35 @@ impl WindowAppHandler {
                             nVersion: 1,
                             dwFlags: PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
                             iPixelType: PFD_TYPE_RGBA,
-                            cColorBits: 32,
+                            cColorBits: 32,      // 8 bits per R,G,B,A
+                            cRedBits: 8,
+                            cRedShift: 0,
+                            cGreenBits: 8,
+                            cGreenShift: 8,
+                            cBlueBits: 8,
+                            cBlueShift: 16,
                             cAlphaBits: 8,
+                            cAlphaShift: 24,
+                            cAccumBits: 0,
+                            cAccumRedBits: 0,
+                            cAccumGreenBits: 0,
+                            cAccumBlueBits: 0,
+                            cAccumAlphaBits: 0,
                             cDepthBits: 24,
                             cStencilBits: 8,
+                            cAuxBuffers: 0,
                             iLayerType: PFD_MAIN_PLANE as u8,
-                            ..std::mem::zeroed()
+                            bReserved: 0,
+                            dwLayerMask: 0,
+                            dwVisibleMask: 0,
+                            dwDamageMask: 0,
                         };
                         let pf = ChoosePixelFormat(hdc, &pfd);
                         let result = SetPixelFormat(hdc, pf, &pfd);
                         println!("Got result {} from pixel format", result);
+                        if result != 1 {
+                            panic!("Couldn't set format for {:?}",window_request);
+                        }
                         ReleaseDC(hwnd, hdc);
                     }
                 }
