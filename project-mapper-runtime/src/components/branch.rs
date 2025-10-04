@@ -80,8 +80,7 @@ impl BranchControl {
         Ok(())
     }
     pub fn get_output(&self) -> Option<&Element> {
-        self.output_element
-            .as_ref()
+        self.output_element.as_ref()
     }
 
     pub fn unlink_from_input(&self) -> Result<()> {
@@ -139,8 +138,7 @@ impl BranchControl {
     }
 
     pub fn get_input(&self) -> Option<&Element> {
-        self.input_element
-            .as_ref()
+        self.input_element.as_ref()
     }
 
     pub fn unlink_element(element: &Element) -> Result<()> {

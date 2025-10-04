@@ -140,13 +140,22 @@ impl Runtime {
         }
     }
 
-
-    fn configure_components(&mut self, current_config: &Arc<Mutex<RuntimeConfig>>, pipeline: &gst::Pipeline) -> Result<()> {
+    fn configure_components(
+        &mut self,
+        current_config: &Arc<Mutex<RuntimeConfig>>,
+        pipeline: &gst::Pipeline,
+    ) -> Result<()> {
         let local_config = current_config.lock().unwrap();
-        configure_components(&local_config, pipeline, &mut self.component_helper, &self.component_factory, self.message_sender.clone())?;
+        configure_components(
+            &local_config,
+            pipeline,
+            &mut self.component_helper,
+            &self.component_factory,
+            self.message_sender.clone(),
+        )?;
         Ok(())
     }
-    
+
     fn update_runtime(
         &mut self,
         pipeline: &gst::Pipeline,
@@ -170,7 +179,13 @@ impl Runtime {
 
             change_tracker
         };
-        update_components(change_tracker, pipeline, &mut self.component_helper, &self.component_factory, self.message_sender.clone())?;
+        update_components(
+            change_tracker,
+            pipeline,
+            &mut self.component_helper,
+            &self.component_factory,
+            self.message_sender.clone(),
+        )?;
 
         Ok(())
     }

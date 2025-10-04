@@ -20,20 +20,23 @@ use crate::receivers::receiver::start_receiver;
 use crate::types::message::RuntimeMessage;
 use log::{info, warn};
 
-
-
 pub fn configure_components(
     config: &RuntimeConfig,
     pipeline: &gst::Pipeline,
     component_helper: &mut Box<dyn ComponentLookupHelper>,
     component_factory: &Box<dyn ComponentFactory>,
     message_sender: mpsc::Sender<RuntimeMessage>,
-) ->Result<()> {
+) -> Result<()> {
     let graph = RuntimeConfigGraph::new(config)?;
-    internal_configure_components(graph, pipeline, component_helper, component_factory, message_sender.clone())?;
+    internal_configure_components(
+        graph,
+        pipeline,
+        component_helper,
+        component_factory,
+        message_sender.clone(),
+    )?;
     Ok(())
 }
-
 
 pub fn update_components(
     change_tracker: RuntimeConfigChangeTracker,
@@ -41,15 +44,12 @@ pub fn update_components(
     component_helper: &mut Box<dyn ComponentLookupHelper>,
     component_factory: &Box<dyn ComponentFactory>,
     message_sender: mpsc::Sender<RuntimeMessage>,
-) ->Result<()> {
+) -> Result<()> {
     // if the component helper contains the default component then remove it before creating
     // or updating components. This ensures if we add a component that could be main the default
     // runtime doesn't affect it
-    if component_helper
-        .contains_comp(&DefaultRuntimeComponent::get_default_uid())
-    {
-        component_helper
-            .destroy_comp(&DefaultRuntimeComponent::get_default_uid())?;
+    if component_helper.contains_comp(&DefaultRuntimeComponent::get_default_uid()) {
+        component_helper.destroy_comp(&DefaultRuntimeComponent::get_default_uid())?;
     }
 
     // pause the deleted components
@@ -58,13 +58,18 @@ pub fn update_components(
     }
 
     // configure the components
-    internal_configure_components(change_tracker.graph, pipeline, component_helper, component_factory, message_sender.clone())?;
+    internal_configure_components(
+        change_tracker.graph,
+        pipeline,
+        component_helper,
+        component_factory,
+        message_sender.clone(),
+    )?;
 
     // destroy the deleted components
     for deleted_id in &change_tracker.deletes {
         component_helper.destroy_comp(&deleted_id);
     }
-
 
     // if there is no component that requires main then add the default runtime component.
     // this keeps the logic the same
@@ -82,7 +87,6 @@ pub fn update_components(
     Ok(())
 }
 
-
 fn internal_configure_components(
     graph: RuntimeConfigGraph,
     pipeline: &gst::Pipeline,
@@ -98,12 +102,11 @@ fn internal_configure_components(
         }
     }
 
-
     // construct all compontns that don't exist
     let mut comps_to_setup = vec![];
     for comp_config in graph.traverse() {
         // get the component or construct it if needed
-         if let None = component_helper.get_comp(&comp_config.uid()) {
+        if let None = component_helper.get_comp(&comp_config.uid()) {
             info!("Constructed component {:?}", comp_config.uid());
             component_helper.new(comp_config.as_ref(), component_factory.as_ref())?;
             comps_to_setup.push(comp_config.uid());
@@ -114,7 +117,6 @@ fn internal_configure_components(
         info!("Setup component {:?}", uid);
         component_helper.setup(uid, pipeline, message_sender.clone())?;
     }
-
 
     // For each component in order
     for comp_config in graph.traverse() {
@@ -135,7 +137,7 @@ fn internal_configure_components(
         if let Some(output_comp) = local_comp.output_element() {
             // get the set of names we're expecting to be linked up to
             let mut expected_upstreams = HashSet::new();
-            let mut name_to_uid= HashMap::new();
+            let mut name_to_uid = HashMap::new();
             for expected_cfg in graph.get_downstream_components(comp_config.uid()) {
                 if let Some(expected_comp_ref) = component_helper.get_comp(&expected_cfg.uid()) {
                     let expected_comp = expected_comp_ref.borrow_mut();
@@ -159,16 +161,15 @@ fn internal_configure_components(
                             local_sender.send(true).unwrap();
                             gst::PadProbeReturn::Remove
                         });
-                        total_probes+=1;
+                        total_probes += 1;
                     }
                 }
             }
             // wait for all probes to complete
             while total_probes > 0 {
                 recv.recv()?;
-                total_probes-=1;
+                total_probes -= 1;
             }
-
 
             // link components we haven't yet
             for comp_name in expected_upstreams {

@@ -5,7 +5,7 @@ use std::{
 };
 
 use anyhow::{Error, Result, anyhow};
-use gst::{prelude::ElementExt, Element};
+use gst::{Element, prelude::ElementExt};
 use project_mapper_core::runtime_config::{
     RuntimeConfig,
     shared::{ComponentConfig, Uid},
@@ -62,7 +62,7 @@ pub trait ComponentLookupHelper {
     fn has_main_requirement(&self) -> bool;
     fn contains_comp(&self, uid: &Uid) -> bool;
     fn get_comp(&self, uid: &Uid) -> Option<Rc<RefCell<Box<dyn Component>>>>;
-    fn components(&self)->Vec<Rc<RefCell<Box<dyn Component>>>>;
+    fn components(&self) -> Vec<Rc<RefCell<Box<dyn Component>>>>;
 }
 
 pub trait Component {

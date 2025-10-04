@@ -3,9 +3,14 @@ use crate::runtime_config::{
     shared::{ComponentConfig, Uid},
 };
 use anyhow::{Result, anyhow};
-use petgraph::{acyclic::Acyclic, adj::Neighbors, visit::{Bfs, IntoNeighbors, Topo}, Direction};
 use petgraph::data::Build;
 use petgraph::graph::{Graph, NodeIndex};
+use petgraph::{
+    Direction,
+    acyclic::Acyclic,
+    adj::Neighbors,
+    visit::{Bfs, IntoNeighbors, Topo},
+};
 use std::collections::{HashMap, HashSet};
 
 pub type GraphType = Acyclic<Graph<Box<dyn ComponentConfig>, ()>>;
@@ -15,8 +20,8 @@ pub type GraphType = Acyclic<Graph<Box<dyn ComponentConfig>, ()>>;
 pub struct RuntimeConfigGraph {
     pub graph: GraphType,
     pub unused_nodes: Vec<Box<dyn ComponentConfig>>,
-	pub root_nodes: Vec<NodeIndex>,	
-	pub node_mapping: HashMap<Uid, NodeIndex>,
+    pub root_nodes: Vec<NodeIndex>,
+    pub node_mapping: HashMap<Uid, NodeIndex>,
 }
 
 impl RuntimeConfigGraph {
@@ -112,38 +117,42 @@ impl RuntimeConfigGraph {
             .map(|(_, cfg)| cfg.clone())
             .collect();
 
-	    let root_nodes: Vec<NodeIndex> = graph
-	        .node_indices()
-	        .filter(|&n| graph.neighbors_directed(n, Direction::Incoming).next().is_none())
-	        .collect();
+        let root_nodes: Vec<NodeIndex> = graph
+            .node_indices()
+            .filter(|&n| {
+                graph
+                    .neighbors_directed(n, Direction::Incoming)
+                    .next()
+                    .is_none()
+            })
+            .collect();
 
         Ok(Self {
             graph,
             unused_nodes,
-			root_nodes,
-			node_mapping: uid_to_index,
+            root_nodes,
+            node_mapping: uid_to_index,
         })
     }
 
+    pub fn traverse(&self) -> Vec<Box<dyn ComponentConfig>> {
+        let mut output_vec = Vec::new();
+        let mut bfs = Topo::new(&self.graph);
+        while let Some(next_node) = bfs.next(&self.graph) {
+            output_vec.push(self.graph[next_node].clone_box());
+        }
+        output_vec
+    }
 
-	pub fn traverse(&self) -> Vec<Box<dyn ComponentConfig>> {
-		let mut output_vec = Vec::new();
-    	let mut bfs = Topo::new(&self.graph);
-		while let Some(next_node) = bfs.next(&self.graph) {
-			output_vec.push(self.graph[next_node].clone_box());
-		}
-		output_vec
-	}
-
-	pub fn get_downstream_components(&self, uid: Uid)->HashSet<Box<dyn ComponentConfig>> {
-		let node_index = self.node_mapping.get(&uid).unwrap();
-		let mut neighbors = self.graph.neighbors_directed(*node_index, Direction::Incoming);
-		let mut downstreams = HashSet::new();
-		while let Some(neighbor) = neighbors.next(){
-			downstreams.insert(
-				self.graph.node_weight(neighbor).unwrap().clone()
-			);
-		}
-		downstreams
-	}
+    pub fn get_downstream_components(&self, uid: Uid) -> HashSet<Box<dyn ComponentConfig>> {
+        let node_index = self.node_mapping.get(&uid).unwrap();
+        let mut neighbors = self
+            .graph
+            .neighbors_directed(*node_index, Direction::Incoming);
+        let mut downstreams = HashSet::new();
+        while let Some(neighbor) = neighbors.next() {
+            downstreams.insert(self.graph.node_weight(neighbor).unwrap().clone());
+        }
+        downstreams
+    }
 }

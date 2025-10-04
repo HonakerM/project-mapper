@@ -177,7 +177,7 @@ impl ComponentLookupHelper for DefaultComponentHelper {
     fn get_comp(&self, uid: &Uid) -> Option<Rc<RefCell<Box<dyn Component>>>> {
         self.component_map.get(uid).cloned()
     }
-    fn components(&self)->Vec<Rc<RefCell<Box<dyn Component>>>> {
-        Vec::from_iter(self.component_map.values().map(|x|{x.clone()}).into_iter())
+    fn components(&self) -> Vec<Rc<RefCell<Box<dyn Component>>>> {
+        Vec::from_iter(self.component_map.values().map(|x| x.clone()).into_iter())
     }
 }
