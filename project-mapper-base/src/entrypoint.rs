@@ -1,8 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::components::comp_helper::DefaultComponentHelper;
-use crate::components::factory::DefaultComponentFactory;
-use crate::runtime::runtime::Runtime;
+use crate::input::TestConfig;
 use anyhow::{Context, Result};
 use project_mapper_core::loader::runtime_loader::export_config_json;
 use project_mapper_core::runtime_config::RuntimeConfig;
@@ -13,11 +11,13 @@ use project_mapper_core::runtime_config::effect::fps::FpsConfig;
 use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::effect::perspective::PerspectiveConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
-use project_mapper_core::runtime_config::input::test::TestConfig;
 use project_mapper_core::runtime_config::input::uri::UriConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::output::window::{WindowConfig, WindowMode};
 use project_mapper_core::types::video::Resolution;
+use project_mapper_runtime::components::comp_helper::DefaultComponentHelper;
+use project_mapper_runtime::components::factory::DefaultComponentFactory;
+use project_mapper_runtime::runtime::runtime::Runtime;
 use simple_logger::SimpleLogger;
 
 pub fn run_main() -> Result<()> {
@@ -158,16 +158,16 @@ pub fn run_main() -> Result<()> {
         src_uid: 71,
     });
     #[cfg(target_os = "windows")]
-    config.outputs.push(OutputComponentConfig {
-        uid: 1,
-        name: "comp_1".to_string(),
-        config: Box::new(WindowConfig {
-            mode: WindowMode::Borderless {
-                name: "\\\\.\\DISPLAY1".to_string(),
-            },
-        }),
-        src_uid: 71,
-    });
+    // config.outputs.push(OutputComponentConfig {
+    //     uid: 1,
+    //     name: "comp_1".to_string(),
+    //     config: Box::new(WindowConfig {
+    //         mode: WindowMode::Borderless {
+    //             name: "\\\\.\\DISPLAY1".to_string(),
+    //         },
+    //     }),
+    //     src_uid: 71,
+    // });
     config
         .validate()
         .context("Failed to validate runtime config")?;

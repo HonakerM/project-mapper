@@ -43,7 +43,9 @@ pub fn process(
         Result::Ok(
             Box::new(
                 project_mapper_runtime::project_mapper_core::runtime_config::input::InputComponentConfig::default(
-                    #config_expr
+                    Box::new(
+                        #config_expr
+                    )
                 )
             )
         )
@@ -59,14 +61,19 @@ pub fn process(
         _ => panic!("Unsupported self type for impl block"),
     };
 
+    let type_id = quote! {
+        ||{#config_expr.type_id()}
+    };
+
     expanded.extend(
         quote! {
             project_mapper_runtime::components::factory::inventory::submit! {
                 project_mapper_runtime::components::marker::ComponentMarker::<project_mapper_runtime::components::marker::DefaultConfig, project_mapper_runtime::components::marker::ConstructComponent>::new(
                     #type_name,
+                    #type_id,
                     ||{#input_config},
                     |cfg|{Result::Ok(Box::new(#ident::new(cfg)?))},
-                )            
+                )
             }
         }
     );

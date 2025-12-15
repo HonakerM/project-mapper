@@ -10,7 +10,7 @@ use project_mapper_core::runtime_config::{
     input::InputComponentConfig,
     shared::{ComponentConfig, Uid},
 };
-use project_mapper_runtime::gst::{Element, prelude::*};
+use project_mapper_runtime::gst::{Element, info, prelude::*};
 use project_mapper_runtime::{
     components::{
         branch::BranchControl,
@@ -52,7 +52,7 @@ pub struct TestComponent {
     branch: BranchControl,
 }
 
-#[project_mapper_macro::input_component(Box::new(TestConfig::default()))]
+#[project_mapper_macro::input_component(TestConfig::default())]
 impl Component for TestComponent {
     // runtime lifecycle functions
     // Construct object
@@ -69,6 +69,7 @@ impl Component for TestComponent {
         }?;
 
         // ensure we have a test config
+        println!("Creating TestComponent with config: {:?}", config.config);
         let test_config = match config.config.as_any().downcast_ref::<TestConfig>() {
             Some(b) => Ok(b.clone()),
             None => Err(anyhow!("InputComponentConfig is not TestConfig")),

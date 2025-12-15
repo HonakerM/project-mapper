@@ -107,7 +107,7 @@ fn internal_configure_components(
     for comp_config in graph.traverse() {
         // get the component or construct it if needed
         if let None = component_helper.get_comp(&comp_config.uid()) {
-            info!("Constructed component {:?}", comp_config.uid());
+            info!("Constructing component {:?}", comp_config.uid());
             component_helper.new(comp_config.as_ref(), component_factory.as_ref())?;
             comps_to_setup.push(comp_config.uid());
         }

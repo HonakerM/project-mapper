@@ -14,10 +14,6 @@ pub mod runtime;
 #[path = "./components/mod.rs"]
 pub mod components;
 
-// Core components used
-#[path = "./entrypoint.rs"]
-pub mod entrypoint;
-
 // Core functions used to receive external events
 #[cfg(feature = "receivers")]
 #[path = "./receivers/mod.rs"]

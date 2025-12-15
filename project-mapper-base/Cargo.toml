@@ -13,3 +13,4 @@ anyhow.workspace = true
 serde.workspace = true
 typetag.workspace = true
 inventory = "0.3.21"
+simple_logger = "5.1.0"

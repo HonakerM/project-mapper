@@ -1,4 +1,5 @@
 use std::{
+    any::TypeId,
     cell::RefCell,
     rc::Rc,
     sync::{Arc, Mutex},
@@ -13,6 +14,7 @@ use project_mapper_core::runtime_config::{
 #[derive(Clone)]
 pub struct ComponentMarker<CFG, CRT> {
     pub name: &'static str,
+    pub type_id: fn() -> TypeId,
     pub config: CFG,
     pub component_creator: CRT,
     /* ... */
@@ -27,11 +29,13 @@ pub type Marker = ComponentMarker<DefaultConfig, ConstructComponent>;
 impl Marker {
     pub const fn new(
         name: &'static str,
+        type_id: fn() -> TypeId,
         config: DefaultConfig,
         component_creator: ConstructComponent,
     ) -> Self {
         ComponentMarker {
             name,
+            type_id,
             config,
             component_creator,
         }
