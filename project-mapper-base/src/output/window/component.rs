@@ -8,34 +8,32 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-use project_mapper_runtime::components::branch::BranchControl;
+use crate::output::WindowConfig;
 use crate::output::window::app;
 use crate::output::window::app::WindowAppHandler;
+use crate::output::window::config::WindowMode;
 use crate::output::window::state::GLOBAL_WINDOW_STATE;
 use crate::output::window::state::PROXY_WINDOW_STATE;
 use crate::output::window::state::ProxyWindowState;
 use crate::output::window::state::WindowRequest;
 use crate::output::window::state::WinitMessage;
 use crate::output::window::state::WinitState;
-use project_mapper_runtime::components::runtime::DefaultRuntimeComponent;
-use project_mapper_runtime::components::shared::{Component, ComponentLookupHelper};
-use project_mapper_runtime::types::message::RuntimeMessage;
-use project_mapper_runtime::utils::winit::get_monitor_by_name;
-use project_mapper_runtime::utils::winit::get_video_mode_for_config;
 use anyhow::Context;
 use anyhow::Ok;
 use anyhow::anyhow;
 use anyhow::{Error, Result};
+use log::{debug, info};
+use project_mapper_core::runtime_config::output::OutputComponentConfig;
+use project_mapper_core::runtime_config::shared::ComponentConfig;
+use project_mapper_core::runtime_config::shared::Uid;
+use project_mapper_runtime::components::branch::BranchControl;
+use project_mapper_runtime::components::runtime::DefaultRuntimeComponent;
+use project_mapper_runtime::components::shared::{Component, ComponentLookupHelper};
+use project_mapper_runtime::gst;
 use project_mapper_runtime::gst::Element;
 use project_mapper_runtime::gst::prelude::*;
 use project_mapper_runtime::gst_video::prelude::*;
-use log::{debug, info};
-use project_mapper_core::runtime_config::output::window::WindowMode;
-use project_mapper_core::runtime_config::shared::Uid;
-use project_mapper_core::runtime_config::{
-    output::{OutputComponentConfig, window::WindowConfig},
-    shared::ComponentConfig,
-};
+use project_mapper_runtime::types::message::RuntimeMessage;
 use raw_window_handle::HasWindowHandle;
 use raw_window_handle::RawWindowHandle;
 use winit::event::Event;
@@ -45,7 +43,6 @@ use winit::event_loop::EventLoop;
 use winit::event_loop::EventLoopBuilder;
 use winit::platform::pump_events::EventLoopExtPumpEvents;
 use winit::window::Window;
-use project_mapper_runtime::gst;
 
 pub struct WindowComponent {
     config: OutputComponentConfig,
@@ -239,6 +236,7 @@ impl WindowComponent {
     }
 }
 
+#[project_mapper_macro::output_component(WindowConfig::default())]
 impl Component for WindowComponent {
     // runtime lifecycle functions
     // Construct object

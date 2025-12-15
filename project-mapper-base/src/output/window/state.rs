@@ -8,27 +8,24 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
-use project_mapper_runtime::components::branch::BranchControl;
+use crate::output::WindowConfig;
 use crate::output::window::app::WindowAppHandler;
-use project_mapper_runtime::components::runtime::DefaultRuntimeComponent;
-use project_mapper_runtime::components::shared::{Component, ComponentLookupHelper};
-use project_mapper_runtime::types::message::RuntimeMessage;
-use project_mapper_runtime::utils::winit::get_monitor_by_name;
-use project_mapper_runtime::utils::winit::get_video_mode_for_config;
+use crate::output::window::utils::get_monitor_by_name;
+use crate::output::window::utils::get_video_mode_for_config;
 use anyhow::Context;
 use anyhow::Ok;
 use anyhow::anyhow;
 use anyhow::{Error, Result};
+use log::{debug, info};
+use project_mapper_core::runtime_config::shared::ComponentConfig;
+use project_mapper_core::runtime_config::shared::Uid;
+use project_mapper_runtime::components::branch::BranchControl;
+use project_mapper_runtime::components::runtime::DefaultRuntimeComponent;
+use project_mapper_runtime::components::shared::{Component, ComponentLookupHelper};
 use project_mapper_runtime::gst::Element;
 use project_mapper_runtime::gst::prelude::*;
 use project_mapper_runtime::gst_video::prelude::*;
-use log::{debug, info};
-use project_mapper_core::runtime_config::output::window::WindowMode;
-use project_mapper_core::runtime_config::shared::Uid;
-use project_mapper_core::runtime_config::{
-    output::{OutputComponentConfig, window::WindowConfig},
-    shared::ComponentConfig,
-};
+use project_mapper_runtime::types::message::RuntimeMessage;
 use raw_window_handle::HasWindowHandle;
 use raw_window_handle::RawWindowHandle;
 use winit::event::Event;

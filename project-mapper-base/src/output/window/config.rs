@@ -30,6 +30,14 @@ pub struct WindowConfig {
     pub mode: WindowMode,
 }
 
+impl Default for WindowConfig {
+    fn default() -> Self {
+        Self {
+            mode: WindowMode::Windowed {},
+        }
+    }
+}
+
 // Implement InputConfigTrait for TestConfig
 #[typetag::serde]
 impl OutputConfigTrait for WindowConfig {

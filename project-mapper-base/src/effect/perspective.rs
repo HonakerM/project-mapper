@@ -1,19 +1,44 @@
 use std::sync::mpsc;
 
-use crate::{
+use anyhow::{Error, Result, anyhow};
+use log::debug;
+use project_mapper_core::runtime_config::{
+    effect::EffectComponentConfig,
+    shared::{ComponentConfig, Uid},
+};
+use project_mapper_runtime::gst::{Element, prelude::*};
+use project_mapper_runtime::{
     components::{
         branch::BranchControl,
         shared::{Component, ComponentLookupHelper},
     },
+    gst,
     types::message::RuntimeMessage,
 };
-use anyhow::{Error, Result, anyhow};
-use gst::{Element, prelude::*};
-use log::debug;
-use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, perspective::PerspectiveConfig},
-    shared::{ComponentConfig, Uid},
-};
+
+use std::any::Any;
+
+use serde::{Deserialize, Serialize};
+
+use project_mapper_core::runtime_config::effect::common::EffectConfigTrait;
+
+/// Configuration for the Perspective effect component.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PerspectiveConfig {
+    /// 3x3 transformation matrix in row-major order.
+    pub matrix: [f64; 9],
+}
+
+#[typetag::serde]
+impl EffectConfigTrait for PerspectiveConfig {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_box(&self) -> Box<dyn EffectConfigTrait> {
+        Box::new(self.clone())
+    }
+}
 
 pub struct PerspectiveComponent {
     config: EffectComponentConfig,

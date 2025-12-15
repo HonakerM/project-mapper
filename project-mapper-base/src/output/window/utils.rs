@@ -1,11 +1,10 @@
 use anyhow::{Error, Result, anyhow};
-use project_mapper_core::runtime_config::output::window::MonitorConfig;
 use winit::{
     event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
     monitor::{MonitorHandle, VideoMode, VideoModeHandle},
 };
 
-use crate::types::message::RuntimeMessage;
+use crate::output::window::config::MonitorConfig;
 
 pub fn get_monitor_by_name(event_loop: &ActiveEventLoop, name: String) -> Result<MonitorHandle> {
     for monitor in event_loop.available_monitors() {

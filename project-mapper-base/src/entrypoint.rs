@@ -1,19 +1,20 @@
 use std::sync::{Arc, Mutex};
 
+use crate::effect::balance::BalanceConfig;
+use crate::effect::fps::FpsConfig;
+use crate::effect::gamma::GammaConfig;
+use crate::effect::perspective::PerspectiveConfig;
 use crate::input::TestConfig;
 use crate::input::UriConfig;
+use crate::output::WindowConfig;
+use crate::output::window::config::WindowMode;
 use anyhow::{Context, Result};
 use project_mapper_core::loader::runtime_loader::export_config_json;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
-use project_mapper_core::runtime_config::effect::balance::BalanceConfig;
 use project_mapper_core::runtime_config::effect::common::DefaultSrcConfig;
-use project_mapper_core::runtime_config::effect::fps::FpsConfig;
-use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
-use project_mapper_core::runtime_config::effect::perspective::PerspectiveConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
-use project_mapper_core::runtime_config::output::window::{WindowConfig, WindowMode};
 use project_mapper_core::types::video::Resolution;
 use project_mapper_runtime::components::comp_helper::DefaultComponentHelper;
 use project_mapper_runtime::components::factory::DefaultComponentFactory;
@@ -135,7 +136,7 @@ pub fn run_main() -> Result<()> {
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 72,
+                src_uid: 0,
             },            OutputComponentConfig {
                 uid: 12,
                 name: "comp_5".to_string(),

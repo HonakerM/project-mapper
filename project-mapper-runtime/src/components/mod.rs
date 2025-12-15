@@ -17,8 +17,5 @@ pub mod branch;
 #[path = "./runtime.rs"]
 pub mod runtime;
 
-#[path = "./effect/mod.rs"]
-pub mod effect;
-
 #[path = "./marker.rs"]
 pub mod marker;

@@ -34,17 +34,32 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
 
     let mut config_expr = args.config_expr.clone();
 
-    let mut input_config = quote! {
-        Result::Ok(
-            Box::new(
-                project_mapper_runtime::project_mapper_core::runtime_config::input::InputComponentConfig::default(
-                    Box::new(
-                        #config_expr
+    let mut config_val = match comp_type {
+        CompType::Input => quote! {
+            Result::Ok(
+                Box::new(
+                    project_mapper_runtime::project_mapper_core::runtime_config::input::InputComponentConfig::default(
+                        Box::new(
+                            #config_expr
+                        )
                     )
                 )
             )
-        )
+        },
+        CompType::Output => quote! {
+            Result::Ok(
+                Box::new(
+                    project_mapper_runtime::project_mapper_core::runtime_config::output::OutputComponentConfig::default(
+                        Box::new(
+                            #config_expr
+                        )
+                    )
+                )
+            )
+        },
+        CompType::Effect(_) => quote! {},
     };
+
     //config_expr
     // Access the self_ty field, which is a Box<Type>
     let ident = match &*item_impl.self_ty {
@@ -57,7 +72,7 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
     };
 
     let type_id = quote! {
-        ||{#config_expr.type_id()}
+        ||{project_mapper_runtime::components::marker::type_id_of(#config_expr)}
     };
 
     expanded.extend(
@@ -66,7 +81,7 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
                 project_mapper_runtime::components::marker::ComponentMarker::<project_mapper_runtime::components::marker::DefaultConfig, project_mapper_runtime::components::marker::ConstructComponent>::new(
                     #type_name,
                     #type_id,
-                    ||{#input_config},
+                    ||{#config_val},
                     |cfg|{Result::Ok(Box::new(#ident::new(cfg)?))},
                 )
             }

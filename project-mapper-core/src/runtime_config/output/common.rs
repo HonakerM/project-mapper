@@ -2,8 +2,10 @@ use std::any::Any;
 
 use serde::{Deserialize, Serialize};
 
-use crate::runtime_config::output::window::WindowConfig;
-use crate::runtime_config::shared::{ComponentConfig, Uid};
+use crate::runtime_config::{
+    config::{DEFAULT_ID, DEFAULT_NAME},
+    shared::{ComponentConfig, Uid},
+};
 
 // Trait representing an output config
 // ! I don't know if this is good/okay....
@@ -55,5 +57,22 @@ impl ComponentConfig for OutputComponentConfig {
 
     fn clone_box(&self) -> Box<dyn ComponentConfig> {
         Box::new(self.clone())
+    }
+}
+
+impl OutputComponentConfig {
+    pub fn default(config: Box<dyn OutputConfigTrait>) -> Self {
+        Self {
+            uid: DEFAULT_ID,
+            src_uid: DEFAULT_ID,
+            name: DEFAULT_NAME.to_owned(),
+            config,
+        }
+    }
+    pub fn default_name() -> String {
+        DEFAULT_NAME.to_owned()
+    }
+    pub fn default_id() -> Uid {
+        DEFAULT_ID
     }
 }

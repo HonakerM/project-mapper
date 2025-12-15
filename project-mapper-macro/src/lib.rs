@@ -21,7 +21,6 @@ pub fn input_component(args: TokenStream, input: TokenStream) -> TokenStream {
     tags::component::process(CompType::Input, input, args)
 }
 
-
 #[proc_macro_attribute]
 pub fn output_component(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as parser::ImplInput);

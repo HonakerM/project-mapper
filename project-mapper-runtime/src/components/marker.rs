@@ -41,3 +41,7 @@ impl Marker {
         }
     }
 }
+
+pub fn type_id_of<T: 'static>(_val: T) -> TypeId {
+    TypeId::of::<T>()
+}

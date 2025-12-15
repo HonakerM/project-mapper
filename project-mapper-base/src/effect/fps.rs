@@ -1,46 +1,74 @@
 use std::sync::mpsc;
 
-use crate::{
+use anyhow::{Error, Result, anyhow};
+use log::{debug, info};
+use project_mapper_core::runtime_config::{
+    effect::EffectComponentConfig,
+    shared::{ComponentConfig, Uid},
+};
+use project_mapper_runtime::gst::{Element, prelude::*};
+use project_mapper_runtime::{
     components::{
         branch::BranchControl,
         shared::{Component, ComponentLookupHelper},
     },
+    gst,
     types::message::RuntimeMessage,
 };
-use anyhow::{Error, Result, anyhow};
-use gst::{Element, prelude::*};
-use log::{debug, info};
-use project_mapper_core::runtime_config::{
-    effect::{EffectComponentConfig, gamma::GammaConfig},
-    shared::{ComponentConfig, Uid},
-};
 
-pub struct GammaComponent {
+pub struct FpsComponent {
     config: EffectComponentConfig,
     element: Element,
     branch: BranchControl,
 }
 
-impl GammaComponent {
-    fn update_config(element: &gst::Element, config: &GammaConfig) -> Result<()> {
-        debug!("Updating gamma component with config: {:?}", config);
-        if let Some(gamma) = &config.gamma {
-            info!("Setting gamma element to {}", gamma);
-            element.set_property("gamma", gamma.clone());
+use std::any::Any;
+
+use serde::{Deserialize, Deserializer, Serialize, de};
+
+use project_mapper_core::runtime_config::{
+    effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
+};
+
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[serde(default)]
+pub struct FpsConfig {
+    pub max_rate: Option<i32>,
+}
+
+// Implement InputConfigTrait for TestConfig
+#[typetag::serde]
+impl EffectConfigTrait for FpsConfig {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_box(&self) -> Box<dyn EffectConfigTrait> {
+        Box::new(self.clone())
+    }
+}
+
+impl FpsComponent {
+    fn update_config(element: &gst::Element, config: &FpsConfig) -> Result<()> {
+        debug!("Updating fps component with config: {:?}", config);
+        if let Some(fps) = &config.max_rate {
+            info!("Setting fps element to {}", fps);
+            element.set_property("max-rate", fps.clone());
         } else {
             let pspec = element
-                .find_property("gamma")
-                .ok_or(anyhow!("Unable to find default gamma spec"))?;
+                .find_property("max-rate")
+                .ok_or(anyhow!("Unable to find default fps spec"))?;
             let default_value = pspec.default_value();
-            element.set_property("gamma", &default_value);
+            element.set_property("max-rate", &default_value);
         }
         Ok(())
     }
 }
-impl Component for GammaComponent {
+
+impl Component for FpsComponent {
     // runtime lifecycle functions
     // Construct object
-    fn new(unknown_config: &dyn ComponentConfig) -> Result<GammaComponent> {
+    fn new(unknown_config: &dyn ComponentConfig) -> Result<FpsComponent> {
         // parse config and ensure it's correct types
         let config: EffectComponentConfig = match unknown_config
             .as_any()
@@ -53,14 +81,14 @@ impl Component for GammaComponent {
         }?;
 
         // construct element
-        let gamma_config = match config.config.as_any().downcast_ref::<GammaConfig>() {
+        let fps_config = match config.config.as_any().downcast_ref::<FpsConfig>() {
             Some(b) => Ok(b.clone()),
             None => Err(anyhow!("GammaComponent is not GammaConfig")),
         }?;
-        let element = gst::ElementFactory::make("gamma")
+        let element = gst::ElementFactory::make("videorate")
             .name(config.name())
             .build()?;
-        GammaComponent::update_config(&element, &gamma_config)?;
+        FpsComponent::update_config(&element, &fps_config)?;
 
         let branch = BranchControl::new(config.name(), true, true)?;
         let comp = Self {
@@ -90,6 +118,7 @@ impl Component for GammaComponent {
         Ok(())
     }
     fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
+        // parse config and ensure it's correct types
         let config: EffectComponentConfig =
             match config.as_any().downcast_ref::<EffectComponentConfig>() {
                 Some(b) => Ok(b.clone()),
@@ -99,13 +128,13 @@ impl Component for GammaComponent {
             }?;
 
         // construct element
-        let gamma_config = match config.config.as_any().downcast_ref::<GammaConfig>() {
+        let fps_config = match config.config.as_any().downcast_ref::<FpsConfig>() {
             Some(b) => Ok(b.clone()),
             None => Err(anyhow!("GammaComponent is not GammaConfig")),
         }?;
 
         self.config = config;
-        GammaComponent::update_config(&self.element, &gamma_config)?;
+        FpsComponent::update_config(&self.element, &fps_config)?;
 
         if self.config.srcs.len() != 1 {
             return Err(anyhow!("Balance component must have exactly one source"));

@@ -10,4 +10,7 @@ pub mod component;
 #[path = "./config.rs"]
 pub mod config;
 
+#[path = "./utils.rs"]
+pub mod utils;
+
 pub use component::WindowComponent;

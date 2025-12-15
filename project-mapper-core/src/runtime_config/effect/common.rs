@@ -2,10 +2,7 @@ use std::any::Any;
 
 use serde::{Deserialize, Serialize};
 
-use crate::runtime_config::{
-    effect::{balance::BalanceConfig, gamma::GammaConfig},
-    shared::{ComponentConfig, Uid},
-};
+use crate::runtime_config::shared::{ComponentConfig, Uid};
 
 // Trait representing an input config
 // ! I don't know if this is good/okay....
