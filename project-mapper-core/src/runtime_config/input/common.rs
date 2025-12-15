@@ -1,5 +1,6 @@
 use std::any::Any;
 
+use const_default::ConstDefault;
 use serde::{Deserialize, Serialize};
 use typetag;
 

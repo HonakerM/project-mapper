@@ -1,3 +1,4 @@
+use project_mapper_core::runtime_config::input::common::InputConfigTrait;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
 use syn::{
@@ -15,11 +16,11 @@ mod kw {
     syn::custom_keyword!(comp_type);
 }
 
-pub struct Input {
+pub struct ImplInput {
     pub implementation: ItemImpl,
 }
 
-impl Parse for Input {
+impl Parse for ImplInput {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut attrs = Attribute::parse_outer(input)?;
 
@@ -47,12 +48,23 @@ impl Parse for Input {
             }
             attrs.extend(item.attrs);
             item.attrs = attrs;
-            Ok(Input {
+            Ok(Self {
                 implementation: item,
             })
         } else {
             Err(input.error("expected trait or impl block"))
         }
+    }
+}
+
+pub struct ImplArgs {
+    pub config_expr: syn::Expr,
+}
+
+impl Parse for ImplArgs {
+    fn parse(input: ParseStream) -> Result<Self> {
+        let config_expr: syn::Expr = input.parse()?;
+        Ok(Self { config_expr })
     }
 }
 

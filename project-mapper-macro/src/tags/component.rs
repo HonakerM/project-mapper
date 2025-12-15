@@ -4,6 +4,10 @@ use std::{
     sync::{Arc, Mutex},
 };
 
+use crate::{
+    parser::{ImplArgs, ImplInput},
+    utils::type_name,
+};
 use anyhow::Result;
 use inventory;
 use proc_macro::TokenStream;
@@ -14,8 +18,6 @@ use quote::quote;
 use syn::parse_macro_input;
 use syn::{Error, ItemImpl, Type, TypePath, parse_quote};
 
-use crate::parser::Input;
-
 #[derive(Clone)]
 pub enum CompType {
     Input,
@@ -23,22 +25,48 @@ pub enum CompType {
     Output,
 }
 
-pub fn process(comp_type: CompType, config: impl ComponentConfig, input: Input) -> TokenStream {
+pub fn process(
+    comp_type: CompType,
+    config: impl ComponentConfig,
+    input: ImplInput,
+    args: ImplArgs,
+) -> TokenStream {
     let mut item_impl = input.implementation.clone();
     let mut expanded = quote! {
         #item_impl
     };
+    let mut type_name = type_name(&input.implementation.self_ty).unwrap();
+
+    let mut config_expr = args.config_expr.clone();
+
+    let mut input_config = quote! {
+        Result::Ok(
+            Box::new(
+                project_mapper_runtime::project_mapper_core::runtime_config::input::InputComponentConfig::default(
+                    #config_expr
+                )
+            )
+        )
+    };
+    //config_expr
+    // Access the self_ty field, which is a Box<Type>
+    let ident = match &*item_impl.self_ty {
+        Type::Path(type_path) => {
+            // Extract the first segment of the path and get its identifier
+            type_path.path.segments.first().unwrap().ident.clone()
+        }
+        // Handle other possible types if necessary (e.g., slices, references, etc.)
+        _ => panic!("Unsupported self type for impl block"),
+    };
+
     expanded.extend(
         quote! {
-            const fn construct_local_default() -> project_mapper_runtime::components::marker::ComponentMarker<project_mapper_runtime::components::marker::DefaultConfig, project_mapper_runtime::components::marker::ConstructComponent> {
+            project_mapper_runtime::components::factory::inventory::submit! {
                 project_mapper_runtime::components::marker::ComponentMarker::<project_mapper_runtime::components::marker::DefaultConfig, project_mapper_runtime::components::marker::ConstructComponent>::new(
-                    "TestComponent",
-                    ||{Result::Ok(Box::new(project_mapper_core::runtime_config::input::InputComponentConfig::default(Box::new(TestConfig::default()))))},
-                    |cfg|{Result::Ok(Box::new(TestComponent::new(cfg)?))},
-                )
-            }
-            inventory::submit! {
-                construct_local_default()
+                    #type_name,
+                    ||{#input_config},
+                    |cfg|{Result::Ok(Box::new(#ident::new(cfg)?))},
+                )            
             }
         }
     );

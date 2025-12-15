@@ -8,10 +8,7 @@ use std::{
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 
 use crate::{
-    components::{
-        factory::create_default_component,
-        shared::{Component, ComponentFactory, ComponentLookupHelper},
-    },
+    components::shared::{Component, ComponentFactory, ComponentLookupHelper},
     types::message::RuntimeMessage,
 };
 use anyhow::{Error, Result, anyhow};

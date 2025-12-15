@@ -37,7 +37,3 @@ impl Marker {
         }
     }
 }
-
-inventory::collect!(Marker);
-
-pub extern crate inventory;

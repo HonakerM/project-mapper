@@ -52,7 +52,7 @@ pub struct TestComponent {
     branch: BranchControl,
 }
 
-#[project_mapper_macro::input_component]
+#[project_mapper_macro::input_component(Box::new(TestConfig::default()))]
 impl Component for TestComponent {
     // runtime lifecycle functions
     // Construct object
