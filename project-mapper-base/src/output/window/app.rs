@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::mpsc;
 
+use project_mapper_runtime::gst;
+use project_mapper_runtime::gst_video;
 use gst::Pipeline;
 use gst::glib::object::Cast;
 use gst::prelude::{ElementExt, GstBinExt};
@@ -14,9 +16,9 @@ use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
 use winit::window::{Window, WindowAttributes, WindowId};
 
-use crate::components::output::window::state::{PROXY_WINDOW_STATE, WindowRequest, WinitMessage};
-use crate::types::message::RuntimeMessage;
-use crate::utils::winit::{get_monitor_by_name, get_video_mode_for_config};
+use crate::output::window::state::{PROXY_WINDOW_STATE, WindowRequest, WinitMessage};
+use project_mapper_runtime::types::message::RuntimeMessage;
+use project_mapper_runtime::utils::winit::{get_monitor_by_name, get_video_mode_for_config};
 use anyhow::{Context as _, Error, Result};
 
 #[derive(Debug)]

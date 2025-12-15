@@ -19,21 +19,12 @@ use crate::components::{
         perspective::PerspectiveComponent,
     },
     marker::{ConstructComponent, Marker},
-    output::window::WindowComponent,
     shared::{Component, ComponentFactory},
 };
 use anyhow::{Error, Result, anyhow};
 
 pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
-    if let Some(output_cfg) = config.as_any().downcast_ref::<OutputComponentConfig>() {
-        if let Some(_) = output_cfg.config.as_any().downcast_ref::<WindowConfig>() {
-            let comp = WindowComponent::new(config)?;
-            Ok(Box::new(comp))
-        } else {
-            let unknown_name = type_name_of_val(&output_cfg.config);
-            Err(anyhow!("Unknown config type: {}", unknown_name))
-        }
-    } else if let Some(effect_cfg) = config.as_any().downcast_ref::<EffectComponentConfig>() {
+     if let Some(effect_cfg) = config.as_any().downcast_ref::<EffectComponentConfig>() {
         if let Some(_) = effect_cfg.config.as_any().downcast_ref::<BalanceConfig>() {
             let comp = BalanceComponent::new(config)?;
             Ok(Box::new(comp))

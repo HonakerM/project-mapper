@@ -29,6 +29,8 @@ http = { version = "1", optional=true}
 futures-util = {version = "0.3", optional=true}
 http-body-util = {version = "0.1", optional=true}
 inventory = "0.3.21"
+serde.workspace = true
+typetag.workspace = true
 
 [features]
 default = ["http-receiver"]

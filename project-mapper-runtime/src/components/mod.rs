@@ -17,10 +17,6 @@ pub mod branch;
 #[path = "./runtime.rs"]
 pub mod runtime;
 
-// Output components
-#[path = "./output/mod.rs"]
-pub mod output;
-
 #[path = "./effect/mod.rs"]
 pub mod effect;
 
