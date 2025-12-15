@@ -18,3 +18,7 @@ pub mod components;
 #[cfg(feature = "receivers")]
 #[path = "./receivers/mod.rs"]
 pub mod receivers;
+
+
+pub use gst;
+pub use gst_video;

@@ -1,0 +1,15 @@
+[package]
+name = "project-mapper-base"
+version.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+project-mapper-core.workspace = true
+project-mapper-runtime.workspace = true
+project-mapper-macro.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+typetag.workspace = true
+inventory = "0.3.21"

@@ -1,0 +1,17 @@
+[package]
+name = "project-mapper-macro"
+version.workspace = true
+categories.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+inventory = "0.3"
+syn = { version = "2.0.46", features = ["full"] }
+project-mapper-core.workspace = true
+project-mapper-runtime.workspace = true
+anyhow.workspace = true
+quote = "1.0.42"

@@ -27,3 +27,6 @@ pub mod input;
 
 #[path = "./effect/mod.rs"]
 pub mod effect;
+
+#[path = "./marker.rs"]
+pub mod marker;

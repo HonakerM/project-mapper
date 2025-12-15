@@ -3,7 +3,7 @@ use std::any::Any;
 use serde::{Deserialize, Serialize};
 use typetag;
 
-use crate::runtime_config::shared::{ComponentConfig, Uid};
+use crate::runtime_config::{config::{DEFAULT_ID, DEFAULT_NAME}, shared::{ComponentConfig, Uid}};
 
 // Trait representing an input config
 // ! I don't know if this is good/okay....
@@ -26,6 +26,22 @@ pub struct InputComponentConfig {
     pub uid: Uid,
     pub name: String,
     pub config: Box<dyn InputConfigTrait>,
+}
+
+impl InputComponentConfig {
+    pub fn default(config: Box<dyn InputConfigTrait>) -> Self {
+        Self {
+            uid: DEFAULT_ID,
+            name: DEFAULT_NAME.to_owned(),
+            config,
+        }
+    }
+    pub fn default_name()->String{
+        DEFAULT_NAME.to_owned()
+    }
+    pub fn default_id()->Uid{
+        DEFAULT_ID
+    }
 }
 
 // Implement the shared component trait

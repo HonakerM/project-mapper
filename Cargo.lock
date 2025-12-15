@@ -938,6 +938,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "inventory"
+version = "0.3.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc61209c082fbeb19919bee74b176221b27223e27b65d781eb91af24eb1fb46e"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "io-uring"
 version = "0.7.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1563,14 +1572,40 @@ dependencies = [
 ]
 
 [[package]]
+name = "project-mapper-base"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "inventory 0.3.21",
+ "project-mapper-core",
+ "project-mapper-macro",
+ "project-mapper-runtime",
+ "serde",
+ "typetag",
+]
+
+[[package]]
 name = "project-mapper-core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "inventory 0.3.21",
  "petgraph",
  "serde",
  "serde_json",
  "typetag",
+]
+
+[[package]]
+name = "project-mapper-macro"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "inventory 0.3.21",
+ "project-mapper-core",
+ "project-mapper-runtime",
+ "quote",
+ "syn 2.0.104",
 ]
 
 [[package]]
@@ -1586,6 +1621,7 @@ dependencies = [
  "http",
  "http-body-util",
  "hyper",
+ "inventory 0.3.21",
  "log",
  "project-mapper-core",
  "raw-window-handle",
@@ -1607,9 +1643,9 @@ dependencies = [
 
 [[package]]
 name = "quote"
-version = "1.0.40"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
+checksum = "a338cc41d27e6cc6dce6cefc13a0729dfbb81c262b1f519331575dd80ef3067f"
 dependencies = [
  "proc-macro2",
 ]
@@ -2156,7 +2192,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4080564c5b2241b5bff53ab610082234e0c57b0417f4bd10596f183001505b8a"
 dependencies = [
  "erased-serde",
- "inventory",
+ "inventory 0.2.3",
  "once_cell",
  "serde",
  "typetag-impl",

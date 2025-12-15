@@ -2,7 +2,7 @@ use std::{
     any::type_name_of_val,
     collections::{HashMap, HashSet},
     error::Error,
-    fmt::Display,
+    fmt::Display, ops::RangeTo,
 };
 
 use serde::{Deserialize, Serialize};
@@ -19,6 +19,11 @@ use crate::{
     types::errors::RuntimeConfigValidationError,
 };
 use anyhow::Result as AnyhowResult;
+
+pub static DEFAULT_ID: Uid = -1;
+pub static DEFAULT_NAME: &str = "DefaultRuntimeComponent";
+pub static UNUSED_RANGE: RangeTo<Uid> = (..0);
+
 
 // Top-Level Config object for the runtime
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
