@@ -8,8 +8,10 @@ use crate::{
     types::message::RuntimeMessage,
 };
 use anyhow::{Result, anyhow};
-use project_mapper_core::runtime_config::{config::{DEFAULT_ID, DEFAULT_NAME}, shared::{ComponentConfig, Uid}};
-
+use project_mapper_core::runtime_config::{
+    config::{DEFAULT_ID, DEFAULT_NAME},
+    shared::{ComponentConfig, Uid},
+};
 
 // The default runtime component is used when there is no other
 // component that requires main

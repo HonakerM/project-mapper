@@ -1,23 +1,26 @@
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
-
-use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
-
-use proc_macro::TokenStream;
-use project_mapper_core::runtime_config::{effect::common::EffectSrcConfigTrait, shared::ComponentConfig};
 use anyhow::Result;
 use inventory;
+use proc_macro::TokenStream;
+use project_mapper_core::runtime_config::{
+    effect::common::EffectSrcConfigTrait, shared::ComponentConfig,
+};
 use quote::quote;
-use syn::{parse_quote, Error, ItemImpl, Type, TypePath};
 use syn::parse_macro_input;
+use syn::{Error, ItemImpl, Type, TypePath, parse_quote};
 
 use crate::parser::Input;
-
 
 #[derive(Clone)]
 pub enum CompType {
     Input,
     Effect(Box<dyn EffectSrcConfigTrait>),
-    Output
+    Output,
 }
 
 pub fn process(comp_type: CompType, config: impl ComponentConfig, input: Input) -> TokenStream {
@@ -41,6 +44,3 @@ pub fn process(comp_type: CompType, config: impl ComponentConfig, input: Input) 
     );
     expanded.into()
 }
-
-
-

@@ -3,7 +3,10 @@ use std::any::Any;
 use serde::{Deserialize, Serialize};
 use typetag;
 
-use crate::runtime_config::{config::{DEFAULT_ID, DEFAULT_NAME}, shared::{ComponentConfig, Uid}};
+use crate::runtime_config::{
+    config::{DEFAULT_ID, DEFAULT_NAME},
+    shared::{ComponentConfig, Uid},
+};
 
 // Trait representing an input config
 // ! I don't know if this is good/okay....
@@ -36,10 +39,10 @@ impl InputComponentConfig {
             config,
         }
     }
-    pub fn default_name()->String{
+    pub fn default_name() -> String {
         DEFAULT_NAME.to_owned()
     }
-    pub fn default_id()->Uid{
+    pub fn default_id() -> Uid {
         DEFAULT_ID
     }
 }

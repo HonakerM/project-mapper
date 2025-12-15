@@ -14,5 +14,9 @@ use crate::tags::component::CompType;
 pub fn input_component(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as parser::Input);
 
-    tags::component::process(CompType::Input, InputComponentConfig::default(Box::new(TestConfig { fps: 30 })),  input)
+    tags::component::process(
+        CompType::Input,
+        InputComponentConfig::default(Box::new(TestConfig { fps: 30 })),
+        input,
+    )
 }

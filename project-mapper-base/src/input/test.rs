@@ -5,17 +5,19 @@ use serde::{Deserialize, Serialize};
 
 use std::sync::mpsc;
 
+use anyhow::{Error, Result, anyhow};
+use project_mapper_core::runtime_config::{
+    input::InputComponentConfig,
+    shared::{ComponentConfig, Uid},
+};
+use project_mapper_runtime::gst::{Element, prelude::*};
 use project_mapper_runtime::{
     components::{
         branch::BranchControl,
         shared::{Component, ComponentLookupHelper},
-    }, gst, types::message::RuntimeMessage
-};
-use anyhow::{Error, Result, anyhow};
-use project_mapper_runtime::gst::{Element, prelude::*};
-use project_mapper_core::runtime_config::{
-    input::{InputComponentConfig},
-    shared::{ComponentConfig, Uid},
+    },
+    gst,
+    types::message::RuntimeMessage,
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -42,7 +44,6 @@ impl InputConfigTrait for TestConfig {
         Box::new(self.clone())
     }
 }
-
 
 pub struct TestComponent {
     config: InputComponentConfig,

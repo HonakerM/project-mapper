@@ -47,13 +47,14 @@ impl Parse for Input {
             }
             attrs.extend(item.attrs);
             item.attrs = attrs;
-            Ok(Input {implementation: item})
+            Ok(Input {
+                implementation: item,
+            })
         } else {
             Err(input.error("expected trait or impl block"))
         }
     }
 }
-
 
 // pub struct TraitArgs {
 //     pub comp_type: CompType,

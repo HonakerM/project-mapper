@@ -1,11 +1,14 @@
+use std::{
+    cell::RefCell,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
-
-use std::{cell::RefCell, rc::Rc, sync::{Arc, Mutex}};
-
-use project_mapper_core::runtime_config::{effect::common::EffectSrcConfigTrait, shared::ComponentConfig};
 use crate::components::shared::Component;
 use anyhow::Result;
-
+use project_mapper_core::runtime_config::{
+    effect::common::EffectSrcConfigTrait, shared::ComponentConfig,
+};
 
 #[derive(Clone)]
 pub struct ComponentMarker<CFG, CRT> {
@@ -15,11 +18,9 @@ pub struct ComponentMarker<CFG, CRT> {
     /* ... */
 }
 
-
 //pub type DefaultConfig = fn(&mut dyn erased_serde::Deserializer) -> erased_serde::Result<Box<T>>;
 pub type DefaultConfig = fn() -> Result<Box<dyn ComponentConfig>>;
 pub type ConstructComponent = fn(&dyn ComponentConfig) -> Result<Box<dyn Component>>;
-
 
 pub type Marker = ComponentMarker<DefaultConfig, ConstructComponent>;
 
@@ -36,8 +37,6 @@ impl Marker {
         }
     }
 }
-
-
 
 inventory::collect!(Marker);
 
