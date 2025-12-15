@@ -1,24 +1,58 @@
 use std::sync::{Arc, Mutex, mpsc};
 
-use crate::{
+use anyhow::{Error, Result, anyhow};
+use project_mapper_core::runtime_config::{
+    input::InputComponentConfig,
+    shared::{ComponentConfig, Uid},
+};
+use project_mapper_runtime::gst::{Element, element_error, element_warning, glib, prelude::*};
+use project_mapper_runtime::{
     components::{
         branch::BranchControl,
         shared::{Component, ComponentLookupHelper},
     },
+    gst,
     types::message::RuntimeMessage,
 };
-use anyhow::{Error, Result, anyhow};
-use gst::{Element, element_error, element_warning, glib, prelude::*};
-use project_mapper_core::runtime_config::{
-    input::{InputComponentConfig, uri::UriConfig},
-    shared::{ComponentConfig, Uid},
-};
+
+use std::any::Any;
+
+use serde::{Deserialize, Serialize};
+
+use project_mapper_core::runtime_config::input::common::InputConfigTrait;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct UriConfig {
+    pub uri: String,
+}
+
+// Implement InputConfigTrait for TestConfig
+#[typetag::serde]
+impl InputConfigTrait for UriConfig {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn clone_box(&self) -> Box<dyn InputConfigTrait> {
+        Box::new(self.clone())
+    }
+}
+
+impl Default for UriConfig {
+    fn default() -> Self {
+        UriConfig {
+            uri:
+                "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+                    .to_string(),
+        }
+    }
+}
 
 pub struct UriComponent {
     config: InputComponentConfig,
     element: Element,
     branch: BranchControl,
-    pipeline: Option<gst::Pipeline>,
+    pipeline: Option<project_mapper_runtime::gst::Pipeline>,
 }
 
 impl UriComponent {
@@ -133,6 +167,7 @@ impl UriComponent {
     }
 }
 
+#[project_mapper_macro::input_component(UriConfig::default())]
 impl Component for UriComponent {
     // runtime lifecycle functions
     // Construct object

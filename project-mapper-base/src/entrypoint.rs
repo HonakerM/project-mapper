@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::input::TestConfig;
+use crate::input::UriConfig;
 use anyhow::{Context, Result};
 use project_mapper_core::loader::runtime_loader::export_config_json;
 use project_mapper_core::runtime_config::RuntimeConfig;
@@ -11,7 +12,6 @@ use project_mapper_core::runtime_config::effect::fps::FpsConfig;
 use project_mapper_core::runtime_config::effect::gamma::GammaConfig;
 use project_mapper_core::runtime_config::effect::perspective::PerspectiveConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
-use project_mapper_core::runtime_config::input::uri::UriConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::output::window::{WindowConfig, WindowMode};
 use project_mapper_core::types::video::Resolution;
@@ -142,7 +142,7 @@ pub fn run_main() -> Result<()> {
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 72,
+                src_uid: 4,
             },
         ],
     };

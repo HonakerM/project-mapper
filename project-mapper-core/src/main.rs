@@ -1,7 +1,5 @@
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::input::InputComponentConfig;
-use project_mapper_core::runtime_config::input::test::TestConfig;
-use project_mapper_core::runtime_config::input::uri::UriConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::output::window::{
     MonitorConfig, WindowConfig, WindowMode,
@@ -15,20 +13,7 @@ pub fn main() {
     };
 
     let config = RuntimeConfig {
-        inputs: vec![
-            InputComponentConfig {
-                uid: 0,
-                name: "in_comp".to_string(),
-                config: Box::new(TestConfig { fps: 5 }),
-            },
-            InputComponentConfig {
-                uid: 1,
-                name: "in_comp_2".to_string(),
-                config: Box::new(UriConfig {
-                    uri: "test".to_string(),
-                }),
-            },
-        ],
+        inputs: vec![],
         effects: vec![],
         outputs: vec![OutputComponentConfig {
             uid: 1,

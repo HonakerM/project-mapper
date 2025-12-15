@@ -25,12 +25,7 @@ pub enum CompType {
     Output,
 }
 
-pub fn process(
-    comp_type: CompType,
-    config: impl ComponentConfig,
-    input: ImplInput,
-    args: ImplArgs,
-) -> TokenStream {
+pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenStream {
     let mut item_impl = input.implementation.clone();
     let mut expanded = quote! {
         #item_impl

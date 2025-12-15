@@ -9,7 +9,6 @@ use project_mapper_core::runtime_config::{
         EffectComponentConfig, balance::BalanceConfig, fps::FpsConfig, gamma::GammaConfig,
         perspective::PerspectiveConfig,
     },
-    input::{InputComponentConfig, test::TestConfig, uri::UriConfig},
     output::{OutputComponentConfig, window::WindowConfig},
     shared::ComponentConfig,
 };
@@ -19,7 +18,6 @@ use crate::components::{
         balance::BalanceComponent, fps::FpsComponent, gamma::GammaComponent,
         perspective::PerspectiveComponent,
     },
-    input::uri::UriComponent,
     marker::{ConstructComponent, Marker},
     output::window::WindowComponent,
     shared::{Component, ComponentFactory},
@@ -33,14 +31,6 @@ pub fn create_default_component(config: &dyn ComponentConfig) -> Result<Box<dyn 
             Ok(Box::new(comp))
         } else {
             let unknown_name = type_name_of_val(&output_cfg.config);
-            Err(anyhow!("Unknown config type: {}", unknown_name))
-        }
-    } else if let Some(input_cfg) = config.as_any().downcast_ref::<InputComponentConfig>() {
-        if let Some(_) = input_cfg.config.as_any().downcast_ref::<UriConfig>() {
-            let comp = UriComponent::new(config)?;
-            Ok(Box::new(comp))
-        } else {
-            let unknown_name = type_name_of_val(&input_cfg.config);
             Err(anyhow!("Unknown config type: {}", unknown_name))
         }
     } else if let Some(effect_cfg) = config.as_any().downcast_ref::<EffectComponentConfig>() {
