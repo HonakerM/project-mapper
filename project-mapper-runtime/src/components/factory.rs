@@ -9,11 +9,7 @@ use project_mapper_core::runtime_config::{
 };
 
 use crate::components::{
-<<<<<<< HEAD
-    marker::{ConstructComponent, Marker},
-=======
     marker::{ConstructComponent, Marker, type_id_of},
->>>>>>> 476a3f9 (Update for Available Config)
     shared::{Component, ComponentFactory},
 };
 use anyhow::{Error, Result, anyhow};

@@ -11,14 +11,9 @@ use crate::{
 use anyhow::Result;
 use inventory;
 use proc_macro::TokenStream;
-<<<<<<< HEAD
-use project_mapper_core::runtime_config::{
-    effect::common::EffectSrcConfigTrait, shared::ComponentConfig,
-=======
 use project_mapper_core::{
     available_config,
     runtime_config::{effect::common::EffectSrcConfigTrait, shared::ComponentConfig},
->>>>>>> 476a3f9 (Update for Available Config)
 };
 use quote::quote;
 use syn::parse_macro_input;
@@ -27,11 +22,7 @@ use syn::{Error, ItemImpl, Type, TypePath, parse_quote};
 #[derive(Clone)]
 pub enum CompType {
     Input,
-<<<<<<< HEAD
-    Effect(Box<dyn EffectSrcConfigTrait>),
-=======
     Effect,
->>>>>>> 476a3f9 (Update for Available Config)
     Output,
 }
 
