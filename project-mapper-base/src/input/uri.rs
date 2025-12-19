@@ -167,7 +167,7 @@ impl UriComponent {
     }
 }
 
-#[project_mapper_macro::input_component(UriConfig::default())]
+#[project_mapper_macro::input_component(config={UriConfig::default()})]
 impl Component for UriComponent {
     // runtime lifecycle functions
     // Construct object

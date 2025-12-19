@@ -236,7 +236,7 @@ impl WindowComponent {
     }
 }
 
-#[project_mapper_macro::output_component(WindowConfig::default())]
+#[project_mapper_macro::output_component(config={WindowConfig::default()}, requires_refresh={true})]
 impl Component for WindowComponent {
     // runtime lifecycle functions
     // Construct object

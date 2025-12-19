@@ -6,7 +6,10 @@ use project_mapper_core::runtime_config::{
     effect::EffectComponentConfig,
     shared::{ComponentConfig, Uid},
 };
-use project_mapper_runtime::gst::{Element, prelude::*};
+use project_mapper_runtime::{
+    components::marker::schemars::JsonSchema,
+    gst::{Element, prelude::*},
+};
 use project_mapper_runtime::{
     components::{
         branch::BranchControl,
@@ -15,6 +18,7 @@ use project_mapper_runtime::{
     gst,
     types::message::RuntimeMessage,
 };
+use utoipa::{OpenApi, ToSchema};
 
 use std::any::Any;
 
@@ -24,7 +28,7 @@ use project_mapper_core::runtime_config::{
     effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
 };
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, ToSchema)]
 #[serde(default)]
 pub struct BalanceConfig {
     #[serde(deserialize_with = "deserialize_bounded_brightness")]

@@ -11,8 +11,14 @@ use crate::{
 use anyhow::Result;
 use inventory;
 use proc_macro::TokenStream;
+<<<<<<< HEAD
 use project_mapper_core::runtime_config::{
     effect::common::EffectSrcConfigTrait, shared::ComponentConfig,
+=======
+use project_mapper_core::{
+    available_config,
+    runtime_config::{effect::common::EffectSrcConfigTrait, shared::ComponentConfig},
+>>>>>>> 476a3f9 (Update for Available Config)
 };
 use quote::quote;
 use syn::parse_macro_input;
@@ -21,7 +27,11 @@ use syn::{Error, ItemImpl, Type, TypePath, parse_quote};
 #[derive(Clone)]
 pub enum CompType {
     Input,
+<<<<<<< HEAD
     Effect(Box<dyn EffectSrcConfigTrait>),
+=======
+    Effect,
+>>>>>>> 476a3f9 (Update for Available Config)
     Output,
 }
 
@@ -57,7 +67,48 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
                 )
             )
         },
-        CompType::Effect(_) => quote! {},
+        CompType::Effect => quote! {},
+    };
+
+    let mut available_config_expr = if let Some(expr) = args.available_expr {
+        expr.clone()
+    } else {
+        config_expr.clone()
+    };
+    let mut requires_refresh_expr = if let Some(expr) = args.requires_refresh_expr {
+        quote! { #expr}
+    } else {
+        quote! { false }
+    };
+
+    let mut available_config_val = match comp_type {
+        CompType::Input => quote! {
+             Result::Ok(
+                 Box::new(
+                     project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Input(
+                         project_mapper_runtime::project_mapper_core::available_config::config::AvailableInputConfig::new(
+                             project_mapper_runtime::components::marker::name_of(#available_config_expr),
+                             project_mapper_runtime::components::marker::schemars::schema_for_value!(#available_config_expr),
+                             #requires_refresh_expr
+                         )
+                     )
+                 )
+             )
+        },
+        CompType::Output => quote! {
+            Result::Ok(
+                Box::new(
+                    project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Output(
+                        project_mapper_runtime::project_mapper_core::available_config::config::AvailableOutputConfig::new(
+                            project_mapper_runtime::components::marker::name_of(#available_config_expr),
+                            project_mapper_runtime::components::marker::schemars::schema_for_value!(#available_config_expr),
+                            #requires_refresh_expr
+                        )
+                    )
+                )
+            )
+        },
+        CompType::Effect => quote! {},
     };
 
     //config_expr
@@ -78,11 +129,12 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
     expanded.extend(
         quote! {
             project_mapper_runtime::components::factory::inventory::submit! {
-                project_mapper_runtime::components::marker::ComponentMarker::<project_mapper_runtime::components::marker::DefaultConfig, project_mapper_runtime::components::marker::ConstructComponent>::new(
+                project_mapper_runtime::components::marker::ComponentMarker::<project_mapper_runtime::components::marker::DefaultConfig, project_mapper_runtime::components::marker::ConstructComponent, project_mapper_runtime::components::marker::AvailablaeConfig>::new(
                     #type_name,
                     #type_id,
                     ||{#config_val},
                     |cfg|{Result::Ok(Box::new(#ident::new(cfg)?))},
+                    ||{#available_config_val},
                 )
             }
         }

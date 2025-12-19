@@ -8,3 +8,6 @@ pub mod runtime_config;
 
 #[path = "./loader/mod.rs"]
 pub mod loader;
+
+#[path = "./available_config/mod.rs"]
+pub mod available_config;

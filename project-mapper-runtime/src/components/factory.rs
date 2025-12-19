@@ -9,27 +9,67 @@ use project_mapper_core::runtime_config::{
 };
 
 use crate::components::{
+<<<<<<< HEAD
     marker::{ConstructComponent, Marker},
+=======
+    marker::{ConstructComponent, Marker, type_id_of},
+>>>>>>> 476a3f9 (Update for Available Config)
     shared::{Component, ComponentFactory},
 };
 use anyhow::{Error, Result, anyhow};
 
 // default factory for creating components
 pub struct DefaultComponentFactory {
-    lookup_factory: Vec<ConstructComponent>,
+    input_components: Vec<ConstructComponent>,
+    effect_components: Vec<ConstructComponent>,
+    output_components: Vec<ConstructComponent>,
 }
 
 impl Default for DefaultComponentFactory {
     fn default() -> Self {
-        let mut factory = vec![];
+        let mut input_components = Vec::new();
+        let mut effect_components = Vec::new();
+        let mut output_components = Vec::new();
 
         println!("Looking For Components");
         for marker in inventory::iter::<Marker> {
-            factory.push(marker.component_creator.clone());
+            let boxed_config = (marker.config)().unwrap();
+
+            println!(
+                "Found Component Marker: {} for Config: {}",
+                marker.name,
+                type_name_of_val(boxed_config.as_ref())
+            );
+
+            if boxed_config
+                .as_any()
+                .downcast_ref::<project_mapper_core::runtime_config::input::InputComponentConfig>()
+                .is_some()
+            {
+                input_components.push(marker.component_creator.clone());
+            } else if boxed_config
+                .as_any()
+                .downcast_ref::<project_mapper_core::runtime_config::effect::EffectComponentConfig>(
+                )
+                .is_some()
+            {
+                effect_components.push(marker.component_creator.clone());
+            } else if boxed_config
+                .as_any()
+                .downcast_ref::<project_mapper_core::runtime_config::output::OutputComponentConfig>(
+                )
+                .is_some()
+            {
+                output_components.push(marker.component_creator.clone());
+            } else {
+                panic!("Unknown component config type");
+            }
         }
 
         DefaultComponentFactory {
-            lookup_factory: factory,
+            input_components,
+            effect_components,
+            output_components,
         }
     }
 }
@@ -37,7 +77,30 @@ impl Default for DefaultComponentFactory {
 impl ComponentFactory for DefaultComponentFactory {
     fn create_component(&self, config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
         println!("Trying to find component: {:?}", config);
-        for constructor in &self.lookup_factory {
+
+        let vec_to_iter = if config
+            .as_any()
+            .downcast_ref::<project_mapper_core::runtime_config::input::InputComponentConfig>()
+            .is_some()
+        {
+            &self.input_components
+        } else if config
+            .as_any()
+            .downcast_ref::<project_mapper_core::runtime_config::effect::EffectComponentConfig>()
+            .is_some()
+        {
+            &self.effect_components
+        } else if config
+            .as_any()
+            .downcast_ref::<project_mapper_core::runtime_config::output::OutputComponentConfig>()
+            .is_some()
+        {
+            &self.output_components
+        } else {
+            panic!("Unknown component config type");
+        };
+
+        for (constructor) in vec_to_iter.iter() {
             match constructor(config) {
                 Ok(comp) => {
                     return Ok(comp);

@@ -3,3 +3,6 @@ pub mod video;
 
 #[path = "./errors.rs"]
 pub mod errors;
+
+#[path = "./openapi.rs"]
+pub mod openapi;

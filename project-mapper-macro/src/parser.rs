@@ -14,6 +14,9 @@ mod kw {
     syn::custom_keyword!(default_variant);
     syn::custom_keyword!(deny_unknown_fields);
     syn::custom_keyword!(comp_type);
+    syn::custom_keyword!(config);
+    syn::custom_keyword!(available);
+    syn::custom_keyword!(requires_refresh);
 }
 
 pub struct ImplInput {
@@ -59,15 +62,82 @@ impl Parse for ImplInput {
 
 pub struct ImplArgs {
     pub config_expr: syn::Expr,
+    pub available_expr: Option<syn::Expr>,
+    pub requires_refresh_expr: Option<syn::Expr>,
 }
-
 impl Parse for ImplArgs {
     fn parse(input: ParseStream) -> Result<Self> {
-        let config_expr: syn::Expr = input.parse()?;
-        Ok(Self { config_expr })
+        let mut config_expr = None;
+        let mut available_expr = None;
+        let mut requires_refresh_expr = None;
+
+        while !input.is_empty() {
+            let lookahead = input.lookahead1();
+
+            if lookahead.peek(kw::config) {
+                let _: kw::config = input.parse()?;
+                input.parse::<Token![=]>()?;
+
+                // Always expect braces
+                let content;
+                syn::braced!(content in input);
+                let value: syn::Expr = content.parse()?;
+
+                if config_expr.is_some() {
+                    return Err(syn::Error::new(input.span(), "duplicate argument: config"));
+                }
+                config_expr = Some(value);
+            } else if lookahead.peek(kw::available) {
+                let _: kw::available = input.parse()?;
+                input.parse::<Token![=]>()?;
+
+                // Always expect braces
+                let content;
+                syn::braced!(content in input);
+                let value: syn::Expr = content.parse()?;
+
+                if available_expr.is_some() {
+                    return Err(syn::Error::new(
+                        input.span(),
+                        "duplicate argument: available",
+                    ));
+                }
+                available_expr = Some(value);
+            } else if lookahead.peek(kw::requires_refresh) {
+                let _: kw::requires_refresh = input.parse()?;
+                input.parse::<Token![=]>()?;
+
+                // Always expect braces
+                let content;
+                syn::braced!(content in input);
+                let value: syn::Expr = content.parse()?;
+
+                if requires_refresh_expr.is_some() {
+                    return Err(syn::Error::new(
+                        input.span(),
+                        "duplicate argument: requires_refresh",
+                    ));
+                }
+                requires_refresh_expr = Some(value);
+            } else {
+                return Err(lookahead.error());
+            }
+
+            if !input.is_empty() {
+                input.parse::<Token![,]>()?;
+            }
+        }
+
+        let config_expr = config_expr
+            .ok_or_else(|| syn::Error::new(input.span(), "missing required argument: config"))?;
+
+        Ok(Self {
+            config_expr,
+            available_expr,
+            requires_refresh_expr,
+        })
     }
 }
-
 // pub struct TraitArgs {
 //     pub comp_type: CompType,
 // }

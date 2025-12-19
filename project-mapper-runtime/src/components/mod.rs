@@ -19,3 +19,6 @@ pub mod runtime;
 
 #[path = "./marker.rs"]
 pub mod marker;
+
+#[path = "./available_config.rs"]
+pub mod available_config;
