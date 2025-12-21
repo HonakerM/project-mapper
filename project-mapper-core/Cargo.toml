@@ -16,9 +16,6 @@ petgraph = {version = "0.8.2", optional = true}
 inventory = "0.3.21"
 const-default = "1.0.0"
 
-schemars = "1.1.0"
-
-
 [features]
 default = ["change-tracking"]
 change-tracking = ["petgraph"]

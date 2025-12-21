@@ -9,14 +9,10 @@ use syn::{
 use crate::CompType;
 
 mod kw {
-    syn::custom_keyword!(tag);
-    syn::custom_keyword!(content);
-    syn::custom_keyword!(default_variant);
-    syn::custom_keyword!(deny_unknown_fields);
-    syn::custom_keyword!(comp_type);
     syn::custom_keyword!(config);
     syn::custom_keyword!(available);
     syn::custom_keyword!(requires_refresh);
+    syn::custom_keyword!(schema);
 }
 
 pub struct ImplInput {
@@ -63,12 +59,14 @@ impl Parse for ImplInput {
 pub struct ImplArgs {
     pub config_expr: syn::Expr,
     pub available_expr: Option<syn::Expr>,
+    pub schema_expr: Option<syn::Expr>,
     pub requires_refresh_expr: Option<syn::Expr>,
 }
 impl Parse for ImplArgs {
     fn parse(input: ParseStream) -> Result<Self> {
         let mut config_expr = None;
         let mut available_expr = None;
+        let mut schema_expr = None;
         let mut requires_refresh_expr = None;
 
         while !input.is_empty() {
@@ -103,6 +101,19 @@ impl Parse for ImplArgs {
                     ));
                 }
                 available_expr = Some(value);
+            } else if lookahead.peek(kw::schema) {
+                let _: kw::schema = input.parse()?;
+                input.parse::<Token![=]>()?;
+
+                // Always expect braces
+                let content;
+                syn::braced!(content in input);
+                let value: syn::Expr = content.parse()?;
+
+                if schema_expr.is_some() {
+                    return Err(syn::Error::new(input.span(), "duplicate argument: schema"));
+                }
+                schema_expr = Some(value);
             } else if lookahead.peek(kw::requires_refresh) {
                 let _: kw::requires_refresh = input.parse()?;
                 input.parse::<Token![=]>()?;
@@ -135,6 +146,7 @@ impl Parse for ImplArgs {
             config_expr,
             available_expr,
             requires_refresh_expr,
+            schema_expr,
         })
     }
 }

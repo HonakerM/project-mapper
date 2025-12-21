@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 
 use crate::components::marker::{AvailablaeConfig as ConstructAvailablaeConfigFn, Marker};
-use project_mapper_core::available_config::config::{
-    AvailableConfig, AvailableConfigTrait, AvailableConfigType, AvailableEffectConfig,
-    AvailableInputConfig, AvailableOutputConfig,
+use project_mapper_core::available_config::{
+    config::{AvailableConfig, AvailableConfigTrait, AvailableConfigType},
+    effect::AvailableEffectConfig,
+    input::AvailableInputConfig,
+    output::AvailableOutputConfig,
 };
 
 #[derive(PartialEq, Eq, Hash)]
@@ -13,8 +15,8 @@ enum LocalCompType {
     Output,
 }
 pub struct AvailableConfigHelper {
-    pub result_map: HashMap<(String, LocalCompType), Box<dyn AvailableConfigTrait>>,
-    pub recreate_vec: Vec<Marker>,
+    result_map: HashMap<(String, LocalCompType), Box<dyn AvailableConfigTrait>>,
+    recreate_vec: Vec<Marker>,
 }
 
 impl AvailableConfigHelper {

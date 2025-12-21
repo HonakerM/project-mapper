@@ -14,6 +14,7 @@ use project_mapper_runtime::{
     gst,
     types::message::RuntimeMessage,
 };
+use schemars::{JsonSchema, schema_for};
 
 use std::any::Any;
 
@@ -21,7 +22,7 @@ use serde::{Deserialize, Serialize};
 
 use project_mapper_core::runtime_config::input::common::InputConfigTrait;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub struct UriConfig {
     pub uri: String,
 }
@@ -167,7 +168,7 @@ impl UriComponent {
     }
 }
 
-#[project_mapper_macro::input_component(config={UriConfig::default()})]
+#[project_mapper_macro::input_component(config = {UriConfig::default()}, schema = {serde_json::to_value(schema_for!(UriConfig)).unwrap()})]
 impl Component for UriComponent {
     // runtime lifecycle functions
     // Construct object

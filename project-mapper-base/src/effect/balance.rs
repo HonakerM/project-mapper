@@ -18,7 +18,6 @@ use project_mapper_runtime::{
     gst,
     types::message::RuntimeMessage,
 };
-use utoipa::{OpenApi, ToSchema};
 
 use std::any::Any;
 
@@ -28,7 +27,7 @@ use project_mapper_core::runtime_config::{
     effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
 };
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 #[serde(default)]
 pub struct BalanceConfig {
     #[serde(deserialize_with = "deserialize_bounded_brightness")]

@@ -6,10 +6,12 @@ use std::{
     ops::RangeTo,
 };
 
-use schemars::Schema;
 use serde::{Deserialize, Serialize};
 
 use crate::{
+    available_config::{
+        effect::AvailableEffectConfig, input::AvailableInputConfig, output::AvailableOutputConfig,
+    },
     runtime_config::{
         effect::EffectComponentConfig,
         input::InputComponentConfig,
@@ -36,91 +38,6 @@ pub struct AvailableConfig {
     pub inputs: Vec<AvailableInputConfig>,
     pub effects: Vec<AvailableEffectConfig>,
     pub outputs: Vec<AvailableOutputConfig>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct AvailableInputConfig {
-    pub type_name: String,
-    pub config_schema: Schema,
-    pub requires_refresh: bool,
-}
-
-impl AvailableInputConfig {
-    pub const fn new(type_name: String, config_schema: Schema, requires_refresh: bool) -> Self {
-        Self {
-            type_name,
-            config_schema,
-            requires_refresh,
-        }
-    }
-}
-
-impl AvailableConfigTrait for AvailableInputConfig {
-    fn requires_refresh(&self) -> bool {
-        self.requires_refresh
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct AvailableEffectConfig {
-    pub type_name: String,
-    pub config_schema: Schema,
-    pub src_schema: Schema,
-    pub requires_refresh: bool,
-}
-
-impl AvailableEffectConfig {
-    pub const fn new(
-        type_name: String,
-        config_schema: Schema,
-        src_schema: Schema,
-        requires_refresh: bool,
-    ) -> Self {
-        Self {
-            type_name,
-            config_schema,
-            src_schema,
-            requires_refresh,
-        }
-    }
-}
-
-impl AvailableConfigTrait for AvailableEffectConfig {
-    fn requires_refresh(&self) -> bool {
-        self.requires_refresh
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct AvailableOutputConfig {
-    pub type_name: String,
-    pub config_schema: Schema,
-    pub requires_refresh: bool,
-}
-
-impl AvailableOutputConfig {
-    pub const fn new(type_name: String, config_schema: Schema, requires_refresh: bool) -> Self {
-        Self {
-            type_name,
-            config_schema,
-            requires_refresh,
-        }
-    }
-}
-
-impl AvailableConfigTrait for AvailableOutputConfig {
-    fn requires_refresh(&self) -> bool {
-        self.requires_refresh
-    }
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
 }
 
 pub enum AvailableConfigType {

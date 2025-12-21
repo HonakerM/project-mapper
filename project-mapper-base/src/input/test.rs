@@ -1,6 +1,7 @@
 use std::any::Any;
 
 use project_mapper_core::runtime_config::input::common::InputConfigTrait;
+use schemars::{JsonSchema, schema_for};
 use serde::{Deserialize, Serialize};
 
 use std::sync::mpsc;
@@ -20,7 +21,7 @@ use project_mapper_runtime::{
     types::message::RuntimeMessage,
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(default)]
 
 pub struct TestConfig {
@@ -52,7 +53,7 @@ pub struct TestComponent {
     branch: BranchControl,
 }
 
-#[project_mapper_macro::input_component(config = {TestConfig::default()}, available = {TestConfig::default()})]
+#[project_mapper_macro::input_component(config = {TestConfig::default()}, schema = {serde_json::to_value(schema_for!(TestConfig)).unwrap()})]
 impl Component for TestComponent {
     // runtime lifecycle functions
     // Construct object

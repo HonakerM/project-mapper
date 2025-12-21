@@ -36,6 +36,8 @@ use project_mapper_runtime::gst_video::prelude::*;
 use project_mapper_runtime::types::message::RuntimeMessage;
 use raw_window_handle::HasWindowHandle;
 use raw_window_handle::RawWindowHandle;
+use schemars::json_schema;
+use schemars::{JsonSchema, schema_for};
 use winit::event::Event;
 use winit::event::WindowEvent;
 use winit::event_loop;
@@ -234,9 +236,17 @@ impl WindowComponent {
 
         Ok(())
     }
+
+    fn generate_schema() -> serde_json::Value {
+        let schema = json_schema!({
+            "description": "Some Window Config",
+            "type": ["object"]
+        });
+        serde_json::to_value(&schema).unwrap()
+    }
 }
 
-#[project_mapper_macro::output_component(config={WindowConfig::default()}, requires_refresh={true})]
+#[project_mapper_macro::output_component(config={WindowConfig::default()}, schema={WindowComponent::generate_schema()}, requires_refresh={true})]
 impl Component for WindowComponent {
     // runtime lifecycle functions
     // Construct object

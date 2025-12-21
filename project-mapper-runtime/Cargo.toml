@@ -32,6 +32,7 @@ inventory = "0.3.21"
 serde.workspace = true
 typetag.workspace = true
 schemars = "1.1.0"
+serde_json = "1.0.145"
 
 [features]
 default = ["http-receiver"]

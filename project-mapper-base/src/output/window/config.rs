@@ -6,6 +6,7 @@ use project_mapper_core::{
     runtime_config::output::common::OutputConfigTrait,
     types::video::{RefreshRate, Resolution},
 };
+use schemars::{JsonSchema, Schema, SchemaGenerator, json_schema, schema_for};
 
 // struct that identifies a specific monitor and it's desired config.
 #[derive(Serialize, Deserialize, Debug, Clone)]

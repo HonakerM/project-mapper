@@ -61,11 +61,6 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
         CompType::Effect => quote! {},
     };
 
-    let mut available_config_expr = if let Some(expr) = args.available_expr {
-        expr.clone()
-    } else {
-        config_expr.clone()
-    };
     let mut requires_refresh_expr = if let Some(expr) = args.requires_refresh_expr {
         quote! { #expr}
     } else {
@@ -73,32 +68,66 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
     };
 
     let mut available_config_val = match comp_type {
-        CompType::Input => quote! {
-             Result::Ok(
-                 Box::new(
-                     project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Input(
-                         project_mapper_runtime::project_mapper_core::available_config::config::AvailableInputConfig::new(
-                             project_mapper_runtime::components::marker::name_of(#available_config_expr),
-                             project_mapper_runtime::components::marker::schemars::schema_for_value!(#available_config_expr),
-                             #requires_refresh_expr
-                         )
-                     )
-                 )
-             )
-        },
-        CompType::Output => quote! {
-            Result::Ok(
-                Box::new(
-                    project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Output(
-                        project_mapper_runtime::project_mapper_core::available_config::config::AvailableOutputConfig::new(
-                            project_mapper_runtime::components::marker::name_of(#available_config_expr),
-                            project_mapper_runtime::components::marker::schemars::schema_for_value!(#available_config_expr),
-                            #requires_refresh_expr
+        CompType::Input => {
+            let mut available_config_expr = if let Some(expr) = args.available_expr {
+                quote! {
+                    #expr
+                }
+            } else {
+                if let Some(schema) = args.schema_expr {
+                    quote! {
+                        project_mapper_runtime::project_mapper_core::available_config::input::AvailableInputConfig::from_input_config(
+                            Box::new(#config_expr),
+                            project_mapper_runtime::project_mapper_core::types::openapi::OpenAPISchema::try_from(#schema).unwrap(),
+                        )
+                    }
+                } else {
+                    panic!(
+                        "Input components must provide a schema or overal config expr for available config generation"
+                    );
+                }
+            };
+
+            quote! {
+                Result::Ok(
+                    Box::new(
+                        project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Input(
+                            #available_config_expr
                         )
                     )
                 )
-            )
-        },
+            }
+        }
+        CompType::Output => {
+            let mut available_config_expr = if let Some(expr) = args.available_expr {
+                quote! {
+                    #expr
+                }
+            } else {
+                if let Some(schema) = args.schema_expr {
+                    quote! {
+                        project_mapper_runtime::project_mapper_core::available_config::output::AvailableOutputConfig::from_output_config(
+                            Box::new(#config_expr),
+                            project_mapper_runtime::project_mapper_core::types::openapi::OpenAPISchema::try_from(#schema).unwrap(),
+                        )
+                    }
+                } else {
+                    panic!(
+                        "Output components must provide a schema or overal config expr for available config generation"
+                    );
+                }
+            };
+
+            quote! {
+                Result::Ok(
+                    Box::new(
+                        project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Output(
+                            #available_config_expr
+                        )
+                    )
+                )
+            }
+        }
         CompType::Effect => quote! {},
     };
 
