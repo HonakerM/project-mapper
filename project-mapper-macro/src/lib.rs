@@ -8,7 +8,6 @@ mod parser;
 mod utils;
 
 use proc_macro::TokenStream;
-use project_mapper_core::runtime_config::input::InputComponentConfig;
 use syn::parse_macro_input;
 
 use crate::tags::component::CompType;

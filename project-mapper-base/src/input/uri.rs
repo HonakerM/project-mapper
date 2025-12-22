@@ -1,4 +1,4 @@
-use std::sync::{Arc, Mutex, mpsc};
+use std::sync::mpsc;
 
 use anyhow::{Error, Result, anyhow};
 use project_mapper_core::runtime_config::{

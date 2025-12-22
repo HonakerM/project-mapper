@@ -28,11 +28,9 @@ pub struct FpsComponent {
 
 use std::any::Any;
 
-use serde::{Deserialize, Deserializer, Serialize, de};
+use serde::{Deserialize, Serialize};
 
-use project_mapper_core::runtime_config::{
-    effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
-};
+use project_mapper_core::runtime_config::effect::common::EffectConfigTrait;
 
 #[derive(Serialize, Deserialize, Debug, Default, Clone, JsonSchema)]
 #[serde(default)]

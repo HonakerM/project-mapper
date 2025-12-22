@@ -1,7 +1,7 @@
 use anyhow::{Error, Result, anyhow};
 use winit::{
-    event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy},
-    monitor::{MonitorHandle, VideoMode, VideoModeHandle},
+    event_loop::ActiveEventLoop,
+    monitor::{MonitorHandle, VideoModeHandle},
 };
 
 use crate::output::window::config::MonitorConfig;

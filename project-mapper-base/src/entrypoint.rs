@@ -30,7 +30,7 @@ pub fn run_main() -> Result<()> {
         height: 1080,
     };
 
-    let mut config = RuntimeConfig {
+    let config = RuntimeConfig {
         inputs: vec![InputComponentConfig {
             uid: 0,
             name: "test_comp".to_string(),

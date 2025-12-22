@@ -3,7 +3,7 @@ use std::sync::mpsc;
 
 use gst::Pipeline;
 use gst::glib::object::Cast;
-use gst::prelude::{ElementExt, GstBinExt};
+use gst::prelude::GstBinExt;
 use gst_video::prelude::VideoOverlayExtManual;
 use log::info;
 use project_mapper_core::runtime_config::shared::Uid;
@@ -17,7 +17,7 @@ use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::output::WindowConfig;
 use crate::output::window::config::WindowMode;
-use crate::output::window::state::{PROXY_WINDOW_STATE, WindowRequest, WinitMessage};
+use crate::output::window::state::{WindowRequest, WinitMessage};
 use crate::output::window::utils::get_monitor_by_name;
 use crate::output::window::utils::get_video_mode_for_config;
 use anyhow::{Context as _, Error, Result};

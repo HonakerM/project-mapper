@@ -1,5 +1,4 @@
-use quote::quote;
-use syn::{Error, ItemImpl, Type, TypePath, parse_quote};
+use syn::{Type, TypePath};
 
 pub fn type_name(mut ty: &Type) -> Option<String> {
     loop {

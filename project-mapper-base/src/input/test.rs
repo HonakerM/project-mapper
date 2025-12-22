@@ -11,7 +11,7 @@ use project_mapper_core::runtime_config::{
     input::InputComponentConfig,
     shared::{ComponentConfig, Uid},
 };
-use project_mapper_runtime::gst::{Element, info, prelude::*};
+use project_mapper_runtime::gst::{Element, prelude::*};
 use project_mapper_runtime::{
     components::{
         branch::BranchControl,

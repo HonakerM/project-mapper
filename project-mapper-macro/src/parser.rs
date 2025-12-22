@@ -1,12 +1,6 @@
-use project_mapper_core::runtime_config::input::common::InputConfigTrait;
 use quote::quote;
 use syn::parse::{Parse, ParseStream, Result};
-use syn::{
-    Attribute, Error, Generics, ImplItem, ItemImpl, ItemTrait, LitStr, Token, TraitItem, Type,
-    TypeParamBound, Visibility, WherePredicate,
-};
-
-use crate::CompType;
+use syn::{Attribute, Error, ImplItem, ItemImpl, Token, Visibility};
 
 mod kw {
     syn::custom_keyword!(config);
