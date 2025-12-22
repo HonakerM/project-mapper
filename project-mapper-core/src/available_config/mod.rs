@@ -9,3 +9,6 @@ pub mod effect;
 
 #[path = "./config.rs"]
 pub mod config;
+
+#[path = "./utils.rs"]
+pub mod utils;

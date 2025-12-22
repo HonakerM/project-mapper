@@ -7,10 +7,12 @@ use std::thread;
 
 use anyhow::{Context, Result, anyhow};
 use gst::{DebugGraphDetails, StateChangeSuccess, prelude::*};
+use project_mapper_core::available_config::config::AvailableConfig;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 use project_mapper_core::runtime_config::{RuntimeConfig, output};
 
+use crate::components::available_config::AvailableConfigHelper;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::receivers::receiver::start_receiver;

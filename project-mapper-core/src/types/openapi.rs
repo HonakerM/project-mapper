@@ -3,6 +3,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OpenAPISchema(serde_json::Value);
 
+impl OpenAPISchema {
+    pub fn to_json_value(&self) -> serde_json::Value {
+        self.0.clone()
+    }
+}
 impl TryFrom<serde_json::Value> for OpenAPISchema {
     type Error = String;
     fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {

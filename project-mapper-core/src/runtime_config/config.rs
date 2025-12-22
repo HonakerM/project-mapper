@@ -3,7 +3,7 @@ use std::{
     collections::{HashMap, HashSet},
     error::Error,
     fmt::Display,
-    ops::RangeTo,
+    ops::{RangeFrom, RangeTo},
 };
 
 use serde::{Deserialize, Serialize};
@@ -23,7 +23,6 @@ use anyhow::Result as AnyhowResult;
 
 pub static DEFAULT_ID: Uid = -1;
 pub static DEFAULT_NAME: &str = "DefaultRuntimeComponent";
-pub static UNUSED_RANGE: RangeTo<Uid> = (..0);
 
 // Top-Level Config object for the runtime
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

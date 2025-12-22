@@ -19,7 +19,7 @@ use crate::{
         shared::{ComponentConfig, Uid},
         utils::{changes::RuntimeConfigChangeTracker, validation::gather_validation_helper_data},
     },
-    types::errors::RuntimeConfigValidationError,
+    types::{errors::RuntimeConfigValidationError, openapi::OpenAPISchema},
 };
 use anyhow::Result as AnyhowResult;
 

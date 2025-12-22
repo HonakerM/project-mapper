@@ -9,7 +9,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    available_config::config::AvailableConfigTrait,
+    available_config::{config::AvailableConfigTrait, utils::insert_type_into_config},
     runtime_config::{
         effect::{
             EffectComponentConfig,
@@ -63,6 +63,18 @@ impl AvailableEffectConfig {
             config_schema: config_schema,
             requires_refresh: false,
         }
+    }
+
+    pub fn src_schema(&self) -> OpenAPISchema {
+        let mut local_schema = self.src_schema.to_json_value();
+        insert_type_into_config(&mut local_schema, self.src_name.clone());
+        OpenAPISchema::try_from(local_schema).unwrap()
+    }
+
+    pub fn config_schema(&self) -> OpenAPISchema {
+        let mut local_schema = self.config_schema.to_json_value();
+        insert_type_into_config(&mut local_schema, self.config_name.clone());
+        OpenAPISchema::try_from(local_schema).unwrap()
     }
 }
 

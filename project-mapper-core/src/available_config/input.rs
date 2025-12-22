@@ -9,7 +9,10 @@ use std::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    available_config::config::AvailableConfigTrait,
+    available_config::{
+        config::AvailableConfigTrait,
+        utils::{construct_base_schema, insert_type_into_config},
+    },
     runtime_config::{
         effect::EffectComponentConfig,
         input::{InputComponentConfig, common::InputConfigTrait},
@@ -47,6 +50,12 @@ impl AvailableInputConfig {
             config_schema: schema,
             requires_refresh: false,
         }
+    }
+
+    pub fn schema(&self) -> OpenAPISchema {
+        let mut local_schema = self.config_schema.to_json_value();
+        insert_type_into_config(&mut local_schema, self.type_name.clone());
+        OpenAPISchema::try_from(local_schema).unwrap()
     }
 }
 

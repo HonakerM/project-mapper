@@ -240,7 +240,7 @@ impl WindowComponent {
     fn generate_schema() -> serde_json::Value {
         let schema = json_schema!({
             "description": "Some Window Config",
-            "type": ["object"]
+            "type": "object"
         });
         serde_json::to_value(&schema).unwrap()
     }

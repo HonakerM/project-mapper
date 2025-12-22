@@ -1,6 +1,16 @@
-use std::{any::Any, fmt::Debug, hash::Hash};
+use std::{
+    any::Any,
+    fmt::Debug,
+    hash::Hash,
+    ops::{RangeFrom, RangeTo},
+};
 
 pub type Uid = i32;
+
+pub static UID_MAX: Uid = std::i32::MAX;
+pub static UID_MIN: Uid = 0;
+pub static RESTRICTED_RANGE: RangeTo<Uid> = (..0);
+pub static AVAILABLE_RANGE: RangeFrom<Uid> = (0..);
 
 //Common trait for all types of components
 pub trait ComponentConfig: Debug {
