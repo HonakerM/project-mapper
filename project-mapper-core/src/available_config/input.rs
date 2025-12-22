@@ -44,11 +44,15 @@ impl AvailableInputConfig {
         }
     }
 
-    pub fn from_input_config(config: Box<dyn InputConfigTrait>, schema: OpenAPISchema) -> Self {
+    pub fn from_input_config(
+        config: Box<dyn InputConfigTrait>,
+        schema: OpenAPISchema,
+        requires_refresh: bool,
+    ) -> Self {
         Self {
             type_name: config.typetag_name().to_string(),
             config_schema: schema,
-            requires_refresh: false,
+            requires_refresh: requires_refresh,
         }
     }
 

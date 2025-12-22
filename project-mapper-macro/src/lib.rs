@@ -22,6 +22,14 @@ pub fn input_component(args: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 #[proc_macro_attribute]
+pub fn effect_component(args: TokenStream, input: TokenStream) -> TokenStream {
+    let input = parse_macro_input!(input as parser::ImplInput);
+    let args = parse_macro_input!(args as parser::ImplArgs);
+
+    tags::component::process(CompType::Effect, input, args)
+}
+
+#[proc_macro_attribute]
 pub fn output_component(args: TokenStream, input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as parser::ImplInput);
     let args = parse_macro_input!(args as parser::ImplArgs);

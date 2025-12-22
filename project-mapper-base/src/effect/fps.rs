@@ -2,9 +2,12 @@ use std::sync::mpsc;
 
 use anyhow::{Error, Result, anyhow};
 use log::{debug, info};
-use project_mapper_core::runtime_config::{
-    effect::EffectComponentConfig,
-    shared::{ComponentConfig, Uid},
+use project_mapper_core::{
+    runtime_config::{
+        effect::EffectComponentConfig,
+        shared::{ComponentConfig, Uid},
+    },
+    types::openapi::OpenAPISchema,
 };
 use project_mapper_runtime::gst::{Element, prelude::*};
 use project_mapper_runtime::{
@@ -15,6 +18,7 @@ use project_mapper_runtime::{
     gst,
     types::message::RuntimeMessage,
 };
+use schemars::{JsonSchema, schema_for};
 
 pub struct FpsComponent {
     config: EffectComponentConfig,
@@ -30,7 +34,7 @@ use project_mapper_core::runtime_config::{
     effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
 };
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, JsonSchema)]
 #[serde(default)]
 pub struct FpsConfig {
     pub max_rate: Option<i32>,
@@ -45,6 +49,22 @@ impl EffectConfigTrait for FpsConfig {
 
     fn clone_box(&self) -> Box<dyn EffectConfigTrait> {
         Box::new(self.clone())
+    }
+}
+
+impl FpsConfig {
+    pub fn openapi_schema() -> OpenAPISchema {
+        let mut schema_val = serde_json::to_value(schema_for!(FpsConfig)).unwrap();
+        match schema_val.as_object_mut() {
+            Some(map) => {
+                map.insert(
+                    "description".to_string(),
+                    serde_json::Value::String("Requires src type `default`".to_string()),
+                );
+            }
+            None => {}
+        };
+        schema_val.try_into().unwrap()
     }
 }
 
@@ -65,6 +85,7 @@ impl FpsComponent {
     }
 }
 
+#[project_mapper_macro::effect_component(config = {FpsConfig::default()}, schema = {FpsConfig::openapi_schema().to_json_value()})]
 impl Component for FpsComponent {
     // runtime lifecycle functions
     // Construct object

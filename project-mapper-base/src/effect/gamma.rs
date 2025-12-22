@@ -2,9 +2,12 @@ use std::sync::mpsc;
 
 use anyhow::{Error, Result, anyhow};
 use log::{debug, info};
-use project_mapper_core::runtime_config::{
-    effect::EffectComponentConfig,
-    shared::{ComponentConfig, Uid},
+use project_mapper_core::{
+    runtime_config::{
+        effect::EffectComponentConfig,
+        shared::{ComponentConfig, Uid},
+    },
+    types::openapi::OpenAPISchema,
 };
 use project_mapper_runtime::gst::{Element, prelude::*};
 use project_mapper_runtime::{
@@ -15,6 +18,7 @@ use project_mapper_runtime::{
     gst,
     types::message::RuntimeMessage,
 };
+use schemars::{JsonSchema, schema_for};
 
 use std::any::Any;
 
@@ -24,11 +28,27 @@ use project_mapper_core::runtime_config::{
     effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
 };
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, JsonSchema)]
 #[serde(default)]
 pub struct GammaConfig {
     #[serde(deserialize_with = "deserialize_bounded_gamma")]
     pub gamma: Option<f64>,
+}
+
+impl GammaConfig {
+    pub fn openapi_schema() -> OpenAPISchema {
+        let mut schema_val = serde_json::to_value(schema_for!(GammaConfig)).unwrap();
+        match schema_val.as_object_mut() {
+            Some(map) => {
+                map.insert(
+                    "description".to_string(),
+                    serde_json::Value::String("Requires src type `default`".to_string()),
+                );
+            }
+            None => {}
+        };
+        schema_val.try_into().unwrap()
+    }
 }
 
 // Implement InputConfigTrait for TestConfig
@@ -74,6 +94,8 @@ impl GammaComponent {
         Ok(())
     }
 }
+
+#[project_mapper_macro::effect_component(config = {GammaConfig::default()}, schema = {GammaConfig::openapi_schema().to_json_value()})]
 impl Component for GammaComponent {
     // runtime lifecycle functions
     // Construct object

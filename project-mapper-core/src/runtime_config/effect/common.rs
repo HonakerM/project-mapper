@@ -2,7 +2,13 @@ use std::any::Any;
 
 use serde::{Deserialize, Serialize};
 
-use crate::runtime_config::shared::{ComponentConfig, Uid};
+use crate::{
+    runtime_config::{
+        config::{DEFAULT_ID, DEFAULT_NAME},
+        shared::{ComponentConfig, Uid, uid_openapi_schema},
+    },
+    types::openapi::OpenAPISchema,
+};
 
 // Trait representing an input config
 // ! I don't know if this is good/okay....
@@ -43,6 +49,17 @@ pub struct EffectComponentConfig {
 
     // what source to use for this Effect
     pub srcs: Vec<Box<dyn EffectSrcConfigTrait>>,
+}
+
+impl EffectComponentConfig {
+    pub fn default(config: Box<dyn EffectConfigTrait>, src: Box<dyn EffectSrcConfigTrait>) -> Self {
+        Self {
+            uid: DEFAULT_ID,
+            name: DEFAULT_NAME.to_owned(),
+            config,
+            srcs: vec![src],
+        }
+    }
 }
 
 // Implmement the Shared component trait to allow name/id fetching
@@ -86,5 +103,18 @@ impl EffectSrcConfigTrait for DefaultSrcConfig {
 
     fn clone_box(&self) -> Box<dyn EffectSrcConfigTrait> {
         Box::new(self.clone())
+    }
+}
+
+impl DefaultSrcConfig {
+    pub fn openapi_schema() -> OpenAPISchema {
+        serde_json::json!({
+            "type":"object",
+            "properties":{
+                "uid":uid_openapi_schema()
+            }
+        })
+        .try_into()
+        .unwrap()
     }
 }

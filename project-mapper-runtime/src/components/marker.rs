@@ -53,5 +53,3 @@ pub fn type_id_of<T: 'static>(_val: T) -> TypeId {
 pub fn name_of<T: 'static>(_val: T) -> String {
     type_name::<T>().to_string()
 }
-
-pub extern crate schemars;

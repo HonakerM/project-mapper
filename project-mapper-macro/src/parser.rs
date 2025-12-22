@@ -13,6 +13,8 @@ mod kw {
     syn::custom_keyword!(available);
     syn::custom_keyword!(requires_refresh);
     syn::custom_keyword!(schema);
+    syn::custom_keyword!(src);
+    syn::custom_keyword!(src_schema);
 }
 
 pub struct ImplInput {
@@ -60,6 +62,8 @@ pub struct ImplArgs {
     pub config_expr: syn::Expr,
     pub available_expr: Option<syn::Expr>,
     pub schema_expr: Option<syn::Expr>,
+    pub src_expr: Option<syn::Expr>,
+    pub src_schema_expr: Option<syn::Expr>,
     pub requires_refresh_expr: Option<syn::Expr>,
 }
 impl Parse for ImplArgs {
@@ -68,6 +72,8 @@ impl Parse for ImplArgs {
         let mut available_expr = None;
         let mut schema_expr = None;
         let mut requires_refresh_expr = None;
+        let mut src_expr = None;
+        let mut src_schema_expr = None;
 
         while !input.is_empty() {
             let lookahead = input.lookahead1();
@@ -114,6 +120,35 @@ impl Parse for ImplArgs {
                     return Err(syn::Error::new(input.span(), "duplicate argument: schema"));
                 }
                 schema_expr = Some(value);
+            } else if lookahead.peek(kw::src) {
+                let _: kw::src = input.parse()?;
+                input.parse::<Token![=]>()?;
+
+                // Always expect braces
+                let content;
+                syn::braced!(content in input);
+                let value: syn::Expr = content.parse()?;
+
+                if src_expr.is_some() {
+                    return Err(syn::Error::new(input.span(), "duplicate argument: src"));
+                }
+                src_expr = Some(value);
+            } else if lookahead.peek(kw::src_schema) {
+                let _: kw::src_schema = input.parse()?;
+                input.parse::<Token![=]>()?;
+
+                // Always expect braces
+                let content;
+                syn::braced!(content in input);
+                let value: syn::Expr = content.parse()?;
+
+                if src_schema_expr.is_some() {
+                    return Err(syn::Error::new(
+                        input.span(),
+                        "duplicate argument: src_schema",
+                    ));
+                }
+                src_schema_expr = Some(value);
             } else if lookahead.peek(kw::requires_refresh) {
                 let _: kw::requires_refresh = input.parse()?;
                 input.parse::<Token![=]>()?;
@@ -146,7 +181,9 @@ impl Parse for ImplArgs {
             config_expr,
             available_expr,
             requires_refresh_expr,
+            src_expr,
             schema_expr,
+            src_schema_expr,
         })
     }
 }

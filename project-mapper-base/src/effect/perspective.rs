@@ -2,9 +2,12 @@ use std::sync::mpsc;
 
 use anyhow::{Error, Result, anyhow};
 use log::debug;
-use project_mapper_core::runtime_config::{
-    effect::EffectComponentConfig,
-    shared::{ComponentConfig, Uid},
+use project_mapper_core::{
+    runtime_config::{
+        effect::EffectComponentConfig,
+        shared::{ComponentConfig, Uid},
+    },
+    types::openapi::OpenAPISchema,
 };
 use project_mapper_runtime::gst::{Element, prelude::*};
 use project_mapper_runtime::{
@@ -15,6 +18,7 @@ use project_mapper_runtime::{
     gst,
     types::message::RuntimeMessage,
 };
+use schemars::{JsonSchema, schema_for};
 
 use std::any::Any;
 
@@ -23,10 +27,33 @@ use serde::{Deserialize, Serialize};
 use project_mapper_core::runtime_config::effect::common::EffectConfigTrait;
 
 /// Configuration for the Perspective effect component.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct PerspectiveConfig {
     /// 3x3 transformation matrix in row-major order.
     pub matrix: [f64; 9],
+}
+
+impl PerspectiveConfig {
+    pub fn openapi_schema() -> OpenAPISchema {
+        let mut schema_val = serde_json::to_value(schema_for!(PerspectiveConfig)).unwrap();
+        match schema_val.as_object_mut() {
+            Some(map) => {
+                map.insert(
+                    "description".to_string(),
+                    serde_json::Value::String("Requires src type `default`".to_string()),
+                );
+            }
+            None => {}
+        };
+        schema_val.try_into().unwrap()
+    }
+}
+impl Default for PerspectiveConfig {
+    fn default() -> Self {
+        Self {
+            matrix: [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0],
+        }
+    }
 }
 
 #[typetag::serde]
@@ -55,6 +82,7 @@ impl PerspectiveComponent {
     }
 }
 
+#[project_mapper_macro::effect_component(config = {PerspectiveConfig::default()}, schema = {PerspectiveConfig::openapi_schema().to_json_value()})]
 impl Component for PerspectiveComponent {
     // runtime lifecycle functions
     // Construct object

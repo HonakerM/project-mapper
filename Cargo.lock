@@ -1659,7 +1659,6 @@ dependencies = [
  "log",
  "project-mapper-core",
  "raw-window-handle",
- "schemars",
  "serde",
  "serde_json",
  "simple_logger 2.3.0",

@@ -2,14 +2,16 @@ use std::sync::mpsc;
 
 use anyhow::{Error, Result, anyhow};
 use log::debug;
-use project_mapper_core::runtime_config::{
-    effect::EffectComponentConfig,
-    shared::{ComponentConfig, Uid},
+use project_mapper_core::{
+    runtime_config::{
+        effect::EffectComponentConfig,
+        shared::{ComponentConfig, Uid},
+    },
+    types::openapi::OpenAPISchema,
 };
-use project_mapper_runtime::{
-    components::marker::schemars::JsonSchema,
-    gst::{Element, prelude::*},
-};
+use schemars::{JsonSchema, schema_for};
+
+use project_mapper_runtime::gst::{Element, prelude::*};
 use project_mapper_runtime::{
     components::{
         branch::BranchControl,
@@ -27,7 +29,7 @@ use project_mapper_core::runtime_config::{
     effect::common::EffectConfigTrait, utils::validation::ensure_config_bounds,
 };
 
-#[derive(Serialize, Deserialize, Debug, Default, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone, JsonSchema)]
 #[serde(default)]
 pub struct BalanceConfig {
     #[serde(deserialize_with = "deserialize_bounded_brightness")]
@@ -49,6 +51,22 @@ impl EffectConfigTrait for BalanceConfig {
 
     fn clone_box(&self) -> Box<dyn EffectConfigTrait> {
         Box::new(self.clone())
+    }
+}
+
+impl BalanceConfig {
+    pub fn openapi_schema() -> OpenAPISchema {
+        let mut schema_val = serde_json::to_value(schema_for!(BalanceConfig)).unwrap();
+        match schema_val.as_object_mut() {
+            Some(map) => {
+                map.insert(
+                    "description".to_string(),
+                    serde_json::Value::String("Requires src type `default`".to_string()),
+                );
+            }
+            None => {}
+        };
+        schema_val.try_into().unwrap()
     }
 }
 
@@ -145,6 +163,8 @@ impl BalanceComponent {
         Ok(())
     }
 }
+
+#[project_mapper_macro::effect_component(config = {BalanceConfig::default()}, schema = {BalanceConfig::openapi_schema().to_json_value()})]
 impl Component for BalanceComponent {
     // runtime lifecycle functions
     // Construct object

@@ -51,17 +51,18 @@ impl AvailableEffectConfig {
     }
 
     pub fn from_effect_config(
-        config: &dyn EffectConfigTrait,
-        src: &dyn EffectSrcConfigTrait,
+        config: Box<dyn EffectConfigTrait>,
+        src: Box<dyn EffectSrcConfigTrait>,
         config_schema: OpenAPISchema,
         src_schema: OpenAPISchema,
+        requires_refresh: bool,
     ) -> Self {
         Self {
             src_name: src.typetag_name().to_string(),
             src_schema: src_schema,
             config_name: config.typetag_name().to_string(),
             config_schema: config_schema,
-            requires_refresh: false,
+            requires_refresh: requires_refresh,
         }
     }
 

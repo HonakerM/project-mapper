@@ -26,10 +26,6 @@ use crate::{
 };
 use anyhow::Result as AnyhowResult;
 
-pub static DEFAULT_ID: Uid = -1;
-pub static DEFAULT_NAME: &str = "DefaultRuntimeComponent";
-pub static UNUSED_RANGE: RangeTo<Uid> = (..0);
-
 pub trait AvailableConfigTrait {
     fn as_any(&self) -> &dyn std::any::Any;
     fn requires_refresh(&self) -> bool;

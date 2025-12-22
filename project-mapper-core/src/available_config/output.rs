@@ -41,11 +41,15 @@ impl AvailableOutputConfig {
         }
     }
 
-    pub fn from_output_config(config: Box<dyn OutputConfigTrait>, schema: OpenAPISchema) -> Self {
+    pub fn from_output_config(
+        config: Box<dyn OutputConfigTrait>,
+        schema: OpenAPISchema,
+        requires_refresh: bool,
+    ) -> Self {
         Self {
             type_name: config.typetag_name().to_string(),
             config_schema: schema,
-            requires_refresh: false,
+            requires_refresh: requires_refresh,
         }
     }
 

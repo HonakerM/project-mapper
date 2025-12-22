@@ -5,8 +5,19 @@ use std::{
     ops::{RangeFrom, RangeTo},
 };
 
+use crate::types::openapi::OpenAPISchema;
+
 pub type Uid = i32;
 
+pub fn uid_openapi_schema() -> serde_json::Value {
+    serde_json::json!({
+        "type": "integer",
+        "format":"int32",
+        "description": "The unique identifier for this component instance.",
+        "minimum":UID_MIN,
+        "maximum":UID_MAX,
+    })
+}
 pub static UID_MAX: Uid = std::i32::MAX;
 pub static UID_MIN: Uid = 0;
 pub static RESTRICTED_RANGE: RangeTo<Uid> = (..0);

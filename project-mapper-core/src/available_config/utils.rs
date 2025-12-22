@@ -16,7 +16,7 @@ use crate::{
         effect::EffectComponentConfig,
         input::InputComponentConfig,
         output::OutputComponentConfig,
-        shared::{ComponentConfig, UID_MAX, UID_MIN, Uid},
+        shared::{ComponentConfig, UID_MAX, UID_MIN, Uid, uid_openapi_schema},
         utils::{changes::RuntimeConfigChangeTracker, validation::gather_validation_helper_data},
     },
     types::{errors::RuntimeConfigValidationError, openapi::OpenAPISchema},
@@ -67,13 +67,7 @@ pub fn construct_base_schema() -> OpenAPISchema {
                 "type": "string",
                 "description": "The name of this component instance"
             },
-            "id": {
-                "type": "integer",
-                "format":"int32",
-                "description": "The unique identifier for this component instance.",
-                "minimum":UID_MIN,
-                "maximum":UID_MAX,
-            }
+            "id": uid_openapi_schema(),
         },
         "required": ["name","id"],
         "additionalProperties": false,

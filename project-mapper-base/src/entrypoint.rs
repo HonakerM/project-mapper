@@ -136,14 +136,14 @@ pub fn run_main() -> Result<()> {
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 0,
+                src_uid: 6,
             },            OutputComponentConfig {
                 uid: 12,
                 name: "comp_5".to_string(),
                 config: Box::new(WindowConfig {
                     mode: WindowMode::Windowed {},
                 }),
-                src_uid: 4,
+                src_uid: 7,
             },
         ],
     };

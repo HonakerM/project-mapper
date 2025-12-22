@@ -19,7 +19,7 @@ use quote::quote;
 use syn::parse_macro_input;
 use syn::{Error, ItemImpl, Type, TypePath, parse_quote};
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub enum CompType {
     Input,
     Effect,
@@ -34,6 +34,11 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
     let mut type_name = type_name(&input.implementation.self_ty).unwrap();
 
     let mut config_expr = args.config_expr.clone();
+    let mut src_expr = if let Some(src) = args.src_expr {
+        quote! {#src}
+    } else {
+        quote! {project_mapper_runtime::project_mapper_core::runtime_config::effect::common::DefaultSrcConfig::default()}
+    };
 
     let mut config_val = match comp_type {
         CompType::Input => quote! {
@@ -58,7 +63,20 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
                 )
             )
         },
-        CompType::Effect => quote! {},
+        CompType::Effect => quote! {
+            Result::Ok(
+                Box::new(
+                    project_mapper_runtime::project_mapper_core::runtime_config::effect::EffectComponentConfig::default(
+                        Box::new(
+                            #config_expr
+                        ),
+                        Box::new(
+                            #src_expr
+                        )
+                    )
+                )
+            )
+        },
     };
 
     let mut requires_refresh_expr = if let Some(expr) = args.requires_refresh_expr {
@@ -79,6 +97,7 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
                         project_mapper_runtime::project_mapper_core::available_config::input::AvailableInputConfig::from_input_config(
                             Box::new(#config_expr),
                             project_mapper_runtime::project_mapper_core::types::openapi::OpenAPISchema::try_from(#schema).unwrap(),
+                            #requires_refresh_expr
                         )
                     }
                 } else {
@@ -92,7 +111,7 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
                 Result::Ok(
                     Box::new(
                         project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Input(
-                            #available_config_expr
+                            #available_config_expr,
                         )
                     )
                 )
@@ -109,6 +128,7 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
                         project_mapper_runtime::project_mapper_core::available_config::output::AvailableOutputConfig::from_output_config(
                             Box::new(#config_expr),
                             project_mapper_runtime::project_mapper_core::types::openapi::OpenAPISchema::try_from(#schema).unwrap(),
+                            #requires_refresh_expr
                         )
                     }
                 } else {
@@ -128,7 +148,45 @@ pub fn process(comp_type: CompType, input: ImplInput, args: ImplArgs) -> TokenSt
                 )
             }
         }
-        CompType::Effect => quote! {},
+        CompType::Effect => {
+            let mut available_config_expr = if let Some(expr) = args.available_expr {
+                quote! {
+                    #expr
+                }
+            } else {
+                if let Some(config_schema) = args.schema_expr {
+                    let src = if let Some(src_schema) = args.src_schema_expr {
+                        quote! {
+                            #src_schema
+                        }
+                    } else {
+                        quote! {project_mapper_runtime::project_mapper_core::runtime_config::effect::common::DefaultSrcConfig::openapi_schema().to_json_value()}
+                    };
+
+                    quote! {
+                        project_mapper_runtime::project_mapper_core::available_config::effect::AvailableEffectConfig::from_effect_config(
+                            Box::new(#config_expr),
+                            Box::new(#src_expr),
+                            project_mapper_runtime::project_mapper_core::types::openapi::OpenAPISchema::try_from(#config_schema).unwrap(),
+                            project_mapper_runtime::project_mapper_core::types::openapi::OpenAPISchema::try_from(#src).unwrap(),
+                            #requires_refresh_expr
+                        )
+                    }
+                } else {
+                    panic!("Effect Components must provide a schema or overall available config")
+                }
+            };
+
+            quote! {
+                Result::Ok(
+                    Box::new(
+                        project_mapper_runtime::project_mapper_core::available_config::config::AvailableConfigType::Effect(
+                            #available_config_expr,
+                        )
+                    )
+                )
+            }
+        }
     };
 
     //config_expr
