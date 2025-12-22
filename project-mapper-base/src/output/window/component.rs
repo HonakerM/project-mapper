@@ -6,6 +6,7 @@ use std::thread;
 
 use crate::output::WindowConfig;
 use crate::output::window::app::WindowAppHandler;
+use crate::output::window::config::MonitorConfig;
 use crate::output::window::state::GLOBAL_WINDOW_STATE;
 use crate::output::window::state::PROXY_WINDOW_STATE;
 use crate::output::window::state::ProxyWindowState;
@@ -222,16 +223,12 @@ impl WindowComponent {
         Ok(())
     }
 
-    fn generate_schema() -> serde_json::Value {
-        let schema = json_schema!({
-            "description": "Some Window Config",
-            "type": "object"
-        });
-        serde_json::to_value(&schema).unwrap()
+    fn gather_monitor_configs() -> Vec<MonitorConfig> {
+        vec![]
     }
 }
 
-#[project_mapper_macro::output_component(config={WindowConfig::default()}, schema={WindowComponent::generate_schema()}, requires_refresh={true})]
+#[project_mapper_macro::output_component(config={WindowConfig::default()}, schema={WindowConfig::openapi_schema().to_json_value()}, requires_refresh={true})]
 impl Component for WindowComponent {
     // runtime lifecycle functions
     // Construct object

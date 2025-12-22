@@ -1,5 +1,7 @@
 use project_mapper_runtime::components::available_config::AvailableConfigHelper;
 
+use project_mapper_base::prelude::*;
+
 fn main() {
     let config = AvailableConfigHelper::get_config();
     println!(
@@ -11,7 +13,7 @@ fn main() {
         serde_json::to_string_pretty(&config.get_schema()).unwrap()
     );
 
-    if let Err(err) = project_mapper_base::entrypoint::run_main() {
-        panic!("{}", err)
-    };
+    // if let Err(err) = project_mapper_base::entrypoint::run_main() {
+    //    panic!("{}", err)
+    // };
 }

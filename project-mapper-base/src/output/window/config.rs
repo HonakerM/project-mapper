@@ -1,10 +1,14 @@
 use std::any::Any;
 
+use schemars::{json_schema, schema_for};
 use serde::{Deserialize, Serialize};
 
 use project_mapper_core::{
     runtime_config::output::common::OutputConfigTrait,
-    types::video::{RefreshRate, Resolution},
+    types::{
+        openapi::OpenAPISchema,
+        video::{RefreshRate, Resolution},
+    },
 };
 
 // struct that identifies a specific monitor and it's desired config.
@@ -47,5 +51,15 @@ impl OutputConfigTrait for WindowConfig {
 
     fn clone_box(&self) -> Box<dyn OutputConfigTrait> {
         Box::new(self.clone())
+    }
+}
+
+impl WindowConfig {
+    pub fn openapi_schema() -> OpenAPISchema {
+        let mut base_schema = serde_json::to_value(serde_json::json!({
+            "type": "object",
+        }))
+        .unwrap();
+        OpenAPISchema::default()
     }
 }
