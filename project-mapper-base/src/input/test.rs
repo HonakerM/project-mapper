@@ -25,6 +25,7 @@ use project_mapper_runtime::{
 #[serde(default)]
 
 pub struct TestConfig {
+    #[schemars(description = "Set desired FPS of test stream")]
     pub fps: i32,
 }
 

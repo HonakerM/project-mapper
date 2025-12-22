@@ -23,20 +23,38 @@ use crate::{
 };
 use anyhow::Result as AnyhowResult;
 
+const OPENAPI_PROPERTIES_KEY: &str = "properties";
+const OPENAPI_REQUIRED_KEY: &str = "required";
+
 pub fn insert_type_into_config(ac: &mut serde_json::Value, type_name: String) {
     match ac.as_object_mut() {
-        Some(ac_obj) => match ac_obj.get_mut("parameters") {
-            Some(params) => match params.as_object_mut() {
-                Some(map) => {
-                    map.insert(
-                                "type".to_string(),
-                                serde_json::json!({"type":"string","enum":[type_name],"description":"The static identifier for this component type"}),
-                            );
+        Some(ac_obj) => {
+            match ac_obj.get_mut(OPENAPI_PROPERTIES_KEY) {
+                Some(params) => match params.as_object_mut() {
+                    Some(map) => {
+                        map.insert(
+                                    "type".to_string(),
+                                    serde_json::json!({"type":"string","const":type_name,"description":"The static identifier for this component type"}),
+                                );
+                    }
+                    None => {}
+                },
+                None => {
+                    ac_obj.insert(OPENAPI_PROPERTIES_KEY.to_string(), serde_json::json!({
+                        "type":{"type":"string","const":type_name,"description":"The static identifier for this component type"}
+                    }));
                 }
+            };
+            match ac_obj.get_mut(OPENAPI_REQUIRED_KEY) {
+                Some(params) => match params.as_array_mut() {
+                    Some(arr) => {
+                        arr.push(serde_json::Value::String("type".to_string()));
+                    }
+                    None => {}
+                },
                 None => {}
-            },
-            None => {}
-        },
+            };
+        }
         None => {}
     }
 }
@@ -57,7 +75,7 @@ pub fn construct_base_schema() -> OpenAPISchema {
                 "maximum":UID_MAX,
             }
         },
-        "required": [],
+        "required": ["name","id"],
         "additionalProperties": false,
     })
     .try_into()
@@ -66,19 +84,30 @@ pub fn construct_base_schema() -> OpenAPISchema {
 
 pub fn insert_config_into_base(
     base: &mut serde_json::Value,
-    ac: serde_json::Value,
     config_name: String,
+    ac: serde_json::Value,
 ) {
     match base.as_object_mut() {
-        Some(base_obj) => match base_obj.get_mut("parameters") {
-            Some(params) => match params.as_object_mut() {
-                Some(map) => {
-                    map.insert(config_name, ac);
-                }
+        Some(base_obj) => {
+            match base_obj.get_mut(OPENAPI_PROPERTIES_KEY) {
+                Some(params) => match params.as_object_mut() {
+                    Some(map) => {
+                        map.insert(config_name.clone(), ac);
+                    }
+                    None => {}
+                },
                 None => {}
-            },
-            None => {}
-        },
+            };
+            match base_obj.get_mut(OPENAPI_REQUIRED_KEY) {
+                Some(params) => match params.as_array_mut() {
+                    Some(arr) => {
+                        arr.push(serde_json::Value::String(config_name));
+                    }
+                    None => {}
+                },
+                None => {}
+            }
+        }
         None => {}
     }
 }
