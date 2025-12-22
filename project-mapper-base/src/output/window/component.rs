@@ -107,6 +107,7 @@ impl WindowComponent {
             handler: Some(WindowAppHandler::new(
                 pipeline.clone(),
                 message_sender.clone(),
+                event_loop.create_proxy(),
             )),
             // don't create the message sender until we have it in run
             message_sender_thread: None,
@@ -156,7 +157,7 @@ impl WindowComponent {
         message_receiver: std::sync::Arc<
             std::sync::Mutex<std::sync::mpsc::Receiver<RuntimeMessage>>,
         >,
-    ) -> Result<RuntimeMessage> {
+    ) -> Result<WinitMessage> {
         if !self.is_main {
             return Err(Error::msg(
                 "Unable to run event loop since this is not main",
@@ -226,6 +227,12 @@ impl WindowComponent {
         Ok(())
     }
 
+    fn update_global_cfg(cfg: AvailableWindowConfig) {
+        let mut winit_state_option = PROXY_WINDOW_STATE.lock().unwrap();
+        if let Some(winit_state) = winit_state_option.as_mut() {
+            winit_state.available_config = cfg;
+        }
+    }
     fn openapi_schema() -> OpenAPISchema {
         let winit_state_option = PROXY_WINDOW_STATE.lock().unwrap();
         if let Some(winit_state) = winit_state_option.as_ref() {
@@ -368,7 +375,19 @@ impl Component for WindowComponent {
         }?;
 
         // if we're main then run the real event loop!
-        self.run_event_loop(message_sender.clone(), message_broker.clone())
+        loop {
+            let msg = self.run_event_loop(message_sender.clone(), message_broker.clone())?;
+            match msg {
+                WinitMessage::Runtime(msg) => {
+                    return Ok(msg);
+                }
+                WinitMessage::AvailableConfig(cfg) => {
+                    WindowComponent::update_global_cfg(cfg);
+                }
+                _ => {}
+            }
+        }
+
         /*
         // if we exited the event loop we also must have exited the event watcher...
          */

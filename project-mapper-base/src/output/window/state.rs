@@ -59,10 +59,11 @@ pub struct WindowRequest {
     pub config: WindowConfig,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum WinitMessage {
     Runtime(RuntimeMessage),
     UpdateWindow(WindowRequest),
+    AvailableConfig(AvailableWindowConfig),
 }
 
 pub type WinitPMEventLoop = EventLoop<WinitMessage>;

@@ -11,12 +11,16 @@ use project_mapper_runtime::gst;
 use project_mapper_runtime::gst_video;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::application::ApplicationHandler;
+use winit::event;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
+use winit::event_loop::EventLoopProxy;
 use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::output::WindowConfig;
+use crate::output::window::config::AvailableWindowConfig;
 use crate::output::window::config::WindowMode;
+use crate::output::window::state::WinitPMEventLoopProxy;
 use crate::output::window::state::{WindowRequest, WinitMessage};
 use crate::output::window::utils::get_monitor_by_name;
 use crate::output::window::utils::get_video_mode_for_config;
@@ -29,7 +33,9 @@ pub(super) struct WindowAppHandler {
     pipeline: Pipeline,
     message_sender: mpsc::Sender<RuntimeMessage>,
 
-    pub last_events: Vec<RuntimeMessage>,
+    loopback_proxy: WinitPMEventLoopProxy,
+
+    pub last_events: Vec<WinitMessage>,
     pub exit_err: Option<Error>,
 
     // needed to keep reference to a window
@@ -47,10 +53,15 @@ impl WindowAppHandler {
         self.windows.clear();
         self.window_lookup.clear();
     }
-    pub fn new(pipeline: Pipeline, message_sender: mpsc::Sender<RuntimeMessage>) -> Self {
+    pub fn new(
+        pipeline: Pipeline,
+        message_sender: mpsc::Sender<RuntimeMessage>,
+        loopback_proxy: WinitPMEventLoopProxy,
+    ) -> Self {
         return Self {
             pipeline: pipeline,
             message_sender: message_sender,
+            loopback_proxy: loopback_proxy,
             last_events: vec![],
             exit_err: None,
             windows: HashMap::new(),
@@ -83,7 +94,7 @@ impl WindowAppHandler {
     pub fn has_event(&mut self) -> bool {
         !self.last_events.is_empty()
     }
-    pub fn get_next_event(&mut self) -> Option<RuntimeMessage> {
+    pub fn get_next_event(&mut self) -> Option<WinitMessage> {
         self.last_events.pop()
     }
 
@@ -165,6 +176,21 @@ impl WindowAppHandler {
 }
 
 impl ApplicationHandler<WinitMessage> for WindowAppHandler {
+    fn new_events(&mut self, event_loop: &ActiveEventLoop, cause: winit::event::StartCause) {
+        match cause {
+            winit::event::StartCause::Init => {
+                self.loopback_proxy
+                    .send_event(WinitMessage::AvailableConfig(
+                        AvailableWindowConfig::from_monitor_handles(
+                            event_loop.available_monitors(),
+                        ),
+                    ))
+                    .unwrap();
+            }
+            _ => {}
+        }
+    }
+
     fn resumed(&mut self, event_loop: &winit::event_loop::ActiveEventLoop) {}
 
     fn window_event(
@@ -189,11 +215,11 @@ impl ApplicationHandler<WinitMessage> for WindowAppHandler {
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: WinitMessage) {
         match event {
-            WinitMessage::Runtime(runtime_event) => {
-                self.last_events.push(runtime_event);
-            }
             WinitMessage::UpdateWindow(request) => {
                 self.process_window_request(event_loop, request);
+            }
+            msg => {
+                self.last_events.push(msg);
             }
         }
     }
