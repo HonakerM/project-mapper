@@ -1,4 +1,8 @@
-use std::any::Any;
+use std::{
+    any::Any,
+    collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
+};
 
 use schemars::{json_schema, schema_for};
 use serde::{Deserialize, Serialize};
@@ -10,6 +14,7 @@ use project_mapper_core::{
         video::{RefreshRate, Resolution},
     },
 };
+use winit::{dpi::PhysicalSize, monitor::MonitorHandle};
 
 // struct that identifies a specific monitor and it's desired config.
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -54,12 +59,48 @@ impl OutputConfigTrait for WindowConfig {
     }
 }
 
-impl WindowConfig {
-    pub fn openapi_schema() -> OpenAPISchema {
-        let mut base_schema = serde_json::to_value(serde_json::json!({
-            "type": "object",
-        }))
-        .unwrap();
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct AvailableMonitorConfig {
+    pub name: String,
+    pub configs: HashSet<(Resolution, RefreshRate)>,
+}
+
+impl Hash for AvailableMonitorConfig {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state); // The 'name' field is ignored
+    }
+}
+
+impl std::cmp::Eq for AvailableMonitorConfig {}
+
+#[derive(Debug, Clone, Default)]
+pub struct AvailableWindowConfig {
+    pub monitors: HashSet<AvailableMonitorConfig>,
+}
+
+impl AvailableWindowConfig {
+    pub fn from_monitor_handles(monitors: impl Iterator<Item = MonitorHandle>) -> Self {
+        let mut monitor_tracker: HashSet<AvailableMonitorConfig> = HashSet::new();
+        for monitor in monitors {
+            let mut configs = HashSet::new();
+            for mode in monitor.video_modes() {
+                let PhysicalSize { width, height } = mode.size().into();
+                let resolution = Resolution { width, height };
+                let refresh_rate: RefreshRate = (mode.refresh_rate_millihertz() / 1000).into();
+                configs.insert((resolution, refresh_rate));
+            }
+            monitor_tracker.insert(AvailableMonitorConfig {
+                name: monitor.name().unwrap(),
+                configs: configs,
+            });
+        }
+
+        Self {
+            monitors: monitor_tracker,
+        }
+    }
+
+    pub fn openapi_schema(&self) -> OpenAPISchema {
         OpenAPISchema::default()
     }
 }

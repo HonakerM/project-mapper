@@ -6,6 +6,7 @@ use std::thread;
 
 use crate::output::WindowConfig;
 use crate::output::window::app::WindowAppHandler;
+use crate::output::window::config::AvailableWindowConfig;
 use crate::output::window::config::MonitorConfig;
 use crate::output::window::state::GLOBAL_WINDOW_STATE;
 use crate::output::window::state::PROXY_WINDOW_STATE;
@@ -20,6 +21,7 @@ use log::info;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::ComponentConfig;
 use project_mapper_core::runtime_config::shared::Uid;
+use project_mapper_core::types::openapi::OpenAPISchema;
 use project_mapper_runtime::components::branch::BranchControl;
 use project_mapper_runtime::components::runtime::DefaultRuntimeComponent;
 use project_mapper_runtime::components::shared::{Component, ComponentLookupHelper};
@@ -63,6 +65,7 @@ impl WindowComponent {
                 event_loop_proxy: None,
                 window_comps: HashSet::new(),
                 has_main: true,
+                available_config: AvailableWindowConfig::default(),
             };
             new_global_state.window_comps.insert(self.config.uid());
 
@@ -223,12 +226,17 @@ impl WindowComponent {
         Ok(())
     }
 
-    fn gather_monitor_configs() -> Vec<MonitorConfig> {
-        vec![]
+    fn openapi_schema() -> OpenAPISchema {
+        let winit_state_option = PROXY_WINDOW_STATE.lock().unwrap();
+        if let Some(winit_state) = winit_state_option.as_ref() {
+            winit_state.available_config.openapi_schema()
+        } else {
+            AvailableWindowConfig::default().openapi_schema()
+        }
     }
 }
 
-#[project_mapper_macro::output_component(config={WindowConfig::default()}, schema={WindowConfig::openapi_schema().to_json_value()}, requires_refresh={true})]
+#[project_mapper_macro::output_component(config={WindowConfig::default()}, schema={WindowComponent::openapi_schema().to_json_value()}, requires_refresh={true})]
 impl Component for WindowComponent {
     // runtime lifecycle functions
     // Construct object

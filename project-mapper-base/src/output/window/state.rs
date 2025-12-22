@@ -6,6 +6,7 @@ use std::thread;
 
 use crate::output::WindowConfig;
 use crate::output::window::app::WindowAppHandler;
+use crate::output::window::config::AvailableWindowConfig;
 use anyhow::Result;
 use project_mapper_core::runtime_config::shared::Uid;
 use project_mapper_runtime::components::shared::{Component, ComponentLookupHelper};
@@ -45,6 +46,7 @@ pub(super) struct ProxyWindowState {
     pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
     pub window_comps: HashSet<Uid>,
     pub has_main: bool,
+    pub available_config: AvailableWindowConfig,
 }
 pub(super) static PROXY_WINDOW_STATE: LazyLock<Mutex<Option<ProxyWindowState>>> =
     LazyLock::new(|| Mutex::new(None));
