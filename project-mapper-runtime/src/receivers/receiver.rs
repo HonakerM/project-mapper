@@ -12,7 +12,10 @@ use tokio_util::sync::CancellationToken;
 #[cfg(not(feature = "http-receiver"))]
 use crate::receivers::impls::empty::EmptyReceiver;
 use crate::{
-    receivers::{impls::shared::ReceiverImpl, services::update::LockedUpdateService},
+    receivers::{
+        impls::shared::ReceiverImpl,
+        services::{available_config::LockedAvailableConfigService, update::LockedUpdateService},
+    },
     types::message::RuntimeMessage,
 };
 // only import http if we have the feature enabled
@@ -50,12 +53,14 @@ impl ReceiverHandle {
 #[derive(Clone)]
 struct Receiver {
     update_service: LockedUpdateService,
+    available_config_service: LockedAvailableConfigService,
 }
 
 impl Receiver {
     pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
         Self {
             update_service: LockedUpdateService::new(sender, config),
+            available_config_service: LockedAvailableConfigService::new(),
         }
     }
 
@@ -75,7 +80,11 @@ impl Receiver {
 
     async fn run_async(&self, cancel_token: CancellationToken) -> Result<()> {
         #[cfg(feature = "http-receiver")]
-        let http_fut = HttpReceiver::run("localhost:3000".to_string(), self.update_service.clone());
+        let http_fut = HttpReceiver::run(
+            "localhost:3000".to_string(),
+            self.update_service.clone(),
+            self.available_config_service.clone(),
+        );
         #[cfg(not(feature = "http-receiver"))]
         let http_fut =
             EmptyReceiver::run("localhost:3000".to_string(), self.update_service.clone());

@@ -1,15 +1,15 @@
 use std::sync::{Arc, Mutex};
 
-use crate::effect::balance::BalanceConfig;
-use crate::effect::fps::FpsConfig;
-use crate::effect::gamma::GammaConfig;
-use crate::effect::perspective::PerspectiveConfig;
-use crate::input::TestConfig;
-use crate::input::UriConfig;
-use crate::output::WindowConfig;
-use crate::output::window::config::WindowMode;
 use anyhow::{Context, Result};
-use project_mapper_core::loader::runtime_loader::export_config_json;
+use project_mapper_base::effect::balance::BalanceConfig;
+use project_mapper_base::effect::fps::FpsConfig;
+use project_mapper_base::effect::gamma::GammaConfig;
+use project_mapper_base::effect::perspective::PerspectiveConfig;
+use project_mapper_base::input::TestConfig;
+use project_mapper_base::input::UriConfig;
+use project_mapper_base::output::WindowConfig;
+use project_mapper_base::output::window::config::WindowMode;
+use project_mapper_base::prelude::*;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::common::DefaultSrcConfig;
@@ -175,7 +175,7 @@ pub fn run_main() -> Result<()> {
 
     println!(
         "Current json config: '{}'",
-        export_config_json(&config).expect("no")
+        serde_json::to_string_pretty(&config).expect("no")
     );
 
     let runtime = Runtime::new(

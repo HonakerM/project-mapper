@@ -1,0 +1,16 @@
+meta {
+  name: Get Available Config
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{host}}/v1/available_config
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

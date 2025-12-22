@@ -6,9 +6,10 @@ default-members = [
     "project-mapper-runtime",
     "project-mapper-macro",
     "project-mapper-base",
+    "project-mapper-cli",
 ]
 
-members = [ "project-mapper-base","project-mapper-core", "project-mapper-runtime", "project-mapper-macro"]
+members = [ "project-mapper-base","project-mapper-core", "project-mapper-runtime", "project-mapper-macro", "project-mapper-cli"]
 
 [workspace.package]
 version = "0.1.0"
@@ -19,6 +20,7 @@ rust-version = "1.88"
 [workspace.dependencies]
 # Core workspace dependencies
 project-mapper-runtime = { path = "project-mapper-runtime" }
+project-mapper-cli = { path = "project-mapper-cli" }
 project-mapper-core = { path = "project-mapper-core", features = ["change-tracking"]}
 project-mapper-macro = { path = "project-mapper-macro"}
 project-mapper-base = { path = "project-mapper-base"}
@@ -27,3 +29,4 @@ project-mapper-base = { path = "project-mapper-base"}
 anyhow = "1.0.98"
 serde = { version = "1", features = ["derive"] }
 typetag = "0.1"
+serde_json = "1.0.145"

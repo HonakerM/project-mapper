@@ -1,20 +1,18 @@
 [package]
-name = "project-mapper-base"
+name = "project-mapper-cli"
 version.workspace = true
 categories.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
+
 [dependencies]
 project-mapper-core.workspace = true
 project-mapper-runtime.workspace = true
 project-mapper-macro.workspace = true
+project-mapper-base.workspace = true
 anyhow.workspace = true
 serde.workspace = true
-serde_json.workspace = true
 typetag.workspace = true
-inventory = "0.3.21"
-log = "0.4.29"
-winit = "0.30"
-raw-window-handle = "0.6.2"
-schemars = "1.1.0"
+serde_json.workspace = true
+simple_logger = "5.1.0"

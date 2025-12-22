@@ -9,6 +9,3 @@ pub mod output;
 
 #[path = "./prelude.rs"]
 pub mod prelude;
-
-#[path = "./entrypoint.rs"]
-pub mod entrypoint;

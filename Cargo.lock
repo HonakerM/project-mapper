@@ -1612,9 +1612,23 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "simple_logger 5.1.0",
  "typetag",
  "winit",
+]
+
+[[package]]
+name = "project-mapper-cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "project-mapper-base",
+ "project-mapper-core",
+ "project-mapper-macro",
+ "project-mapper-runtime",
+ "serde",
+ "serde_json",
+ "simple_logger 5.1.0",
+ "typetag",
 ]
 
 [[package]]

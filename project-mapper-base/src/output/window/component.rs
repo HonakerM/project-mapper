@@ -17,6 +17,7 @@ use crate::output::window::state::WinitState;
 use anyhow::Ok;
 use anyhow::anyhow;
 use anyhow::{Error, Result};
+use log::debug;
 use log::info;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::ComponentConfig;
@@ -179,10 +180,11 @@ impl WindowComponent {
             "App Handler does not exist which should never happen"
         ))?;
 
+        debug!("Entering event loop");
         while !app_handler.has_event() {
             event_loop.pump_app_events(None, &mut app_handler);
         }
-        info!("Exiting event loop");
+        debug!("Exiting event loop");
 
         let last_event = app_handler.get_next_event().unwrap();
 
