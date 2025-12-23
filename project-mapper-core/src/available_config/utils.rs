@@ -69,9 +69,9 @@ pub fn construct_base_schema() -> OpenAPISchema {
                 "type": "string",
                 "description": "The name of this component instance"
             },
-            "id": uid_openapi_schema(),
+            "uid": uid_openapi_schema(),
         },
-        "required": ["name","id"],
+        "required": ["name","uid"],
         "additionalProperties": false,
     })
     .try_into()

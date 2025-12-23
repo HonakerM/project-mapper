@@ -1,0 +1,153 @@
+meta {
+  name: Update Config
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{host}}/v1/config
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "effects": [
+      {
+        "config": {
+          "brightness": 1.0,
+          "contrast": 1.0,
+          "hue": null,
+          "saturation": null,
+          "type": "BalanceConfig"
+        },
+        "name": "super_bright",
+        "srcs": [
+          {
+            "type": "default",
+            "uid": 0
+          }
+        ],
+        "uid": 6
+      },
+      {
+        "config": {
+          "gamma": 0.1,
+          "type": "GammaConfig"
+        },
+        "name": "gamma_bright",
+        "srcs": [
+          {
+            "type": "default",
+            "uid": 0
+          }
+        ],
+        "uid": 7
+      },
+      {
+        "config": {
+          "max_rate": 60,
+          "type": "FpsConfig"
+        },
+        "name": "fps_in_1",
+        "srcs": [
+          {
+            "type": "default",
+            "uid": 7
+          }
+        ],
+        "uid": 71
+      },
+      {
+        "config": {
+          "max_rate": 60,
+          "type": "FpsConfig"
+        },
+        "name": "fps_in_2",
+        "srcs": [
+          {
+            "type": "default",
+            "uid": 8
+          }
+        ],
+        "uid": 72
+      },
+      {
+        "config": {
+          "matrix": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "type": "PerspectiveConfig"
+        },
+        "name": "perspective_transform",
+        "srcs": [
+          {
+            "type": "default",
+            "uid": 0
+          }
+        ],
+        "uid": 8
+      }
+    ],
+    "inputs": [
+      {
+        "config": {
+          "fps": 180,
+          "type": "TestConfig"
+        },
+        "name": "test_comp",
+        "uid": 0
+      },
+      {
+        "config": {
+          "type": "UriConfig",
+          "uri": "http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4"
+        },
+        "name": "uri_comp",
+        "uid": 4
+      }
+    ],
+    "outputs": [
+      {
+        "config": {
+          "mode": {
+            "config": {
+              "name": "\\\\.\\DISPLAY1",
+              "refresh_rate": 60,
+              "resolution": "1280x800"
+            },
+            "type": "Exclusive"
+          },
+          "type": "WindowConfig"
+        },
+        "name": "comp_3",
+        "src_uid": 6,
+        "uid": 3
+      },
+      {
+        "config": {
+          "mode": {
+            "type": "Windowed"
+          },
+          "type": "WindowConfig"
+        },
+        "name": "comp_5",
+        "src_uid": 7,
+        "uid": 12
+      }
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

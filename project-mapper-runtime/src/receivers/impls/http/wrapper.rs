@@ -1,6 +1,10 @@
-use crate::receivers::services::available_config::LockedAvailableConfigService;
-use crate::receivers::services::update::LockedUpdateService;
-use crate::receivers::{impls::shared::ReceiverImpl, services::update::UpdateRuntimeService};
+use crate::receivers::impls::http::utils::process_value_to_response;
+use crate::receivers::services::available_config::{
+    LockedAvailableConfigService, LockedGetAvailableConfigService,
+};
+use crate::receivers::services::config::{
+    LockedGetRuntimeConfigService, LockedRuntimeConfigService, LockedUpdateRuntimeConfigService,
+};
 use anyhow::{Result, anyhow};
 use axum::body::Body;
 use axum::extract::Request;
@@ -22,13 +26,15 @@ use tower::Service;
 use tower::util::ServiceExt;
 
 #[derive(Clone)]
-pub struct AxumUpdateService {
-    base: LockedUpdateService,
+pub struct AxumUpdateRuntimeConfigService {
+    base: LockedUpdateRuntimeConfigService,
 }
 
-impl AxumUpdateService {
-    pub fn new(base: LockedUpdateService) -> Self {
-        Self { base }
+impl AxumUpdateRuntimeConfigService {
+    pub fn new(base: LockedRuntimeConfigService) -> Self {
+        Self {
+            base: LockedUpdateRuntimeConfigService::from_service(base),
+        }
     }
 
     async fn run_request(&mut self, req: &mut Request<Body>) -> Result<Response<Body>> {
@@ -55,7 +61,7 @@ impl AxumUpdateService {
         }
     }
 }
-impl Service<Request<Body>> for AxumUpdateService {
+impl Service<Request<Body>> for AxumUpdateRuntimeConfigService {
     type Response = Response<Body>;
     type Error = Infallible;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
@@ -87,20 +93,23 @@ impl Service<Request<Body>> for AxumUpdateService {
 }
 
 #[derive(Clone)]
-pub struct AxumAvailableConfigService {
-    base: LockedAvailableConfigService,
+pub struct AxumGetRuntimeConfigService {
+    base: LockedGetRuntimeConfigService,
 }
 
-impl AxumAvailableConfigService {
-    pub fn new(base: LockedAvailableConfigService) -> Self {
-        Self { base }
+impl AxumGetRuntimeConfigService {
+    pub fn new(base: LockedRuntimeConfigService) -> Self {
+        Self {
+            base: LockedGetRuntimeConfigService::from_service(base),
+        }
     }
 
     async fn run_request(&mut self, _req: &mut Request<Body>) -> Result<Response<Body>> {
         let result = self.base.call(()).await;
-        let str_message_or_fail_response = match result {
-            Ok(message) => match serde_json::to_string(&message) {
-                Ok(str_message) => Ok(str_message),
+
+        match result {
+            Ok(message) => match process_value_to_response(message) {
+                Ok(resp) => Ok(resp),
                 Err(err) => {
                     let response = Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -108,33 +117,93 @@ impl AxumAvailableConfigService {
                             "Failed to serialize available config: {:?}",
                             err
                         )))?;
-                    Err(response)
+                    Ok(response)
                 }
             },
             Err(err) => {
                 let response = Response::builder()
                     .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Body::from(err))?;
-                Err(response)
-            }
-        };
-
-        let result = match str_message_or_fail_response {
-            Ok(message) => {
-                let response = Response::builder()
-                    .status(StatusCode::OK)
-                    .header(header::CONTENT_TYPE, "application/json") // Set the Content-Type header
-                    .body(Body::from(message))?;
+                    .body(Body::from(format!(
+                        "Failed to serialize available config: {:?}",
+                        err
+                    )))?;
                 Ok(response)
             }
-            Err(err) => Ok(err),
-        };
-
-        debug!("Returning available config response: {:?}", result);
-        result
+        }
     }
 }
-impl Service<Request<Body>> for AxumAvailableConfigService {
+impl Service<Request<Body>> for AxumGetRuntimeConfigService {
+    type Response = Response<Body>;
+    type Error = Infallible;
+    type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;
+
+    fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<Result<(), Self::Error>> {
+        // Always ready; locking happens in call
+        match self.base.poll_ready(cx) {
+            Poll::Ready(_) => Poll::Ready(Ok(())),
+            Poll::Pending => Poll::Pending,
+        }
+    }
+
+    fn call(&mut self, mut req: Request<Body>) -> Self::Future {
+        let mut this = self.clone();
+        async move {
+            match this.run_request(&mut req).await {
+                Ok(resp) => Ok(resp),
+                Err(err) => {
+                    let response = Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::from(format!("Unable to run request: {:#}", err)))
+                        .unwrap();
+                    Ok(response)
+                }
+            }
+        }
+        .boxed()
+    }
+}
+
+#[derive(Clone)]
+pub struct AxumGetAvailableConfigService {
+    base: LockedGetAvailableConfigService,
+}
+
+impl AxumGetAvailableConfigService {
+    pub fn new(base: LockedAvailableConfigService) -> Self {
+        Self {
+            base: LockedGetAvailableConfigService::from_service(base),
+        }
+    }
+
+    async fn run_request(&mut self, _req: &mut Request<Body>) -> Result<Response<Body>> {
+        let result = self.base.call(()).await;
+
+        match result {
+            Ok(message) => match process_value_to_response(message) {
+                Ok(resp) => Ok(resp),
+                Err(err) => {
+                    let response = Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Body::from(format!(
+                            "Failed to serialize available config: {:?}",
+                            err
+                        )))?;
+                    Ok(response)
+                }
+            },
+            Err(err) => {
+                let response = Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Body::from(format!(
+                        "Failed to serialize available config: {:?}",
+                        err
+                    )))?;
+                Ok(response)
+            }
+        }
+    }
+}
+impl Service<Request<Body>> for AxumGetAvailableConfigService {
     type Response = Response<Body>;
     type Error = Infallible;
     type Future = BoxFuture<'static, Result<Self::Response, Self::Error>>;

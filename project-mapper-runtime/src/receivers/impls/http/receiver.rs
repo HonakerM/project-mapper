@@ -1,7 +1,9 @@
-use crate::receivers::impls::http::wrapper::{AxumAvailableConfigService, AxumUpdateService};
+use crate::receivers::impls::http::wrapper::{
+    AxumGetAvailableConfigService, AxumGetRuntimeConfigService, AxumUpdateRuntimeConfigService,
+};
+use crate::receivers::impls::shared::ReceiverImpl;
 use crate::receivers::services::available_config::LockedAvailableConfigService;
-use crate::receivers::services::update::LockedUpdateService;
-use crate::receivers::{impls::shared::ReceiverImpl, services::update::UpdateRuntimeService};
+use crate::receivers::services::config::LockedRuntimeConfigService;
 use anyhow::{Result, anyhow};
 use axum::body::Body;
 use axum::extract::Request;
@@ -26,10 +28,10 @@ pub struct HttpReceiver;
 impl ReceiverImpl for HttpReceiver {
     async fn run(
         address: String,
-        update_service: LockedUpdateService,
+        config_service: LockedRuntimeConfigService,
         available_config_service: LockedAvailableConfigService,
     ) -> Result<(), Box<dyn std::error::Error>> {
-        let app = build_axum(update_service, available_config_service);
+        let app = build_axum(config_service, available_config_service);
         info!("Serving HTTP on http://{}", address);
         let listener = tokio::net::TcpListener::bind(address).await?;
         axum::serve(listener, app).await?;
@@ -38,13 +40,19 @@ impl ReceiverImpl for HttpReceiver {
 }
 
 fn build_axum(
-    update_service: LockedUpdateService,
+    config_service: LockedRuntimeConfigService,
     available_config_service: LockedAvailableConfigService,
 ) -> Router {
-    let http_update_wrapper = AxumUpdateService::new(update_service);
-    let http_available_config = AxumAvailableConfigService::new(available_config_service);
+    let http_update_runtime = AxumUpdateRuntimeConfigService::new(config_service.clone());
+    let http_get_config = AxumGetRuntimeConfigService::new(config_service);
+    let http_get_available_config: AxumGetAvailableConfigService =
+        AxumGetAvailableConfigService::new(available_config_service);
 
     Router::new()
-        .route("/v1/config", post_service(http_update_wrapper))
-        .route("/v1/available_config", get_service(http_available_config))
+        .route("/v1/config", post_service(http_update_runtime))
+        .route("/v1/config", get_service(http_get_config))
+        .route(
+            "/v1/available_config",
+            get_service(http_get_available_config),
+        )
 }

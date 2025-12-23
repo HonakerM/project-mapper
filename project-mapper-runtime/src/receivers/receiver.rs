@@ -14,7 +14,10 @@ use crate::receivers::impls::empty::EmptyReceiver;
 use crate::{
     receivers::{
         impls::shared::ReceiverImpl,
-        services::{available_config::LockedAvailableConfigService, update::LockedUpdateService},
+        services::{
+            available_config::{AvailableConfigService, LockedAvailableConfigService},
+            config::{LockedRuntimeConfigService, RuntimeConfigService},
+        },
     },
     types::message::RuntimeMessage,
 };
@@ -52,15 +55,17 @@ impl ReceiverHandle {
 
 #[derive(Clone)]
 struct Receiver {
-    update_service: LockedUpdateService,
+    update_service: LockedRuntimeConfigService,
     available_config_service: LockedAvailableConfigService,
 }
 
 impl Receiver {
     pub fn new(sender: mpsc::Sender<RuntimeMessage>, config: Arc<Mutex<RuntimeConfig>>) -> Self {
         Self {
-            update_service: LockedUpdateService::new(sender, config),
-            available_config_service: LockedAvailableConfigService::new(),
+            update_service: Arc::new(Mutex::new(RuntimeConfigService::new(sender, config)))
+                as LockedRuntimeConfigService,
+            available_config_service: Arc::new(Mutex::new(AvailableConfigService::new()))
+                as LockedAvailableConfigService,
         }
     }
 

@@ -19,14 +19,16 @@ use crate::{components::available_config::AvailableConfigHelper, types::message:
 
 const AVAILABLE_CONFIG_REFRESH_DELAY: std::time::Duration = std::time::Duration::from_secs(1);
 
+pub type LockedAvailableConfigService = Arc<Mutex<AvailableConfigService>>;
+
 // Generic Service for updating the runtime
 #[derive(Debug, Clone)]
-pub struct GetAvailableConfigService {
+pub struct AvailableConfigService {
     config: AvailableConfig,
     last_update: std::time::Instant,
 }
 
-impl GetAvailableConfigService {
+impl AvailableConfigService {
     pub fn new() -> Self {
         Self {
             config: AvailableConfigHelper::get_config(),
@@ -44,15 +46,19 @@ impl GetAvailableConfigService {
 }
 
 #[derive(Clone)]
-pub struct LockedAvailableConfigService(pub Arc<Mutex<GetAvailableConfigService>>);
+pub struct LockedGetAvailableConfigService(pub LockedAvailableConfigService);
 
-impl LockedAvailableConfigService {
-    pub fn new() -> LockedAvailableConfigService {
-        LockedAvailableConfigService(Arc::new(Mutex::new(GetAvailableConfigService::new())))
+impl LockedGetAvailableConfigService {
+    pub fn new() -> LockedGetAvailableConfigService {
+        LockedGetAvailableConfigService(Arc::new(Mutex::new(AvailableConfigService::new())))
+    }
+
+    pub fn from_service(service: LockedAvailableConfigService) -> LockedGetAvailableConfigService {
+        LockedGetAvailableConfigService(service)
     }
 }
 
-impl Service<()> for LockedAvailableConfigService {
+impl Service<()> for LockedGetAvailableConfigService {
     type Response = serde_json::Value;
     type Error = String;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;

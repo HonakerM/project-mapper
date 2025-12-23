@@ -19,7 +19,7 @@ use crate::{
         effect::EffectComponentConfig,
         input::InputComponentConfig,
         output::OutputComponentConfig,
-        shared::{ComponentConfig, Uid},
+        shared::{ComponentConfig, Uid, uid_openapi_schema},
         utils::{changes::RuntimeConfigChangeTracker, validation::gather_validation_helper_data},
     },
     types::{errors::RuntimeConfigValidationError, openapi::OpenAPISchema},
@@ -74,8 +74,8 @@ impl AvailableConfig {
             );
             insert_config_into_base(
                 &mut base_schema,
-                "src".to_owned(),
-                serde_json::json!({"oneOf":src_schemas}),
+                "srcs".to_owned(),
+                serde_json::json!({"type":"array", "items": {"oneOf":src_schemas}}),
             );
             base_schema
         };
@@ -92,15 +92,25 @@ impl AvailableConfig {
                 "config".to_owned(),
                 serde_json::json!({"oneOf":dynamic_schemas}),
             );
+            insert_config_into_base(&mut base_schema, "src_uid".to_owned(), uid_openapi_schema());
             base_schema
         };
 
         serde_json::json!({
             "type":"object",
             "parameters": {
-                "inputs": input_schema,
-                "effects":effect_schema,
-                "outputs":output_schema,
+                "inputs": {
+                    "type": "array",
+                    "items": input_schema,
+                },
+                "effects":{
+                    "type": "array",
+                    "items": effect_schema,
+                },
+                "outputs":{
+                    "type": "array",
+                    "items": output_schema,
+                },
             }
         })
         .try_into()
