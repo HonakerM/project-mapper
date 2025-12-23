@@ -11,10 +11,8 @@ use project_mapper_runtime::gst;
 use project_mapper_runtime::gst_video;
 use raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::application::ApplicationHandler;
-use winit::event;
 use winit::event::WindowEvent;
 use winit::event_loop::ActiveEventLoop;
-use winit::event_loop::EventLoopProxy;
 use winit::window::{Window, WindowAttributes, WindowId};
 
 use crate::output::WindowConfig;

@@ -9,7 +9,6 @@ use project_mapper_base::input::TestConfig;
 use project_mapper_base::input::UriConfig;
 use project_mapper_base::output::WindowConfig;
 use project_mapper_base::output::window::config::WindowMode;
-use project_mapper_base::prelude::*;
 use project_mapper_core::runtime_config::RuntimeConfig;
 use project_mapper_core::runtime_config::effect::EffectComponentConfig;
 use project_mapper_core::runtime_config::effect::common::DefaultSrcConfig;

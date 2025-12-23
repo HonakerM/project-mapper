@@ -1,10 +1,10 @@
 use std::{
     any::Any,
-    collections::{HashMap, HashSet},
+    collections::HashSet,
     hash::{Hash, Hasher},
 };
 
-use schemars::{json_schema, schema_for};
+use schemars::json_schema;
 use serde::{Deserialize, Serialize};
 
 use project_mapper_core::{
