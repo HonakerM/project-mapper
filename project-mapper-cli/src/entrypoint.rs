@@ -18,11 +18,10 @@ use project_mapper_core::types::video::Resolution;
 use project_mapper_runtime::components::comp_helper::DefaultComponentHelper;
 use project_mapper_runtime::components::factory::DefaultComponentFactory;
 use project_mapper_runtime::runtime::runtime::Runtime;
-use simple_logger::SimpleLogger;
 
 pub fn run_main() -> Result<()> {
     //configure logger
-    SimpleLogger::new().init().unwrap();
+    env_logger::init();
 
     let _resolution = Resolution {
         width: 1920,

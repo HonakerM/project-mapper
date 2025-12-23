@@ -15,4 +15,5 @@ anyhow.workspace = true
 serde.workspace = true
 typetag.workspace = true
 serde_json.workspace = true
-simple_logger = "5.1.0"
+env_logger = "0.11.8"
+log.workspace = true

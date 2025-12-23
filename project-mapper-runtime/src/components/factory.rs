@@ -13,6 +13,7 @@ use crate::components::{
     shared::{Component, ComponentFactory},
 };
 use anyhow::{Error, Result, anyhow};
+use log::trace;
 
 // default factory for creating components
 pub struct DefaultComponentFactory {
@@ -102,7 +103,7 @@ impl ComponentFactory for DefaultComponentFactory {
                     return Ok(comp);
                 }
                 Err(err) => {
-                    println!("Constructor did not match for component: {:?}", err);
+                    trace!("Constructor did not match for component: {:?}", err);
                 }
             }
         }

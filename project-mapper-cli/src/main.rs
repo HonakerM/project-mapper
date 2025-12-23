@@ -1,6 +1,8 @@
 #[path = "./entrypoint.rs"]
 pub mod entrypoint;
 
+use log::error;
+
 use project_mapper_runtime::components::available_config::AvailableConfigHelper;
 
 fn main() {
@@ -15,6 +17,7 @@ fn main() {
     );
 
     if let Err(err) = entrypoint::run_main() {
+        error!("{:?}", err);
         panic!("{}", err)
     };
 }
