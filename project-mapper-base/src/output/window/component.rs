@@ -18,6 +18,7 @@ use anyhow::Ok;
 use anyhow::anyhow;
 use anyhow::{Error, Result};
 use log::debug;
+use log::error;
 use log::info;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::ComponentConfig;
@@ -233,6 +234,8 @@ impl WindowComponent {
         let mut winit_state_option = PROXY_WINDOW_STATE.lock().unwrap();
         if let Some(winit_state) = winit_state_option.as_mut() {
             winit_state.available_config = cfg;
+        } else {
+            error!("Failed to find winit state when updating config");
         }
     }
     fn openapi_schema() -> OpenAPISchema {
@@ -384,6 +387,7 @@ impl Component for WindowComponent {
                     return Ok(msg);
                 }
                 WinitMessage::AvailableConfig(cfg) => {
+                    debug!("Updating available config with: {:?}", cfg);
                     WindowComponent::update_global_cfg(cfg);
                 }
                 _ => {}

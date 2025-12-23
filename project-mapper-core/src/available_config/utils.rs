@@ -26,23 +26,25 @@ use anyhow::Result as AnyhowResult;
 const OPENAPI_PROPERTIES_KEY: &str = "properties";
 const OPENAPI_REQUIRED_KEY: &str = "required";
 
+pub fn default_type_schema(type_name: String) -> serde_json::Value {
+    serde_json::json!({"type":"string","const":type_name,"description":"The static identifier for this component type"})
+}
+
 pub fn insert_type_into_config(ac: &mut serde_json::Value, type_name: String) {
     match ac.as_object_mut() {
         Some(ac_obj) => {
             match ac_obj.get_mut(OPENAPI_PROPERTIES_KEY) {
                 Some(params) => match params.as_object_mut() {
                     Some(map) => {
-                        map.insert(
-                                    "type".to_string(),
-                                    serde_json::json!({"type":"string","const":type_name,"description":"The static identifier for this component type"}),
-                                );
+                        map.insert("type".to_string(), default_type_schema(type_name));
                     }
                     None => {}
                 },
                 None => {
-                    ac_obj.insert(OPENAPI_PROPERTIES_KEY.to_string(), serde_json::json!({
-                        "type":{"type":"string","const":type_name,"description":"The static identifier for this component type"}
-                    }));
+                    ac_obj.insert(
+                        OPENAPI_PROPERTIES_KEY.to_string(),
+                        default_type_schema(type_name),
+                    );
                 }
             };
             match ac_obj.get_mut(OPENAPI_REQUIRED_KEY) {

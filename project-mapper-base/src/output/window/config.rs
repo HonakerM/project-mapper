@@ -8,6 +8,7 @@ use schemars::{json_schema, schema_for};
 use serde::{Deserialize, Serialize};
 
 use project_mapper_core::{
+    available_config::utils::{default_type_schema, insert_config_into_base},
     runtime_config::output::common::OutputConfigTrait,
     types::{
         openapi::OpenAPISchema,
@@ -101,6 +102,74 @@ impl AvailableWindowConfig {
     }
 
     pub fn openapi_schema(&self) -> OpenAPISchema {
-        OpenAPISchema::default()
+        let mut base_schema = OpenAPISchema::default().to_json_value();
+
+        let thing = WindowMode::Windowed {};
+
+        let mut monitors = vec![];
+        let mut monitor_configs = vec![];
+        for monitor in &self.monitors {
+            monitors.push(monitor.name.clone());
+            for (resolution, refresh_rate) in &monitor.configs {
+                monitor_configs.push(json_schema!({
+                    "name": monitor.name,
+                    "resolution": resolution,
+                    "refresh_rate": refresh_rate as &RefreshRate
+                }));
+            }
+        }
+
+        let config = serde_json::json!({
+            "oneOf":[
+                {
+                    "type":"object",
+                    "properties":{
+                        "type":default_type_schema("Windowed".to_string()),
+                    },
+                    "description":"Generic resizable window",
+                },
+                {
+                    "type":"object",
+                    "properties":{
+                        "type":default_type_schema("Borderless".to_string()),
+                        "name": {
+                            "type":"string",
+                            "enum": monitors,
+                            "description": "Name of monitor to be fullscreen on"
+                        }
+                    },
+                    "description":"Borderless fullscreen on a specific monitor"
+                },
+                {
+                    "type":"object",
+                    "properties":{
+                        "type":default_type_schema("Exclusive".to_string()),
+                        "config": {
+                            "type":"object",
+                            "properties": {
+                                "name": {
+                                    "type": "string",
+                                    "description": "Name of monitor to be fullscreen on"
+                                },
+                                "resolution": {
+                                    "type": "string",
+                                    "description": "The resolution in a {width}x{heigth} format"
+                                },
+                                "refresh_rate": {
+                                    "type": "string",
+                                    "description": "Refresh rate in hz",
+                                },
+                            },
+                            "enum": monitor_configs,
+                            "description": "Exclusive control over a monitor with specific resolution/refresh rate"
+                        }
+                    },
+                    "description":"Borderless fullscreen on a specific monitor"
+                }
+            ]
+        });
+
+        insert_config_into_base(&mut base_schema, "mode".into(), config);
+        base_schema.try_into().unwrap()
     }
 }

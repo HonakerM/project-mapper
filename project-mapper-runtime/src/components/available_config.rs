@@ -4,6 +4,7 @@ use std::{
 };
 
 use crate::components::marker::{AvailablaeConfig as ConstructAvailablaeConfigFn, Marker};
+use log::debug;
 use project_mapper_core::{
     available_config::{
         config::{AvailableConfig, AvailableConfigTrait, AvailableConfigType},
@@ -111,6 +112,7 @@ impl AvailableConfigHelper {
 
         self.last_config = available_config.clone();
         self.last_update = std::time::Instant::now();
+        debug!("Gathered avilable config");
 
         available_config
     }
