@@ -30,9 +30,9 @@ impl RuntimeConfigChangeTracker {
     pub fn gather_changes(org: &RuntimeConfig, new: &RuntimeConfig) -> Result<Self> {
         let org_comps = org.gather_configs();
         let org_comps: HashSet<&Box<dyn ComponentConfig>> = HashSet::from_iter(org_comps.iter());
-        let new_comps = org.gather_configs();
+        let new_comps = new.gather_configs();
         let new_comps: HashSet<&Box<dyn ComponentConfig>> = HashSet::from_iter(new_comps.iter());
-        let deleted_comps = Vec::from_iter(org_comps.intersection(&new_comps).map(|x| x.uid()));
+        let deleted_comps = Vec::from_iter(org_comps.difference(&new_comps).map(|x| x.uid()));
 
         Ok(Self {
             graph: RuntimeConfigGraph::new(new)?,

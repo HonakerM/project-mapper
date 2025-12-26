@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use anyhow::{Context, Result};
+use log::info;
 use project_mapper_base::effect::balance::BalanceConfig;
 use project_mapper_base::effect::fps::FpsConfig;
 use project_mapper_base::effect::gamma::GammaConfig;
@@ -171,7 +172,7 @@ pub fn run_main() -> Result<()> {
         .validate()
         .context("Failed to validate runtime config")?;
 
-    println!(
+    info!(
         "Current json config: '{}'",
         serde_json::to_string_pretty(&config).expect("no")
     );

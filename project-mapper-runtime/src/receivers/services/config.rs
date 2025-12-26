@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::Result;
+use log::debug;
 use project_mapper_core::{
     loader::runtime_loader::load_config_json, runtime_config::RuntimeConfig,
 };
@@ -118,6 +119,7 @@ impl Service<String> for LockedUpdateRuntimeConfigService {
         }
 
         // send back the successful runtime
+        debug!("Completed Update Config call");
         Box::pin(ready(Ok("Updated runtime".to_string())))
     }
 }
@@ -173,6 +175,7 @@ impl Service<()> for LockedGetRuntimeConfigService {
         };
 
         // send back the successful runtime
+        debug!("Completed Get Config call");
         Box::pin(ready(match serde_json::to_value(&local_config) {
             Ok(val) => Ok(val),
             Err(err) => Err(format!("Failed to format local config due to {:?}", err)),

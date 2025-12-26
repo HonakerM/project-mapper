@@ -7,6 +7,7 @@ use std::{
 };
 
 use anyhow::Result;
+use log::debug;
 use project_mapper_core::{
     available_config::config::AvailableConfig, loader::runtime_loader::load_config_json,
     runtime_config::RuntimeConfig,
@@ -84,6 +85,7 @@ impl Service<()> for LockedGetAvailableConfigService {
         let available_config = svc.get_or_update();
 
         // send back the successful runtime
+        debug!("Completed Get AvailableConfig call");
         Box::pin(ready(Ok(available_config.get_schema().to_json_value())))
     }
 }

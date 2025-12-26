@@ -60,6 +60,9 @@ pub trait ComponentLookupHelper {
     // if this helper has a component that requires the main thread to run. ! This must be valid after running
     // setup
     fn has_main_requirement(&self) -> bool;
+    fn refresh_main_requirement(&mut self) -> Result<bool>;
+
+    // helpers to access the underlying component map
     fn contains_comp(&self, uid: &Uid) -> bool;
     fn get_comp(&self, uid: &Uid) -> Option<Rc<RefCell<Box<dyn Component>>>>;
     fn components(&self) -> Vec<Rc<RefCell<Box<dyn Component>>>>;

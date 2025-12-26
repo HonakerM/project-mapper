@@ -5,6 +5,7 @@ use gst::Pipeline;
 use gst::glib::object::Cast;
 use gst::prelude::GstBinExt;
 use gst_video::prelude::VideoOverlayExtManual;
+use log::debug;
 use log::info;
 use project_mapper_core::runtime_config::shared::Uid;
 use project_mapper_runtime::gst;
@@ -70,7 +71,7 @@ impl WindowAppHandler {
     fn configure_window(
         event_loop: &ActiveEventLoop,
         window: &Window,
-        config: WindowConfig,
+        config: &WindowConfig,
     ) -> Result<()> {
         match &config.mode {
             WindowMode::Windowed {} => {}
@@ -103,17 +104,14 @@ impl WindowAppHandler {
     pub fn process_window_request(
         &mut self,
         event_loop: &ActiveEventLoop,
-        window_request: WindowRequest,
+        window_request: &WindowRequest,
     ) {
         // skip windows we've already created
         if let Some(window) = self.windows.get(&window_request.element_uid) {
-            WindowAppHandler::configure_window(event_loop, window, window_request.config);
+            WindowAppHandler::configure_window(event_loop, window, &window_request.config);
             return;
         }
 
-        for monitor_handle in event_loop.available_monitors() {
-            println!("We have monitor {:?}", monitor_handle.name());
-        }
         let window = event_loop
             .create_window(
                 WindowAttributes::default()
@@ -157,8 +155,7 @@ impl WindowAppHandler {
         }
 
         // configure the window based on the config
-        WindowAppHandler::configure_window(&event_loop, &window, window_request.config.clone())
-            .unwrap();
+        WindowAppHandler::configure_window(&event_loop, &window, &window_request.config).unwrap();
 
         window.request_redraw();
 
@@ -199,6 +196,7 @@ impl ApplicationHandler<WinitMessage> for WindowAppHandler {
     ) {
         match event {
             WindowEvent::CloseRequested => {
+                debug!("Received close window request");
                 // Send a message to stop the event loop
                 let send_result = self.message_sender.send(RuntimeMessage::ExitRuntime());
                 if let Err(err) = send_result {
@@ -212,13 +210,15 @@ impl ApplicationHandler<WinitMessage> for WindowAppHandler {
     }
 
     fn user_event(&mut self, event_loop: &ActiveEventLoop, event: WinitMessage) {
-        match event {
+        match &event {
             WinitMessage::UpdateWindow(request) => {
                 self.process_window_request(event_loop, request);
             }
-            msg => {
-                self.last_events.push(msg);
+            WinitMessage::DestroyWindow(request) => {
+                self.destory_window(&request.element_uid);
             }
+            _ => {}
         }
+        self.last_events.push(event);
     }
 }

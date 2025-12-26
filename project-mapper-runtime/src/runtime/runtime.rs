@@ -13,12 +13,14 @@ use project_mapper_core::runtime_config::shared::{ComponentConfig, Uid};
 use project_mapper_core::runtime_config::{RuntimeConfig, output};
 
 use crate::components::available_config::AvailableConfigHelper;
+use crate::components::comp_helper::DefaultComponentHelper;
+use crate::components::factory::DefaultComponentFactory;
 use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::receivers::receiver::start_receiver;
 use crate::runtime::configure::{configure_components, update_components};
 use crate::types::message::RuntimeMessage;
-use log::{info, warn};
+use log::{info, trace, warn};
 
 static GLOBAL_RUNTIME_LOCK: LazyLock<Mutex<()>> = LazyLock::new(|| Mutex::new(()));
 
@@ -31,6 +33,16 @@ pub struct Runtime {
     message_reciever: Arc<Mutex<mpsc::Receiver<RuntimeMessage>>>,
 }
 
+impl Default for Runtime {
+    fn default() -> Self {
+        Runtime::new(
+            Box::new(DefaultComponentFactory::default()),
+            Box::new(DefaultComponentHelper::new()),
+        )
+        .unwrap()
+    }
+}
+
 impl Runtime {
     pub fn new(
         component_factory: Box<dyn ComponentFactory>,
@@ -41,6 +53,7 @@ impl Runtime {
         // setup the ctrlc handler early on to ensure we always capture the signal
         let local_send = send.clone();
         ctrlc::set_handler(move || {
+            warn!("Detected ctrl-C. Exiting");
             local_send
                 .send(RuntimeMessage::ExitRuntime())
                 .expect("Unable to send exit event. Panicing");
@@ -54,6 +67,10 @@ impl Runtime {
             message_sender: send,
             message_reciever: Arc::new(Mutex::new(recv)),
         })
+    }
+
+    pub fn start(mut self) -> Result<()> {
+        self.run(Arc::new(Mutex::new(RuntimeConfig::default())))
     }
 
     // run the given runtime
@@ -104,6 +121,13 @@ impl Runtime {
 
         // Then run the components
         loop {
+            let mut comp_uids = vec![];
+            for comp in self.component_helper.components() {
+                let local_lock = comp.borrow();
+                let local_comp_ref = local_lock.as_ref();
+                comp_uids.push(local_comp_ref.uid())
+            }
+
             let message = self
                 .component_helper
                 .run(self.message_reciever.clone())
@@ -171,10 +195,9 @@ impl Runtime {
                 .map_err(|e| anyhow!("Unable to lock config for update {:#}", e))?;
 
             // ensure we destory the components before running create/update
+            trace!("Update runtime with new config: {:?}", new_config);
             let change_tracker = locked_current_config.gather_config_changes(&new_config)?;
-            for deleted_uid in &change_tracker.deletes {
-                self.component_helper.destroy_comp(deleted_uid)?;
-            }
+            trace!("Tracked changes in runtime: {:?}", change_tracker);
 
             // update the stored config
             *locked_current_config = new_config;

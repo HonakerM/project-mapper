@@ -18,7 +18,7 @@ use project_mapper_core::{
 use winit::{dpi::PhysicalSize, monitor::MonitorHandle};
 
 // struct that identifies a specific monitor and it's desired config.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MonitorConfig {
     pub name: String,
     pub resolution: Resolution,
@@ -26,7 +26,7 @@ pub struct MonitorConfig {
 }
 
 // struct that determines what type of window we should be using
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(tag = "type")]
 pub enum WindowMode {
     Windowed {},
@@ -35,7 +35,7 @@ pub enum WindowMode {
 }
 
 // Struct that controls the config for a window output
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct WindowConfig {
     pub mode: WindowMode,
 }

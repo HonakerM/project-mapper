@@ -18,6 +18,7 @@ use anyhow::anyhow;
 use anyhow::{Error, Result};
 use log::debug;
 use log::error;
+use log::trace;
 use project_mapper_core::runtime_config::output::OutputComponentConfig;
 use project_mapper_core::runtime_config::shared::ComponentConfig;
 use project_mapper_core::runtime_config::shared::Uid;
@@ -58,6 +59,8 @@ impl WindowComponent {
         let mut global_state = PROXY_WINDOW_STATE.lock().or(Err(Error::msg(
             "Unable to aquire window proxy lock. Should not happen in normal operation",
         )))?;
+
+        trace!("Global state during initialize: {:?}", global_state);
 
         if let None = *global_state {
             let mut new_global_state: ProxyWindowState = ProxyWindowState {
@@ -178,11 +181,11 @@ impl WindowComponent {
             "App Handler does not exist which should never happen"
         ))?;
 
-        debug!("Entering event loop");
+        trace!("Entering event loop");
         while !app_handler.has_event() {
             event_loop.pump_app_events(None, &mut app_handler);
         }
-        debug!("Exiting event loop");
+        trace!("Exiting event loop");
 
         let last_event = app_handler.get_next_event().unwrap();
 
@@ -209,16 +212,27 @@ impl WindowComponent {
                     element_name: self.config.name(),
                     element_uid: self.config.uid(),
                     config: config.clone(),
-                }));
+                }))?;
             }
         }
 
         if force_creation {
-            println!("Updating window in {}", self.config.name());
+            debug!("Updating window in {}", self.config.name());
             let mut global_state = GLOBAL_WINDOW_STATE.take();
             if let Some(event_loop) = &mut global_state.event_loop {
                 if let Some(handler) = &mut global_state.handler {
-                    event_loop.pump_app_events(None, handler);
+                    let mut processed_msg = false;
+                    while !processed_msg {
+                        event_loop.pump_app_events(None, handler);
+                        for event in &handler.last_events {
+                            if let WinitMessage::UpdateWindow(cfg) = event {
+                                if cfg.element_uid == self.uid() && cfg.config == *config {
+                                    processed_msg = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
                 }
             }
             GLOBAL_WINDOW_STATE.set(global_state);
@@ -312,7 +326,7 @@ impl Component for WindowComponent {
             let winit_state = GLOBAL_WINDOW_STATE.take();
             if let None = winit_state.event_loop {
                 // initialize all the window elements
-                println!("Initializing event loop in {}", self.config.name());
+                debug!("Initializing event loop in {}", self.config.name());
                 self.initialize_event_loop(&pipeline, message_sender.clone())?;
             } else {
                 GLOBAL_WINDOW_STATE.set(winit_state);
@@ -384,7 +398,6 @@ impl Component for WindowComponent {
                     return Ok(msg);
                 }
                 WinitMessage::AvailableConfig(cfg) => {
-                    debug!("Updating available config with: {:?}", cfg);
                     WindowComponent::update_global_cfg(cfg);
                 }
                 _ => {}
@@ -402,26 +415,63 @@ impl Component for WindowComponent {
         BranchControl::unlink_and_destory(&self.output_element)?;
         self.branch.destory()?;
 
-        // Start by destorying our window
-        GLOBAL_WINDOW_STATE.with_borrow_mut(|state| {
-            if let Some(handler) = &mut state.handler {
-                handler.destory_window(&self.config.uid());
-            }
-        });
-
-        // destory our proxy reference
+        // destory our proxy references
         let mut proxy_state = PROXY_WINDOW_STATE
             .lock()
             .or(Err(Error::msg(
                 "Unable to aquire window proxy lock. Should not happen in normal operation",
             )))
             .unwrap();
-        if let Some(proxy_state) = proxy_state.as_mut() {
+
+        let is_main = if let Some(proxy_state) = proxy_state.as_mut() {
+            if let Some(event_loop_proxy) = &proxy_state.event_loop_proxy {
+                event_loop_proxy.send_event(WinitMessage::DestroyWindow(WindowRequest {
+                    element_name: self.config.name(),
+                    element_uid: self.config.uid(),
+                    config: WindowConfig::default(),
+                }))?;
+            } else {
+                return Err(anyhow!(
+                    "Failed to get event loop proxy. Should not happen in normal operation"
+                ));
+            }
+
             proxy_state.window_comps.remove(&self.config.uid);
             if self.is_main {
                 proxy_state.has_main = false;
+                true
+            } else if !proxy_state.has_main {
+                // if the proxy state doesn't have a main then assume th
+                true
+            } else {
+                false
             }
+        } else {
+            false
+        };
+
+        // Destroy the actual windows themselves
+        if is_main {
+            GLOBAL_WINDOW_STATE.with_borrow_mut(|global_state| {
+                if let Some(event_loop) = &mut global_state.event_loop {
+                    if let Some(handler) = &mut global_state.handler {
+                        let mut processed_msg = false;
+                        while !processed_msg {
+                            event_loop.pump_app_events(None, handler);
+                            for event in &handler.last_events {
+                                if let WinitMessage::DestroyWindow(cfg) = event {
+                                    if cfg.element_uid == self.uid() {
+                                        processed_msg = true;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         }
+
         Ok(())
     }
 
@@ -438,6 +488,7 @@ impl Component for WindowComponent {
                 .unwrap();
             if let Some(proxy_state) = global_state.as_mut() {
                 if !proxy_state.has_main {
+                    proxy_state.has_main = true;
                     self.is_main = true;
                     return true;
                 }

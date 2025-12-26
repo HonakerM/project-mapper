@@ -41,7 +41,7 @@ thread_local! {
 // setup global state. While this could be done without the Option
 // keep it to allow us to determine which component is the "main" one
 // and will start threads/etc
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub(super) struct ProxyWindowState {
     pub event_loop_proxy: Option<WinitPMEventLoopProxy>,
     pub window_comps: HashSet<Uid>,
@@ -63,6 +63,7 @@ pub struct WindowRequest {
 pub enum WinitMessage {
     Runtime(RuntimeMessage),
     UpdateWindow(WindowRequest),
+    DestroyWindow(WindowRequest),
     AvailableConfig(AvailableWindowConfig),
 }
 

@@ -1,5 +1,6 @@
 use std::any::Any;
 
+use log::debug;
 use project_mapper_core::runtime_config::input::common::InputConfigTrait;
 use schemars::{JsonSchema, schema_for};
 use serde::{Deserialize, Serialize};
@@ -71,7 +72,7 @@ impl Component for TestComponent {
         }?;
 
         // ensure we have a test config
-        println!("Creating TestComponent with config: {:?}", config.config);
+        debug!("Creating TestComponent with config: {:?}", config.config);
         let test_config = match config.config.as_any().downcast_ref::<TestConfig>() {
             Some(b) => Ok(b.clone()),
             None => Err(anyhow!("InputComponentConfig is not TestConfig")),

@@ -5,11 +5,13 @@ use std::{
 };
 
 use project_mapper_core::runtime_config::{
-    effect::EffectComponentConfig, output::OutputComponentConfig, shared::ComponentConfig,
+    config::DEFAULT_ID, effect::EffectComponentConfig, output::OutputComponentConfig,
+    shared::ComponentConfig,
 };
 
 use crate::components::{
     marker::{ConstructComponent, Marker, type_id_of},
+    runtime::DefaultRuntimeComponent,
     shared::{Component, ComponentFactory},
 };
 use anyhow::{Error, Result, anyhow};
@@ -28,11 +30,11 @@ impl Default for DefaultComponentFactory {
         let mut effect_components = Vec::new();
         let mut output_components = Vec::new();
 
-        println!("Looking For Components");
+        trace!("Looking For Components");
         for marker in inventory::iter::<Marker> {
             let boxed_config = (marker.config)().unwrap();
 
-            println!(
+            trace!(
                 "Found Component Marker: {} for Config: {}",
                 marker.name,
                 type_name_of_val(boxed_config.as_ref())
@@ -73,7 +75,14 @@ impl Default for DefaultComponentFactory {
 
 impl ComponentFactory for DefaultComponentFactory {
     fn create_component(&self, config: &dyn ComponentConfig) -> Result<Box<dyn Component>> {
-        println!("Trying to find component: {:?}", config);
+        if config.uid() == DEFAULT_ID {
+            return Ok(Box::new(DefaultRuntimeComponent::new(config)?));
+        }
+
+        trace!(
+            "Finding Component Construction Function for: {:?}",
+            config.uid()
+        );
 
         let vec_to_iter = if config
             .as_any()

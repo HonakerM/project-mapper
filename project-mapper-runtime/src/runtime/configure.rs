@@ -18,7 +18,7 @@ use crate::components::runtime::DefaultRuntimeComponent;
 use crate::components::shared::{ComponentFactory, ComponentLookupHelper};
 use crate::receivers::receiver::start_receiver;
 use crate::types::message::RuntimeMessage;
-use log::{info, warn};
+use log::{debug, info};
 
 pub fn configure_components(
     config: &RuntimeConfig,
@@ -54,7 +54,7 @@ pub fn update_components(
 
     // pause the deleted components
     for deleted_id in &change_tracker.deletes {
-        component_helper.pause_comp(deleted_id);
+        component_helper.pause_comp(deleted_id)?;
     }
 
     // configure the components
@@ -68,11 +68,12 @@ pub fn update_components(
 
     // destroy the deleted components
     for deleted_id in &change_tracker.deletes {
-        component_helper.destroy_comp(&deleted_id);
+        component_helper.destroy_comp(&deleted_id)?;
     }
 
     // if there is no component that requires main then add the default runtime component.
     // this keeps the logic the same
+    component_helper.refresh_main_requirement()?;
     if !component_helper.has_main_requirement() {
         let default_config = DefaultRuntimeComponent::new_config()
             .context("Failed to contstruct default runtime component config")?;
@@ -106,7 +107,7 @@ fn internal_configure_components(
     let mut comps_to_setup = vec![];
     for comp_config in graph.traverse() {
         // get the component or construct it if needed
-        if let None = component_helper.get_comp(&comp_config.uid()) {
+        if !component_helper.contains_comp(&comp_config.uid()) {
             info!("Constructing component {:?}", comp_config.uid());
             component_helper.new(comp_config.as_ref(), component_factory.as_ref())?;
             comps_to_setup.push(comp_config.uid());

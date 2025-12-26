@@ -48,7 +48,6 @@ impl AvailableConfig {
             for input_config in &self.inputs {
                 dynamic_schemas.push(input_config.schema().to_json_value());
             }
-            println!("Schemas, {:?}", dynamic_schemas);
 
             insert_config_into_base(
                 &mut base_schema,

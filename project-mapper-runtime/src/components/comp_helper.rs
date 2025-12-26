@@ -12,6 +12,7 @@ use crate::{
     types::message::RuntimeMessage,
 };
 use anyhow::{Error, Result, anyhow};
+use log::info;
 
 pub struct DefaultComponentHelper {
     main_comp_id: Option<Uid>,
@@ -27,6 +28,18 @@ impl DefaultComponentHelper {
             setup_tracker: Rc::new(RefCell::new(HashSet::new())),
         }
     }
+
+    pub fn update_main_id(&mut self, uid: Uid) -> Result<()> {
+        if let Some(main_id) = self.main_comp_id
+            && main_id != uid
+        {
+            return Err(Error::msg(
+                "Component that requires main already exists. Can not have two main components",
+            ));
+        }
+        self.main_comp_id = Some(uid);
+        Ok(())
+    }
 }
 
 impl ComponentLookupHelper for DefaultComponentHelper {
@@ -36,12 +49,7 @@ impl ComponentLookupHelper for DefaultComponentHelper {
 
         // if this component requires main then update the main_id
         if comp.requires_main() {
-            if let Some(_) = self.main_comp_id {
-                return Err(Error::msg(
-                    "Component that requires main already exists. Can not have two main components",
-                ));
-            }
-            self.main_comp_id = Some(comp.uid());
+            self.update_main_id(comp.uid())?;
         }
 
         // add the comp to the map
@@ -53,30 +61,30 @@ impl ComponentLookupHelper for DefaultComponentHelper {
 
     fn update(&mut self, config: &dyn ComponentConfig) -> Result<()> {
         // if the component map already contains the key then just update it
-        if let Some(comp) = self.component_map.get(&config.uid()) {
+        let (opt_uid, res) = if let Some(comp) = self.component_map.get(&config.uid()) {
             let mut mut_comp = comp.borrow_mut();
             mut_comp.update(config)?;
 
-            // if this update affected the main requirements of the component check it.
             if mut_comp.requires_main() {
-                if let Some(current_id) = self.main_comp_id {
-                    if current_id != mut_comp.uid() {
-                        return Err(Error::msg(
-                            "Component that requires main already exists. Can not have two main components",
-                        ));
-                    }
-                } else {
-                    // if we don't have a main component id then update it
-                    self.main_comp_id = Some(mut_comp.uid());
-                }
+                (Some(mut_comp.uid()), Ok(()))
+            } else {
+                (None, Ok(()))
             }
-            Ok(())
         } else {
-            Err(anyhow!(
-                "Component {} is has not been created yet.",
-                config.uid()
-            ))
+            (
+                None,
+                Err(anyhow!(
+                    "Component {} is has not been created yet.",
+                    config.uid()
+                )),
+            )
+        };
+
+        if let Some(uid) = opt_uid {
+            self.update_main_id(uid);
         }
+
+        res
     }
 
     fn setup(
@@ -141,6 +149,8 @@ impl ComponentLookupHelper for DefaultComponentHelper {
     }
 
     fn destroy_comp(&mut self, uid: &Uid) -> Result<()> {
+        info!("Deleting component {:?}", uid);
+
         // start by destroying the component
         if let Some(comp) = self.component_map.get(uid) {
             let mut mut_comp = comp.borrow_mut();
@@ -166,7 +176,22 @@ impl ComponentLookupHelper for DefaultComponentHelper {
     }
 
     fn has_main_requirement(&self) -> bool {
-        !self.main_comp_id.is_none()
+        self.main_comp_id.is_some()
+    }
+
+    fn refresh_main_requirement(&mut self) -> Result<bool> {
+        let mut possible_mains = vec![];
+        for comp in self.component_map.values() {
+            let mut locked_comp = comp.borrow_mut();
+            if locked_comp.requires_main() {
+                possible_mains.push(locked_comp.uid());
+            }
+        }
+        for id in possible_mains {
+            self.update_main_id(id)?;
+        }
+
+        Ok(self.has_main_requirement())
     }
     fn contains_comp(&self, uid: &Uid) -> bool {
         self.component_map.contains_key(uid)
